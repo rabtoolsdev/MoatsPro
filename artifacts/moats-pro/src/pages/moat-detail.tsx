@@ -93,7 +93,7 @@ export default function MoatDetail() {
     const fromConfig = moatConfig?.rewardTokens.find(
       (t) => t.tokenAddress?.toLowerCase() === pendingRewardTokenAddrs[idx]?.toLowerCase()
     );
-    if (fromConfig && (fromConfig as any).decimals) return (fromConfig as any).decimals as number;
+    if (fromConfig?.decimals) return fromConfig.decimals;
     const r = pendingRewardDecimals?.[idx];
     return r?.status === "success" ? Number(r.result) : 18;
   };
