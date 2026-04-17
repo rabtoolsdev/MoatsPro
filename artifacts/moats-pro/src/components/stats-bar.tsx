@@ -1,46 +1,44 @@
 import { motion } from "framer-motion";
-import { Users, TrendingUp, Activity, Award } from "lucide-react";
-import { formatPoints } from "@/lib/moat-metadata";
-import type { MoatPoint, MapsScore } from "@/lib/moats-api";
+import { Activity, TrendingUp, Award, CheckCircle } from "lucide-react";
+import type { MoatConfig, MapsScore } from "@/lib/moats-api";
 
 interface StatsBarProps {
-  allPoints?: MoatPoint[];
+  moatConfigs?: MoatConfig[];
   leaderboard?: MapsScore[];
 }
 
-export function StatsBar({ allPoints, leaderboard }: StatsBarProps) {
-  const totalParticipants = allPoints
-    ? new Set(allPoints.map((p) => p.walletAddress)).size
-    : 0;
-  const totalMoats = allPoints
-    ? new Set(allPoints.map((p) => p.contractAddress)).size
-    : 0;
-  const totalPoints = allPoints
-    ? allPoints.reduce((sum, p) => sum + p.points, 0)
+export function StatsBar({ moatConfigs, leaderboard }: StatsBarProps) {
+  const totalMoats = moatConfigs?.length || 0;
+  const verifiedMoats = moatConfigs?.filter((c) => c.status === "Verified").length || 0;
+  const totalRewardTokens = moatConfigs
+    ? moatConfigs.reduce((sum, m) => sum + m.rewardTokens.filter((t) => t.enabled).length, 0)
     : 0;
   const totalMapsScorers = leaderboard?.length || 0;
 
   const stats = [
-    {
-      label: "Total Participants",
-      value: totalParticipants.toLocaleString(),
-      icon: Users,
-      color: "text-cyan-400",
-      bg: "bg-cyan-400/10",
-    },
     {
       label: "Active Moats",
       value: totalMoats.toLocaleString(),
       icon: Activity,
       color: "text-primary",
       bg: "bg-primary/10",
+      testId: "stat-active-moats",
     },
     {
-      label: "Total Points Earned",
-      value: formatPoints(totalPoints),
-      icon: TrendingUp,
+      label: "Verified Moats",
+      value: verifiedMoats.toLocaleString(),
+      icon: CheckCircle,
       color: "text-emerald-400",
       bg: "bg-emerald-400/10",
+      testId: "stat-verified-moats",
+    },
+    {
+      label: "Active Reward Streams",
+      value: totalRewardTokens.toLocaleString(),
+      icon: TrendingUp,
+      color: "text-cyan-400",
+      bg: "bg-cyan-400/10",
+      testId: "stat-reward-streams",
     },
     {
       label: "MAPS Scorers",
@@ -48,6 +46,7 @@ export function StatsBar({ allPoints, leaderboard }: StatsBarProps) {
       icon: Award,
       color: "text-violet-400",
       bg: "bg-violet-400/10",
+      testId: "stat-maps-scorers",
     },
   ];
 
@@ -61,7 +60,7 @@ export function StatsBar({ allPoints, leaderboard }: StatsBarProps) {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: i * 0.08 }}
-              data-testid={`stat-${stat.label.toLowerCase().replace(/\s/g, "-")}`}
+              data-testid={stat.testId}
               className="flex items-center gap-3"
             >
               <div className={`p-2.5 rounded-xl ${stat.bg} shrink-0`}>

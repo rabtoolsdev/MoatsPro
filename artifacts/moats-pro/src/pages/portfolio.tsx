@@ -1,22 +1,18 @@
 import { useAccount } from "wagmi";
 import { motion } from "framer-motion";
-import { Wallet, TrendingUp, Zap, Award, AlertCircle } from "lucide-react";
-import { useAllMoatPoints, useMapsScore } from "@/hooks/use-moats-api";
+import { Wallet, TrendingUp, Award, AlertCircle } from "lucide-react";
+import { useMapsScore, useAllMoatConfigs } from "@/hooks/use-moats-api";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
-import { formatPoints, formatAddress } from "@/lib/moat-metadata";
+import { formatAddress } from "@/lib/moat-metadata";
+import { MoatCard } from "@/components/moat-card";
 
 export default function Portfolio() {
   const { address, isConnected } = useAccount();
-  const { data: allPoints, isLoading } = useAllMoatPoints();
-  const { data: mapsScore } = useMapsScore(address);
+  const { data: mapsScore, isLoading: scoreLoading } = useMapsScore(address);
+  const { data: configs, isLoading: configsLoading } = useAllMoatConfigs();
 
-  const userPoints = allPoints?.filter(
-    (p) => p.walletAddress.toLowerCase() === address?.toLowerCase()
-  ) || [];
-
-  const totalPoints = userPoints.reduce((sum, p) => sum + p.points, 0);
-  const uniqueMoats = new Set(userPoints.map((p) => p.contractAddress)).size;
+  const verifiedMoats = configs?.filter((c) => c.status === "Verified") || [];
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -48,123 +44,87 @@ export default function Portfolio() {
             </div>
             <h2 className="text-2xl font-bold mb-3">Connect Your Wallet</h2>
             <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-              Connect your wallet to view your Moats positions, points earned,
-              and MAPS score across all active Moats.
+              Connect your wallet to view your Moats positions and MAPS score.
             </p>
             <w3m-button />
           </motion.div>
         ) : (
           <div className="space-y-8">
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {[
-                {
-                  label: "Total Points",
-                  value: formatPoints(totalPoints),
-                  icon: Zap,
-                  color: "text-primary",
-                  bg: "bg-primary/10",
-                  testId: "stat-total-points",
-                },
-                {
-                  label: "Active Moats",
-                  value: uniqueMoats.toLocaleString(),
-                  icon: TrendingUp,
-                  color: "text-cyan-400",
-                  bg: "bg-cyan-400/10",
-                  testId: "stat-active-moats",
-                },
-                {
-                  label: "MAPS Score",
-                  value: mapsScore?.score
-                    ? mapsScore.score.toLocaleString()
-                    : "—",
-                  icon: Award,
-                  color: "text-violet-400",
-                  bg: "bg-violet-400/10",
-                  testId: "stat-maps-score",
-                },
-              ].map((card, i) => (
-                <motion.div
-                  key={card.label}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  data-testid={card.testId}
-                  className="rounded-2xl border border-border bg-card/30 p-6 flex items-center gap-4"
-                >
-                  <div className={`p-3 rounded-xl ${card.bg} shrink-0`}>
-                    <card.icon className={`w-6 h-6 ${card.color}`} />
-                  </div>
-                  <div>
-                    <p className="text-3xl font-bold tabular-nums">
-                      {card.value}
-                    </p>
-                    <p className="text-sm text-muted-foreground">{card.label}</p>
-                  </div>
-                </motion.div>
-              ))}
+            {/* MAPS Score Card */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                data-testid="stat-maps-score"
+                className="rounded-2xl border border-border bg-card/30 p-6 flex items-center gap-4"
+              >
+                <div className="p-3 rounded-xl bg-violet-400/10 shrink-0">
+                  <Award className="w-6 h-6 text-violet-400" />
+                </div>
+                <div>
+                  <p className="text-3xl font-bold tabular-nums">
+                    {scoreLoading
+                      ? "..."
+                      : mapsScore?.points
+                      ? mapsScore.points.toLocaleString()
+                      : "—"}
+                  </p>
+                  <p className="text-sm text-muted-foreground">MAPS Score</p>
+                  {mapsScore?.rank && (
+                    <p className="text-xs text-primary mt-0.5">Rank #{mapsScore.rank}</p>
+                  )}
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                data-testid="stat-active-moats"
+                className="rounded-2xl border border-border bg-card/30 p-6 flex items-center gap-4"
+              >
+                <div className="p-3 rounded-xl bg-cyan-400/10 shrink-0">
+                  <TrendingUp className="w-6 h-6 text-cyan-400" />
+                </div>
+                <div>
+                  <p className="text-3xl font-bold tabular-nums">
+                    {configsLoading ? "..." : (configs?.length || 0).toLocaleString()}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Available Moats</p>
+                </div>
+              </motion.div>
             </div>
 
-            {/* Position Table */}
-            <div className="rounded-2xl border border-border bg-card/30 backdrop-blur-sm overflow-hidden">
-              <div className="px-6 py-4 border-b border-border/50 flex items-center justify-between">
-                <h2 className="font-semibold">Your Positions</h2>
-                <span className="text-sm text-muted-foreground">
-                  {userPoints.length} position{userPoints.length !== 1 ? "s" : ""}
-                </span>
-              </div>
-
-              {isLoading ? (
-                <div className="p-8 space-y-3">
-                  {[...Array(3)].map((_, i) => (
-                    <div
-                      key={i}
-                      className="h-16 rounded-xl bg-muted/30 animate-pulse"
-                    />
-                  ))}
-                </div>
-              ) : userPoints.length === 0 ? (
-                <div className="p-16 text-center text-muted-foreground">
-                  <AlertCircle
-                    size={40}
-                    className="mx-auto mb-3 opacity-30"
-                  />
-                  <p className="font-medium">No positions found</p>
-                  <p className="text-sm mt-1">
-                    Visit a Moat to stake and start earning points
+            {/* Alert if no MAPS score */}
+            {!scoreLoading && !mapsScore && (
+              <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 flex items-start gap-3">
+                <AlertCircle size={18} className="text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-amber-400">No MAPS Score Found</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Your wallet hasn't earned MAPS points yet. Stake or interact with a Moat
+                    below to start earning points and appear on the leaderboard.
                   </p>
                 </div>
+              </div>
+            )}
+
+            {/* Explore Moats to interact with */}
+            <div>
+              <h2 className="text-xl font-bold mb-4">Verified Moats</h2>
+              <p className="text-sm text-muted-foreground mb-6">
+                Connect to any Moat below to stake tokens and start earning rewards and points.
+              </p>
+              {configsLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="h-52 rounded-2xl bg-card/50 animate-pulse border border-border" />
+                  ))}
+                </div>
               ) : (
-                <div className="divide-y divide-border/50">
-                  <div className="px-6 py-3 grid grid-cols-12 gap-4 text-xs text-muted-foreground font-medium">
-                    <span className="col-span-5">Contract</span>
-                    <span className="col-span-4">Points Earned</span>
-                    <span className="col-span-3 text-right">Last Updated</span>
-                  </div>
-                  {userPoints.map((position, i) => (
-                    <motion.div
-                      key={position.contractAddress}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: i * 0.04 }}
-                      data-testid={`row-position-${i}`}
-                      className="px-6 py-4 grid grid-cols-12 gap-4 items-center hover:bg-muted/20 transition-colors"
-                    >
-                      <span className="col-span-5 font-mono text-sm">
-                        {formatAddress(position.contractAddress)}
-                      </span>
-                      <span className="col-span-4 font-bold text-primary">
-                        {formatPoints(position.points)}
-                      </span>
-                      <span className="col-span-3 text-right text-xs text-muted-foreground">
-                        {new Date(
-                          position.lastUpdated > 1e12
-                            ? position.lastUpdated
-                            : position.lastUpdated * 1000
-                        ).toLocaleDateString()}
-                      </span>
-                    </motion.div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {verifiedMoats.slice(0, 6).map((moat) => (
+                    <MoatCard key={moat.contractAddress} moat={moat} />
                   ))}
                 </div>
               )}

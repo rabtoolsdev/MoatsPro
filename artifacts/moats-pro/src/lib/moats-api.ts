@@ -1,13 +1,65 @@
 const BASE_URL = "https://moat-api.fortifi.network/api";
 
-export interface MoatEvent {
-  id: string;
-  eventType: string;
-  contractAddress: string;
-  timestamp: number;
-  metadata: Record<string, unknown>;
+async function apiFetch<T>(path: string): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`);
+  if (!res.ok) {
+    throw new Error(`Moats API Error: ${res.status} for ${path}`);
+  }
+  return res.json() as Promise<T>;
 }
 
+// ---- Event types ----
+export interface MoatEvent {
+  _id: string;
+  network: string;
+  contractAddress: string;
+  eventType: "Staked" | "Withdrawn" | "Locked" | "Burned" | "RewardClaimed" | "LockExited" | "EarlyExit" | string;
+  blockNumber: number;
+  transactionHash: string;
+  logIndex: number;
+  timestamp: string;
+  args: {
+    user?: string;
+    amount?: string;
+    duration?: string;
+    [key: string]: unknown;
+  };
+}
+
+export interface EventsResponse {
+  total: number;
+  results: MoatEvent[];
+}
+
+// ---- MAPS / leaderboard types ----
+export interface MapsScoreRaw {
+  address: string;
+  username?: string;
+  mapScore: number;
+}
+
+export interface MapsScore {
+  address: string;
+  username?: string;
+  points: number;
+  rank: number;
+  weight?: number;
+}
+
+export interface MapsEpoch {
+  epochNumber: number;
+  startTime: string;
+  endTime: string;
+  isComplete: boolean;
+}
+
+export interface MapsLeaderboardResponse {
+  currentEpoch?: MapsEpoch;
+  isFallback?: boolean;
+  scores: MapsScoreRaw[];
+}
+
+// ---- Moat points ----
 export interface MoatPoint {
   walletAddress: string;
   contractAddress: string;
@@ -23,77 +75,69 @@ export interface MoatPointV2 {
   lastUpdated: number;
 }
 
-export interface MapsScore {
-  walletAddress: string;
-  score: number;
-  rank?: number;
-  epoch?: number;
-}
-
-export interface MoatTag {
-  id: string;
+// ---- Moat Config ----
+export interface RewardToken {
+  _id: string;
+  tokenAddress: string;
   name: string;
-  color: string;
+  symbol: string;
+  decimals: number;
+  tokenAmount: number;
+  totalRewardsDeposited: number;
+  totalRewardsClaimed: number;
+  enabled: boolean;
+  lastProcessed?: string;
 }
 
 export interface MoatConfig {
+  _id: string;
   contractAddress: string;
-  name?: string;
-  logoURL?: string;
-  tags?: MoatTag[];
-}
-
-async function apiFetch<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`);
-  if (!res.ok) {
-    throw new Error(`Moats API Error: ${res.status} for ${path}`);
-  }
-  return res.json() as Promise<T>;
+  network: string;
+  moatVersion: number;
+  status: "Verified" | "Community" | "Deprecated" | string;
+  fortWeight: number;
+  rewardStrategy?: string;
+  owner: string;
+  publicAddress?: string;
+  rewardTokens: RewardToken[];
+  automatedRewards?: boolean;
+  timeWeightedPointsEnabled?: boolean;
+  timeWeightPercentage?: number;
+  boostValue?: number;
+  boostActive?: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export const moatsApi = {
-  getEvents: () => apiFetch<MoatEvent[]>("/events"),
+  getEvents: (params?: { contractAddress?: string; eventType?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.contractAddress) qs.set("contractAddress", params.contractAddress);
+    if (params?.eventType) qs.set("eventType", params.eventType);
+    const query = qs.toString() ? `?${qs}` : "";
+    return apiFetch<EventsResponse>(`/events${query}`);
+  },
 
   getAllMoatPoints: (contractAddress?: string) => {
     const qs = contractAddress ? `?contractAddress=${contractAddress}` : "";
     return apiFetch<MoatPoint[]>(`/moat-points/all${qs}`);
   },
 
-  getAllMoatPointsV2: (contractAddress: string) =>
+  getMoatPointsV2: (contractAddress: string) =>
     apiFetch<MoatPointV2[]>(`/moat-points/v2/all?contractAddress=${contractAddress}`),
 
   getUserMoatPointsV2: (address: string, contractAddress: string) =>
     apiFetch<MoatPointV2>(`/moat-points/v2/user/${address}?contractAddress=${contractAddress}`),
 
-  getMapsLeaderboard: () => apiFetch<MapsScore[]>("/maps/score/all"),
+  getMapsLeaderboard: () =>
+    apiFetch<MapsLeaderboardResponse>("/maps/score/all"),
 
-  getMapsScore: (address: string) => apiFetch<MapsScore>(`/maps/score/${address}`),
+  getMapsScore: (address: string) =>
+    apiFetch<MapsScore>(`/maps/score/${address}`),
 
-  getAllTags: () => apiFetch<MoatTag[]>("/tags"),
+  getAllMoatConfigs: () =>
+    apiFetch<MoatConfig[]>("/moat-config"),
 
-  getMoatTags: (contractAddress: string) =>
-    apiFetch<MoatTag[]>(`/moat-config/${contractAddress}/tags`),
+  getMoatConfig: (contractAddress: string) =>
+    apiFetch<MoatConfig>(`/moat-config/${contractAddress}`),
 };
-
-export const KNOWN_MOATS: Array<{
-  contractAddress: string;
-  name: string;
-  protocol: string;
-  tokenSymbol: string;
-  tokenAddress: string;
-  logoURL?: string;
-  chain: string;
-  chainId: number;
-  description: string;
-}> = [
-  {
-    contractAddress: "0x0000000000000000000000000000000000000001",
-    name: "ETH/USDC Moat",
-    protocol: "Uniswap V3",
-    tokenSymbol: "ETH/USDC",
-    tokenAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-    chain: "Ethereum",
-    chainId: 1,
-    description: "Earn fees by providing liquidity to the ETH/USDC pool",
-  },
-];

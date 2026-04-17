@@ -1,44 +1,52 @@
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { ArrowRight, Users, Zap } from "lucide-react";
-import { formatPoints, formatAddress, getMoatMeta } from "@/lib/moat-metadata";
+import { ArrowRight, Coins, CheckCircle, Users } from "lucide-react";
+import { formatAddress } from "@/lib/moat-metadata";
+import type { MoatConfig } from "@/lib/moats-api";
 
 interface MoatCardProps {
-  moat: {
-    contractAddress: string;
-    name: string;
-    protocol: string;
-    tokenSymbol: string;
-    description?: string;
-    logoURL?: string;
-    totalPoints: number;
-    participantCount: number;
-  };
+  moat: MoatConfig;
 }
 
-const protocolColors: Record<string, string> = {
-  "Uniswap V3": "from-pink-500/20 to-purple-500/20 border-pink-500/20",
-  "Aave": "from-blue-500/20 to-teal-500/20 border-blue-500/20",
-  "Curve": "from-yellow-500/20 to-orange-500/20 border-yellow-500/20",
-  "Compound": "from-green-500/20 to-emerald-500/20 border-green-500/20",
-  "default": "from-primary/10 to-cyan-500/10 border-primary/20",
+const statusColors: Record<string, { border: string; badge: string; text: string }> = {
+  Verified: {
+    border: "border-emerald-500/20",
+    badge: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+    text: "text-emerald-400",
+  },
+  Community: {
+    border: "border-cyan-500/20",
+    badge: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
+    text: "text-cyan-400",
+  },
+  Deprecated: {
+    border: "border-zinc-500/20",
+    badge: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
+    text: "text-zinc-400",
+  },
 };
 
-function getProtocolGradient(protocol: string): string {
-  return protocolColors[protocol] || protocolColors.default;
-}
+const networkLabels: Record<string, string> = {
+  avalanche: "Avalanche",
+  ethereum: "Ethereum",
+  arbitrum: "Arbitrum",
+  base: "Base",
+  optimism: "Optimism",
+  polygon: "Polygon",
+};
 
-function getProtocolInitials(protocol: string): string {
-  return protocol
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
+function NetworkBadge({ network }: { network?: string }) {
+  if (!network) return null;
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/50 border border-border/50 text-xs text-muted-foreground">
+      {networkLabels[network.toLowerCase()] || network}
+    </span>
+  );
 }
 
 export function MoatCard({ moat }: MoatCardProps) {
-  const gradient = getProtocolGradient(moat.protocol);
+  const statusStyle = statusColors[moat.status] || statusColors.Community;
+  const activeRewardTokens = moat.rewardTokens.filter((t) => t.enabled);
 
   return (
     <Link href={`/moat/${moat.contractAddress}`}>
@@ -46,83 +54,101 @@ export function MoatCard({ moat }: MoatCardProps) {
         data-testid={`card-moat-${moat.contractAddress}`}
         whileHover={{ y: -4, scale: 1.01 }}
         transition={{ duration: 0.2 }}
-        className={`relative cursor-pointer rounded-2xl border bg-gradient-to-br ${gradient} backdrop-blur-sm overflow-hidden group h-full`}
+        className={`relative cursor-pointer rounded-2xl border ${statusStyle.border} bg-card/40 backdrop-blur-sm overflow-hidden group h-full flex flex-col`}
       >
-        {/* Glow effect */}
+        {/* Glow on hover */}
         <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent" />
         </div>
 
-        <div className="relative p-6 flex flex-col h-full">
+        <div className="relative p-6 flex flex-col flex-1">
           {/* Header */}
           <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-3">
-              {moat.logoURL ? (
-                <img
-                  src={moat.logoURL}
-                  alt={moat.name}
-                  className="w-10 h-10 rounded-xl object-contain bg-card/50 p-1"
-                />
-              ) : (
-                <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary font-bold text-sm">
-                  {getProtocolInitials(moat.protocol)}
-                </div>
-              )}
-              <div>
-                <h3
-                  data-testid={`text-moat-name-${moat.contractAddress}`}
-                  className="font-semibold text-foreground leading-tight"
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-2">
+                {moat.status === "Verified" && (
+                  <CheckCircle size={14} className="text-emerald-400 shrink-0" />
+                )}
+                <span
+                  data-testid={`text-moat-status-${moat.contractAddress}`}
+                  className={`text-xs font-medium px-2 py-0.5 rounded-full border ${statusStyle.badge}`}
                 >
-                  {moat.name}
-                </h3>
-                <p className="text-xs text-muted-foreground">{moat.protocol}</p>
+                  {moat.status}
+                </span>
+                <NetworkBadge network={moat.network} />
               </div>
+              <p
+                data-testid={`text-moat-name-${moat.contractAddress}`}
+                className="font-semibold text-foreground leading-tight font-mono text-sm"
+              >
+                {formatAddress(moat.contractAddress)}
+              </p>
             </div>
             <ArrowRight
               size={16}
-              className="text-muted-foreground group-hover:text-primary transition-colors mt-1"
+              className="text-muted-foreground group-hover:text-primary transition-colors mt-1 shrink-0"
             />
           </div>
 
-          {/* Token Symbol Badge */}
-          <div className="mb-4">
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-background/50 border border-border/50 text-xs font-mono text-muted-foreground">
-              {moat.tokenSymbol}
-            </span>
-          </div>
+          {/* Reward Strategy snippet */}
+          {moat.rewardStrategy && (
+            <p className="text-xs text-muted-foreground mb-4 line-clamp-2 leading-relaxed">
+              {moat.rewardStrategy}
+            </p>
+          )}
 
-          {/* Stats */}
-          <div className="mt-auto grid grid-cols-2 gap-3">
-            <div className="p-3 rounded-xl bg-background/30 border border-border/30">
-              <div className="flex items-center gap-1.5 mb-1">
-                <Zap size={12} className="text-primary" />
-                <span className="text-xs text-muted-foreground">Points</span>
-              </div>
-              <p
-                data-testid={`text-points-${moat.contractAddress}`}
-                className="font-bold text-lg tabular-nums"
-              >
-                {formatPoints(moat.totalPoints)}
+          {/* Reward tokens */}
+          {activeRewardTokens.length > 0 && (
+            <div className="mb-4">
+              <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                <Coins size={11} />
+                Reward Tokens
               </p>
+              <div className="flex flex-wrap gap-1.5">
+                {activeRewardTokens.slice(0, 3).map((token) => (
+                  <span
+                    key={token._id}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 border border-primary/20 text-xs font-medium text-primary"
+                  >
+                    {token.symbol}
+                    <span className="text-muted-foreground text-xs">
+                      {token.tokenAmount >= 1_000_000
+                        ? `${(token.tokenAmount / 1_000_000).toFixed(1)}M`
+                        : token.tokenAmount >= 1_000
+                        ? `${(token.tokenAmount / 1_000).toFixed(0)}K`
+                        : token.tokenAmount}
+                      /day
+                    </span>
+                  </span>
+                ))}
+                {activeRewardTokens.length > 3 && (
+                  <span className="text-xs text-muted-foreground px-2 py-1">
+                    +{activeRewardTokens.length - 3} more
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="p-3 rounded-xl bg-background/30 border border-border/30">
-              <div className="flex items-center gap-1.5 mb-1">
-                <Users size={12} className="text-cyan-400" />
-                <span className="text-xs text-muted-foreground">Stakers</span>
-              </div>
-              <p
-                data-testid={`text-stakers-${moat.contractAddress}`}
-                className="font-bold text-lg tabular-nums"
-              >
-                {moat.participantCount.toLocaleString()}
-              </p>
+          )}
+
+          {/* Footer stats */}
+          <div className="mt-auto flex items-center justify-between pt-3 border-t border-border/40">
+            <div className="text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">
+                FortWeight:
+              </span>{" "}
+              <span data-testid={`text-fortweight-${moat.contractAddress}`} className="text-primary font-bold">
+                {moat.fortWeight}x
+              </span>
+            </div>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <span>v{moat.moatVersion}</span>
+              {moat.automatedRewards && (
+                <span className="ml-2 px-1.5 py-0.5 rounded bg-violet-500/10 border border-violet-500/20 text-violet-400 text-xs">
+                  Auto
+                </span>
+              )}
             </div>
           </div>
-
-          {/* Contract Address */}
-          <p className="mt-3 text-xs text-muted-foreground/60 font-mono">
-            {formatAddress(moat.contractAddress)}
-          </p>
         </div>
       </motion.div>
     </Link>
