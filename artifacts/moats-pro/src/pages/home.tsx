@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { useAllMoatConfigs, useMapsLeaderboard, useEvents } from "@/hooks/use-moats-api";
+import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { MoatCard } from "@/components/moat-card";
@@ -13,6 +14,21 @@ export default function Home() {
   const { data: configs, isLoading: configsLoading } = useAllMoatConfigs();
   const { data: leaderboard } = useMapsLeaderboard();
   const { data: eventsData } = useEvents();
+
+  const allLlamaIds = useMemo(() => {
+    if (!configs) return [];
+    const ids = new Set<string>();
+    for (const c of configs) {
+      for (const t of c.rewardTokens) {
+        if (t.enabled && t.tokenAddress) {
+          ids.add(getLlamaId(c.network, t.tokenAddress));
+        }
+      }
+    }
+    return [...ids];
+  }, [configs]);
+
+  const { data: priceMap } = useTokenPrices(allLlamaIds);
 
   const statusOptions = configs
     ? ["all", ...new Set(configs.map((c) => c.status))]
@@ -151,7 +167,7 @@ export default function Home() {
           >
             {filteredMoats.map((moat) => (
               <motion.div key={moat.contractAddress} variants={itemVariants}>
-                <MoatCard moat={moat} />
+                <MoatCard moat={moat} priceMap={priceMap} />
               </motion.div>
             ))}
           </motion.div>

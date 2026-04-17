@@ -1,11 +1,13 @@
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { ArrowRight, Coins, CheckCircle } from "lucide-react";
-import { formatAddress, getMoatMeta } from "@/lib/moat-metadata";
+import { formatAddress, getMoatMeta, formatUSD } from "@/lib/moat-metadata";
+import { getLlamaId } from "@/hooks/use-token-prices";
 import type { MoatConfig } from "@/lib/moats-api";
 
 interface MoatCardProps {
   moat: MoatConfig;
+  priceMap?: Record<string, number>;
 }
 
 const statusColors: Record<string, { border: string; badge: string; text: string }> = {
@@ -44,10 +46,17 @@ function NetworkBadge({ network }: { network?: string }) {
   );
 }
 
-export function MoatCard({ moat }: MoatCardProps) {
+export function MoatCard({ moat, priceMap }: MoatCardProps) {
   const statusStyle = statusColors[moat.status] || statusColors.Community;
   const activeRewardTokens = moat.rewardTokens.filter((t) => t.enabled);
   const meta = getMoatMeta(moat.contractAddress);
+
+  const dailyRewardUSD = activeRewardTokens.reduce((sum, token) => {
+    if (!token.tokenAddress || !priceMap) return sum;
+    const id = getLlamaId(moat.network, token.tokenAddress);
+    const price = priceMap[id] ?? 0;
+    return sum + token.tokenAmount * price;
+  }, 0);
 
   return (
     <Link href={`/moat/${moat.contractAddress}`}>
@@ -57,13 +66,11 @@ export function MoatCard({ moat }: MoatCardProps) {
         transition={{ duration: 0.2 }}
         className={`relative cursor-pointer rounded-2xl border ${statusStyle.border} bg-card/40 backdrop-blur-sm overflow-hidden group h-full flex flex-col`}
       >
-        {/* Glow on hover */}
         <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent" />
         </div>
 
         <div className="relative p-6 flex flex-col flex-1">
-          {/* Header */}
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-xl bg-primary/15 border border-primary/20 flex items-center justify-center text-primary font-bold text-sm shrink-0">
@@ -95,14 +102,12 @@ export function MoatCard({ moat }: MoatCardProps) {
             </div>
           </div>
 
-          {/* Reward Strategy snippet */}
           {moat.rewardStrategy && (
             <p className="text-xs text-muted-foreground mb-4 line-clamp-2 leading-relaxed">
               {moat.rewardStrategy}
             </p>
           )}
 
-          {/* Reward tokens */}
           {activeRewardTokens.length > 0 && (
             <div className="mb-4">
               <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
@@ -135,7 +140,6 @@ export function MoatCard({ moat }: MoatCardProps) {
             </div>
           )}
 
-          {/* Footer stats */}
           <div className="mt-auto flex items-center justify-between pt-3 border-t border-border/40">
             <div className="text-xs text-muted-foreground">
               <span className="font-medium text-foreground">
@@ -145,10 +149,15 @@ export function MoatCard({ moat }: MoatCardProps) {
                 {moat.fortWeight}x
               </span>
             </div>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              {dailyRewardUSD > 0 && (
+                <span className="text-emerald-400 font-semibold tabular-nums">
+                  {formatUSD(dailyRewardUSD)}/day
+                </span>
+              )}
               <span>v{moat.moatVersion}</span>
               {moat.automatedRewards && (
-                <span className="ml-2 px-1.5 py-0.5 rounded bg-violet-500/10 border border-violet-500/20 text-violet-400 text-xs">
+                <span className="px-1.5 py-0.5 rounded bg-violet-500/10 border border-violet-500/20 text-violet-400 text-xs">
                   Auto
                 </span>
               )}

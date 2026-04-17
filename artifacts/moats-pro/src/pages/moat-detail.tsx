@@ -17,7 +17,8 @@ import type { MoatContractAddress } from "@/hooks/use-moat-contract";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { ActivityFeed } from "@/components/activity-feed";
-import { formatAddress, formatPoints, timeAgo, getMoatMeta } from "@/lib/moat-metadata";
+import { formatAddress, formatPoints, timeAgo, getMoatMeta, formatUSD } from "@/lib/moat-metadata";
+import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
 
 type ActionTab = "stake" | "lock" | "claim" | "withdraw" | "burn";
 
@@ -69,6 +70,14 @@ export default function MoatDetail() {
   const unstakeAction = useUnstakeMoat(contractAddress as MoatContractAddress | undefined);
   const burnAction = useBurnMoat(contractAddress as MoatContractAddress | undefined);
   const nftBoostBalance = useNftBoostBalance(moatConfig?.nftBoostContract as MoatContractAddress | undefined);
+
+  const network = moatConfig?.network ?? "avalanche";
+  const rewardLlamaIds = (moatConfig?.rewardTokens ?? [])
+    .filter((t) => t.enabled && t.tokenAddress)
+    .map((t) => getLlamaId(network, t.tokenAddress));
+  const stakingLlamaId = stats.stakingToken ? getLlamaId(network, stats.stakingToken) : "";
+  const allLlamaIds = [...new Set([...rewardLlamaIds, ...(stakingLlamaId ? [stakingLlamaId] : [])])];
+  const { data: priceMap } = useTokenPrices(allLlamaIds);
 
   const decimals = tokenBalance.decimals ?? 18;
   const hasAllowanceForStake = allowance.data !== undefined && stakeAmount
@@ -323,6 +332,16 @@ export default function MoatDetail() {
                               ? `${(token.tokenAmount / 1_000).toFixed(0)}K`
                               : token.tokenAmount}{" "}
                             {token.symbol}
+                            {(() => {
+                              const id = getLlamaId(network, token.tokenAddress);
+                              const usd = priceMap?.[id];
+                              const dailyUSD = usd ? token.tokenAmount * usd : 0;
+                              return dailyUSD > 0 ? (
+                                <span className="text-emerald-400 ml-1">
+                                  ({formatUSD(dailyUSD)})
+                                </span>
+                              ) : null;
+                            })()}
                           </span>
                         </div>
                         <div className="flex justify-between">
@@ -416,22 +435,45 @@ export default function MoatDetail() {
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
-                    { label: "Staked", value: userStakedFormatted, testId: "user-staked" },
-                    { label: "Burned", value: userBurnFormatted, testId: "user-burned" },
+                    {
+                      label: "Staked",
+                      value: userStakedFormatted,
+                      testId: "user-staked",
+                      usd: (() => {
+                        if (!stakingLlamaId || !priceMap || !userInfo.userInfo) return 0;
+                        const price = priceMap[stakingLlamaId] ?? 0;
+                        return parseFloat(formatUnits(userInfo.userInfo[0], decimals)) * price;
+                      })(),
+                    },
+                    {
+                      label: "Burned",
+                      value: userBurnFormatted,
+                      testId: "user-burned",
+                      usd: (() => {
+                        if (!stakingLlamaId || !priceMap || !userInfo.userInfo) return 0;
+                        const price = priceMap[stakingLlamaId] ?? 0;
+                        return parseFloat(formatUnits(userInfo.userInfo[1], decimals)) * price;
+                      })(),
+                    },
                     {
                       label: "Staking Pts",
                       value: formatPoints(Number(userInfo.userInfo?.[2] ?? 0n)),
                       testId: "user-staking-points",
+                      usd: 0,
                     },
                     {
                       label: "Burn Pts",
                       value: formatPoints(Number(userInfo.userInfo?.[3] ?? 0n)),
                       testId: "user-burn-points",
+                      usd: 0,
                     },
                   ].map((item) => (
                     <div key={item.label} data-testid={item.testId}>
                       <p className="text-xs text-muted-foreground mb-1">{item.label}</p>
                       <p className="font-bold text-xl tabular-nums">{item.value}</p>
+                      {item.usd > 0 && (
+                        <p className="text-xs text-emerald-400 tabular-nums">{formatUSD(item.usd)}</p>
+                      )}
                     </div>
                   ))}
                 </div>

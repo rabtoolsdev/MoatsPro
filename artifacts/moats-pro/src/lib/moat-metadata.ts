@@ -109,6 +109,14 @@ export function getMoatMeta(contractAddress: string): MoatMeta {
   );
 }
 
+export function formatUSD(amount: number): string {
+  if (amount <= 0) return "";
+  if (amount >= 1_000_000) return `$${(amount / 1_000_000).toFixed(2)}M`;
+  if (amount >= 1_000) return `$${(amount / 1_000).toFixed(1)}K`;
+  if (amount >= 1) return `$${amount.toFixed(2)}`;
+  return "<$0.01";
+}
+
 export function formatPoints(points: number): string {
   if (points >= 1_000_000) return `${(points / 1_000_000).toFixed(2)}M`;
   if (points >= 1_000) return `${(points / 1_000).toFixed(1)}K`;

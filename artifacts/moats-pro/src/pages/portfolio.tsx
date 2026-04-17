@@ -1,10 +1,12 @@
+import { useMemo } from "react";
 import { useAccount } from "wagmi";
 import { motion } from "framer-motion";
-import { Wallet, TrendingUp, Award, AlertCircle, ArrowDownRight, ArrowUpRight, Lock } from "lucide-react";
+import { Wallet, TrendingUp, Award, AlertCircle, ArrowDownRight, ArrowUpRight, Lock, DollarSign } from "lucide-react";
 import { useMapsScore, useAllMoatConfigs, useUserEvents } from "@/hooks/use-moats-api";
+import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
-import { formatAddress, getEventTypeLabel, getEventTypeColor, getExplorerUrl, timeAgo } from "@/lib/moat-metadata";
+import { formatAddress, getEventTypeLabel, getEventTypeColor, getExplorerUrl, timeAgo, formatUSD, getMoatMeta } from "@/lib/moat-metadata";
 import { Link } from "wouter";
 import type { MoatEvent } from "@/lib/moats-api";
 
@@ -63,6 +65,33 @@ export default function Portfolio() {
     );
     return { ...pos, config };
   });
+
+  const allLlamaIds = useMemo(() => {
+    if (!configs) return [];
+    const ids = new Set<string>();
+    for (const c of configs) {
+      for (const t of c.rewardTokens) {
+        if (t.enabled && t.tokenAddress) {
+          ids.add(getLlamaId(c.network, t.tokenAddress));
+        }
+      }
+    }
+    return [...ids];
+  }, [configs]);
+
+  const { data: priceMap } = useTokenPrices(allLlamaIds);
+
+  const getDailyRewardUSD = (pos: (typeof enrichedPositions)[0]): number => {
+    if (!pos.config || !priceMap) return 0;
+    return pos.config.rewardTokens
+      .filter((t) => t.enabled && t.tokenAddress)
+      .reduce((sum, t) => {
+        const id = getLlamaId(pos.config!.network, t.tokenAddress);
+        return sum + t.tokenAmount * (priceMap[id] ?? 0);
+      }, 0);
+  };
+
+  const totalDailyUSD = enrichedPositions.reduce((sum, pos) => sum + getDailyRewardUSD(pos), 0);
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -157,6 +186,26 @@ export default function Portfolio() {
                   <p className="text-sm text-muted-foreground">Available Moats</p>
                 </div>
               </motion.div>
+
+              {totalDailyUSD > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15 }}
+                  data-testid="stat-daily-rewards-usd"
+                  className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-6 flex items-center gap-4"
+                >
+                  <div className="p-3 rounded-xl bg-emerald-400/10 shrink-0">
+                    <DollarSign className="w-6 h-6 text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-3xl font-bold tabular-nums text-emerald-400">
+                      {formatUSD(totalDailyUSD)}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Est. Daily Rewards</p>
+                  </div>
+                </motion.div>
+              )}
             </div>
 
             {/* No MAPS score notice */}
@@ -201,12 +250,12 @@ export default function Portfolio() {
                         <div className="min-w-0">
                           <Link
                             href={`/moat/${pos.contractAddress}`}
-                            className="font-semibold text-primary hover:underline font-mono text-sm"
+                            className="font-semibold text-foreground hover:text-primary transition-colors text-sm"
                           >
-                            {formatAddress(pos.contractAddress)}
+                            {getMoatMeta(pos.contractAddress).name}
                           </Link>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            {pos.config?.status ?? pos.network} · Last activity: {timeAgo(new Date(pos.lastActivity).getTime())}
+                            {getMoatMeta(pos.contractAddress).protocol} · {pos.config?.status ?? pos.network} · Last: {timeAgo(new Date(pos.lastActivity).getTime())}
                           </p>
                         </div>
                         <Link
@@ -216,7 +265,7 @@ export default function Portfolio() {
                           Manage
                         </Link>
                       </div>
-                      <div className="grid grid-cols-2 gap-4 mt-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4">
                         {pos.staked > 0n && (
                           <div className="flex items-center gap-2">
                             <ArrowUpRight size={14} className="text-emerald-400" />
@@ -235,6 +284,18 @@ export default function Portfolio() {
                             </div>
                           </div>
                         )}
+                        {(() => {
+                          const dailyUSD = getDailyRewardUSD(pos);
+                          return dailyUSD > 0 ? (
+                            <div className="flex items-center gap-2">
+                              <DollarSign size={14} className="text-emerald-400" />
+                              <div>
+                                <p className="text-sm font-bold text-emerald-400">{formatUSD(dailyUSD)}/day</p>
+                                <p className="text-xs text-muted-foreground">Est. Rewards</p>
+                              </div>
+                            </div>
+                          ) : null;
+                        })()}
                       </div>
                     </motion.div>
                   ))}
