@@ -2,11 +2,13 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, TrendingUp, LayoutDashboard, Trophy } from "lucide-react";
+import { useAccount } from "wagmi";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [location] = useLocation();
+  const { isConnected } = useAccount();
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 20);
@@ -78,7 +80,11 @@ export function Navbar() {
 
         {/* Wallet Connect */}
         <div className="flex items-center gap-3">
-          <w3m-button size="sm" />
+          {isConnected ? (
+            <w3m-account-button balance="hide" />
+          ) : (
+            <w3m-connect-button size="sm" />
+          )}
           <button
             className="md:hidden p-2 rounded-lg border border-border hover:border-primary/50 transition-all"
             onClick={() => setMobileOpen(!mobileOpen)}

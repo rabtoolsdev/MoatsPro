@@ -874,7 +874,7 @@ export default function MoatDetail() {
                     <p className="text-muted-foreground text-sm mb-4">
                       Connect your wallet to interact with this Moat
                     </p>
-                    <w3m-button />
+                    <w3m-connect-button />
                   </div>
                 ) : (
                   <>

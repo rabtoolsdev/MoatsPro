@@ -275,7 +275,7 @@ export default function Portfolio() {
             <p className="text-muted-foreground mb-8 max-w-md mx-auto">
               Connect your wallet to view your Moats positions and MAPS score.
             </p>
-            <w3m-button />
+            <w3m-connect-button />
           </motion.div>
         ) : (
           <div className="space-y-8">
