@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { Wallet, TrendingUp, Award, AlertCircle, ArrowDownRight, Lock, DollarSign, ArrowUpRight, Flame } from "lucide-react";
 import { useMapsScore, useAllMoatConfigs, useUserEvents } from "@/hooks/use-moats-api";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
-import { MOAT_V3_ABI, ERC20_ABI } from "@/lib/moat-abi";
+import { MOAT_V3_ABI, ERC20_ABI, MOAT_LOGO_ABI } from "@/lib/moat-abi";
 import { moatsApi } from "@/lib/moats-api";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
@@ -43,6 +43,33 @@ export default function Portfolio() {
     contracts: userInfoContracts,
     query: { enabled: userInfoContracts.length > 0 },
   });
+
+  // ── Logo batch read ───────────────────────────────────────────────────────
+  const logoContracts = useMemo(() => {
+    if (!configs) return [];
+    return configs.map((c) => ({
+      address: c.contractAddress as `0x${string}`,
+      abi: MOAT_LOGO_ABI,
+      functionName: "getLogoURL" as const,
+    }));
+  }, [configs]);
+
+  const { data: logoData } = useReadContracts({
+    contracts: logoContracts,
+    query: { enabled: logoContracts.length > 0, staleTime: 5 * 60 * 1000, gcTime: 30 * 60 * 1000 },
+  });
+
+  const logoMap = useMemo((): Record<string, string> => {
+    if (!logoData || !configs) return {};
+    const m: Record<string, string> = {};
+    configs.forEach((c, i) => {
+      const r = logoData[i];
+      if (r?.status === "success" && typeof r.result === "string" && r.result.length > 0) {
+        m[c.contractAddress.toLowerCase()] = r.result;
+      }
+    });
+    return m;
+  }, [logoData, configs]);
 
   // Build active positions: include staked, locked, OR burn/staking points
   const activePositions = useMemo(() => {
@@ -415,6 +442,7 @@ export default function Portfolio() {
                     const posVal = getPositionValueUSD(pos, i);
                     const dailyUSD = getDailyRewardUSD(pos);
                     const mapsPoints = moatPointsMap[pos.config.contractAddress.toLowerCase()] ?? 0;
+                    const logoUrl = logoMap[pos.config.contractAddress.toLowerCase()];
 
                     return (
                       <motion.div
@@ -425,16 +453,31 @@ export default function Portfolio() {
                         className="rounded-2xl border border-border bg-card/30 p-5"
                       >
                         <div className="flex items-center justify-between gap-4">
-                          <div className="min-w-0">
-                            <Link
-                              href={`/moat/${pos.config.contractAddress}`}
-                              className="font-semibold text-foreground hover:text-primary transition-colors text-sm"
-                            >
-                              {meta.name}
-                            </Link>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              {meta.protocol} · {pos.config.status} · {pos.config.network}
-                            </p>
+                          <div className="flex items-center gap-3 min-w-0">
+                            {/* Logo */}
+                            {logoUrl ? (
+                              <img
+                                src={logoUrl}
+                                alt={meta.name}
+                                className="w-9 h-9 rounded-xl object-cover shrink-0 border border-border/30"
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                              />
+                            ) : (
+                              <div className="w-9 h-9 rounded-xl bg-primary/15 border border-primary/20 flex items-center justify-center text-primary font-bold text-xs shrink-0">
+                                {meta.tokenSymbol.slice(0, 2)}
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <Link
+                                href={`/moat/${pos.config.contractAddress}`}
+                                className="font-semibold text-foreground hover:text-primary transition-colors text-sm"
+                              >
+                                {meta.name}
+                              </Link>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {meta.protocol} · {pos.config.status} · {pos.config.network}
+                              </p>
+                            </div>
                           </div>
                           <Link
                             href={`/moat/${pos.config.contractAddress}`}
