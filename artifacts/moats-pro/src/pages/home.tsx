@@ -6,6 +6,7 @@ import { formatUnits } from "viem";
 import { useAllMoatConfigs, useMapsLeaderboard, useEvents } from "@/hooks/use-moats-api";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
 import { MOAT_V3_ABI, ERC20_ABI } from "@/lib/moat-abi";
+import { getMoatMeta } from "@/lib/moat-metadata";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { MoatCard } from "@/components/moat-card";
@@ -103,10 +104,15 @@ export default function Home() {
     ? ["all", ...new Set(configs.map((c) => c.status))]
     : ["all"];
 
+  const moatsWithMeta = (configs || []).map((config) => ({
+    ...config,
+    meta: getMoatMeta(config.contractAddress),
+  }));
+
   const filteredMoats =
     statusFilter === "all"
-      ? (configs || [])
-      : (configs || []).filter((c) => c.status === statusFilter);
+      ? moatsWithMeta
+      : moatsWithMeta.filter((c) => c.status === statusFilter);
 
   const containerVariants = {
     hidden: { opacity: 0 },

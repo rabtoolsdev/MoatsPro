@@ -18,6 +18,7 @@ import type { MoatContractAddress } from "@/hooks/use-moat-contract";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { ActivityFeed } from "@/components/activity-feed";
+import { MoatLogo } from "@/components/moat-card";
 import { formatAddress, formatPoints, timeAgo, getMoatMeta, formatUSD } from "@/lib/moat-metadata";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
 import { ERC20_ABI } from "@/lib/moat-abi";
@@ -286,9 +287,14 @@ export default function MoatDetail() {
             <div className="h-20 w-full rounded-xl bg-muted/30 animate-pulse" />
           ) : (
             <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-xl bg-primary/20 flex items-center justify-center text-primary font-bold text-xl border border-primary/20 shrink-0">
-                {getMoatMeta(contractAddress).tokenSymbol.slice(0, 2)}
-              </div>
+              <MoatLogo
+                meta={getMoatMeta(contractAddress)}
+                primaryTokenAddress={
+                  moatConfig?.rewardTokens?.filter((t) => t.enabled)[0]?.tokenAddress ||
+                  getMoatMeta(contractAddress).tokenAddress
+                }
+                size="lg"
+              />
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <h1 className="text-3xl font-bold">

@@ -3,7 +3,7 @@ export interface MoatMeta {
   protocol: string;
   tokenSymbol: string;
   tokenAddress?: string;
-  logoURL?: string;
+  logoUrl?: string;
   chain?: string;
   chainId?: number;
   description?: string;
@@ -11,11 +11,15 @@ export interface MoatMeta {
   twitterHandle?: string;
 }
 
+const TW = (addr: string) =>
+  `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/avalanchec/assets/${addr}/logo.png`;
+
 export const MOAT_METADATA: Record<string, MoatMeta> = {
   "0xd4280e25a7969da08b7093e8b54068d693def66e": {
     name: "Gator Moat",
     protocol: "GatorOS",
     tokenSymbol: "GATOR",
+    tokenAddress: "0x1a31a8fd8bacb64b32dbcdcf5b2215f58baf70c1",
     chain: "avalanche",
     description: "Earn GATOR rewards — 10% of supply distributed daily over 1 year. Built on GatorOS and SwampSwap.",
     website: "https://gatorswap.com",
@@ -24,6 +28,7 @@ export const MOAT_METADATA: Record<string, MoatMeta> = {
     name: "Blaze Social Moat",
     protocol: "Blaze.stream",
     tokenSymbol: "BLAZE",
+    tokenAddress: "0x297731eb3cab3834525fc9ea061fd71d8f4645c9",
     chain: "avalanche",
     description: "Earn BLAZE and USDC from Blaze.stream earnings and Arena.Social tips.",
     website: "https://blaze.stream",
@@ -32,6 +37,8 @@ export const MOAT_METADATA: Record<string, MoatMeta> = {
     name: "Blaze USDC Moat",
     protocol: "Blaze.stream",
     tokenSymbol: "USDC",
+    tokenAddress: "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+    logoUrl: TW("0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E"),
     chain: "avalanche",
     description: "Earn USDC and BLAZE rewards from the Blaze social platform.",
     website: "https://blaze.stream",
@@ -40,6 +47,8 @@ export const MOAT_METADATA: Record<string, MoatMeta> = {
     name: "WAVAX Rewards Moat",
     protocol: "FortiFi",
     tokenSymbol: "WAVAX",
+    tokenAddress: "0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7",
+    logoUrl: TW("0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7"),
     chain: "avalanche",
     description: "Earn Wrapped AVAX rewards through the FortiFi protocol.",
   },
@@ -47,6 +56,7 @@ export const MOAT_METADATA: Record<string, MoatMeta> = {
     name: "Arena Social Moat",
     protocol: "Arena.Social",
     tokenSymbol: "ARENA",
+    tokenAddress: "0xb8d7710f7d8349a506b75dd184f05777c82dad0c",
     chain: "avalanche",
     description: "Rewards generated from Blaze.stream earnings and Arena.Social tips. 50% to stakers.",
     website: "https://arena.social",
@@ -55,6 +65,7 @@ export const MOAT_METADATA: Record<string, MoatMeta> = {
     name: "Wheremalek Moat",
     protocol: "Where Is Malek",
     tokenSymbol: "WHEREMALEK",
+    tokenAddress: "0xeb55fab1c23ec0aa5024ee593a12edcd031ecd9b",
     chain: "avalanche",
     description: "3M $WHEREMALEK + 100 $ARENA distributed daily. Community-powered Moat.",
   },
@@ -62,6 +73,7 @@ export const MOAT_METADATA: Record<string, MoatMeta> = {
     name: "hCASH-WAVAX LP Moat",
     protocol: "Pharaoh Exchange",
     tokenSymbol: "hCASH/WAVAX",
+    logoUrl: "https://pharaoh.exchange/favicon.ico",
     chain: "avalanche",
     description: "Stake hCASH/WAVAX LP tokens from Pharaoh Exchange v2 to earn rewards.",
     website: "https://pharaoh.exchange",
@@ -70,6 +82,7 @@ export const MOAT_METADATA: Record<string, MoatMeta> = {
     name: "HEFE Moat",
     protocol: "HEFE",
     tokenSymbol: "HEFE",
+    tokenAddress: "0x18e3605b13f10016901eac609b9e188cf7c18973",
     chain: "avalanche",
     description: "Earn HEFE, WAVAX, USDC, and BTC.b rewards from the HEFE protocol.",
   },
@@ -77,6 +90,7 @@ export const MOAT_METADATA: Record<string, MoatMeta> = {
     name: "Backstage Pass Moat",
     protocol: "Blaze.stream",
     tokenSymbol: "BLAZE",
+    tokenAddress: "0x297731eb3cab3834525fc9ea061fd71d8f4645c9",
     chain: "avalanche",
     description: "Rewards from 700+ Backstage Passes on the Blaze platform.",
     website: "https://blaze.stream",
@@ -85,6 +99,8 @@ export const MOAT_METADATA: Record<string, MoatMeta> = {
     name: "Bensi Box Moat",
     protocol: "Bensi Box",
     tokenSymbol: "WAVAX",
+    tokenAddress: "0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7",
+    logoUrl: TW("0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7"),
     chain: "avalanche",
     description: "Bensi Box is a fine art tokenization and fractionalization DAO on Avalanche.",
   },
@@ -92,6 +108,8 @@ export const MOAT_METADATA: Record<string, MoatMeta> = {
     name: "FREAK USDC Moat",
     protocol: "FREAK",
     tokenSymbol: "USDC",
+    tokenAddress: "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",
+    logoUrl: TW("0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E"),
     chain: "avalanche",
     description: "Earn USDC and FREAK token rewards.",
   },
@@ -115,6 +133,19 @@ export function formatUSD(amount: number): string {
   if (amount >= 1_000) return `$${(amount / 1_000).toFixed(1)}K`;
   if (amount >= 1) return `$${amount.toFixed(2)}`;
   return "<$0.01";
+}
+
+export function getTokenLogoUrl(tokenAddress: string): string {
+  const checksumMap: Record<string, string> = {
+    "0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7": "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7",
+    "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e": "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E",
+    "0x152b9d0fdc40c096757f570a51e494bd4b943e50": "0x152b9d0FDC40C096757F570A51E494bd4b943E50",
+    "0xb8d7710f7d8349a506b75dd184f05777c82dad0c": "0xB8D7710f7D8349A506B75DD184F05777C82dAD0c",
+  };
+  const lower = tokenAddress.toLowerCase();
+  const checksum = checksumMap[lower];
+  if (checksum) return TW(checksum);
+  return "";
 }
 
 export function formatPoints(points: number): string {

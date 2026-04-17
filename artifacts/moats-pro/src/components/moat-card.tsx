@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { ArrowRight, Coins, CheckCircle } from "lucide-react";
-import { formatAddress, getMoatMeta, formatUSD } from "@/lib/moat-metadata";
+import { formatAddress, getMoatMeta, formatUSD, getTokenLogoUrl } from "@/lib/moat-metadata";
+import type { MoatMeta } from "@/lib/moat-metadata";
 import { getLlamaId } from "@/hooks/use-token-prices";
 import type { MoatConfig } from "@/lib/moats-api";
 
@@ -47,10 +49,50 @@ function NetworkBadge({ network }: { network?: string }) {
   );
 }
 
+function MoatLogo({
+  meta,
+  primaryTokenAddress,
+  size = "sm",
+}: {
+  meta: MoatMeta;
+  primaryTokenAddress?: string;
+  size?: "sm" | "lg";
+}) {
+  const [imgError, setImgError] = useState(false);
+
+  const sizeClass = size === "sm"
+    ? "w-10 h-10 text-sm"
+    : "w-14 h-14 text-xl";
+
+  const logoUrl = meta.logoUrl || (primaryTokenAddress ? getTokenLogoUrl(primaryTokenAddress) : "");
+
+  if (logoUrl && !imgError) {
+    return (
+      <img
+        src={logoUrl}
+        alt={meta.name}
+        className={`${sizeClass} rounded-xl object-cover shrink-0 border border-border/30`}
+        onError={() => setImgError(true)}
+      />
+    );
+  }
+
+  return (
+    <div
+      className={`${sizeClass} rounded-xl bg-primary/15 border border-primary/20 flex items-center justify-center text-primary font-bold shrink-0`}
+    >
+      {meta.tokenSymbol.slice(0, 2)}
+    </div>
+  );
+}
+
+export { MoatLogo };
+
 export function MoatCard({ moat, priceMap, tvlUSD }: MoatCardProps) {
   const statusStyle = statusColors[moat.status] || statusColors.Community;
   const activeRewardTokens = moat.rewardTokens.filter((t) => t.enabled);
   const meta = getMoatMeta(moat.contractAddress);
+  const primaryTokenAddress = activeRewardTokens[0]?.tokenAddress || meta.tokenAddress;
 
   const dailyRewardUSD = activeRewardTokens.reduce((sum, token) => {
     if (!token.tokenAddress || !priceMap) return sum;
@@ -74,9 +116,7 @@ export function MoatCard({ moat, priceMap, tvlUSD }: MoatCardProps) {
         <div className="relative p-6 flex flex-col flex-1">
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-xl bg-primary/15 border border-primary/20 flex items-center justify-center text-primary font-bold text-sm shrink-0">
-                {meta.tokenSymbol.slice(0, 2)}
-              </div>
+              <MoatLogo meta={meta} primaryTokenAddress={primaryTokenAddress} size="sm" />
               <div className="min-w-0">
                 <p
                   data-testid={`text-moat-name-${moat.contractAddress}`}
