@@ -1,0 +1,707 @@
+<html lang="en" data-critters-container=""><head>
+  <meta charset="utf-8">
+  <title>TheMoat</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="frame-ancestors 'self' http://localhost:* https://*.pages.dev https://*.vercel.app https://*.ngrok-free.app https://secure-mobile.walletconnect.com https://secure-mobile.walletconnect.org https://secure.walletconnect.org https://secure.walletconnect.com">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer">
+<style>@import"https://fonts.googleapis.com/css2?family=Varela+Round&display=swap";*,:before,:after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / .5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }*,:before,:after{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}:before,:after{--tw-content:""}html{line-height:1.5;-webkit-text-size-adjust:100%;tab-size:4;font-family:Varela Round,system-ui,sans-serif;font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}.bg-primary-dark{--tw-bg-opacity:1;background-color:rgb(10 20 34 / var(--tw-bg-opacity, 1))}</style><link rel="stylesheet" href="styles.e483269bcd3b3502.css" media="all" onload="this.media='all'"><noscript><link rel="stylesheet" href="styles.e483269bcd3b3502.css"></noscript><style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+      @keyframes w3m-shake {
+        0% {
+          transform: scale(1) rotate(0deg);
+        }
+        20% {
+          transform: scale(1) rotate(-1deg);
+        }
+        40% {
+          transform: scale(1) rotate(1.5deg);
+        }
+        60% {
+          transform: scale(1) rotate(-1.5deg);
+        }
+        80% {
+          transform: scale(1) rotate(1deg);
+        }
+        100% {
+          transform: scale(1) rotate(0deg);
+        }
+      }
+      @keyframes w3m-iframe-fade-out {
+        0% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0;
+        }
+      }
+      @keyframes w3m-iframe-zoom-in {
+        0% {
+          transform: translateY(50px);
+          opacity: 0;
+        }
+        100% {
+          transform: translateY(0px);
+          opacity: 1;
+        }
+      }
+      @keyframes w3m-iframe-zoom-in-mobile {
+        0% {
+          transform: scale(0.95);
+          opacity: 0;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      :root {
+        --w3m-modal-width: 360px;
+        --w3m-color-mix-strength: 0%;
+        --w3m-font-family: Inter, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;;
+        --w3m-font-size-master: 10px;
+        --w3m-border-radius-master: 4px;
+        --w3m-z-index: 999;
+
+        --wui-font-family: var(--w3m-font-family);
+
+        --wui-font-size-mini: calc(var(--w3m-font-size-master) * 0.8);
+        --wui-font-size-micro: var(--w3m-font-size-master);
+        --wui-font-size-tiny: calc(var(--w3m-font-size-master) * 1.2);
+        --wui-font-size-small: calc(var(--w3m-font-size-master) * 1.4);
+        --wui-font-size-paragraph: calc(var(--w3m-font-size-master) * 1.6);
+        --wui-font-size-medium: calc(var(--w3m-font-size-master) * 1.8);
+        --wui-font-size-large: calc(var(--w3m-font-size-master) * 2);
+        --wui-font-size-title-6: calc(var(--w3m-font-size-master) * 2.2);
+        --wui-font-size-medium-title: calc(var(--w3m-font-size-master) * 2.4);
+        --wui-font-size-2xl: calc(var(--w3m-font-size-master) * 4);
+
+        --wui-border-radius-5xs: var(--w3m-border-radius-master);
+        --wui-border-radius-4xs: calc(var(--w3m-border-radius-master) * 1.5);
+        --wui-border-radius-3xs: calc(var(--w3m-border-radius-master) * 2);
+        --wui-border-radius-xxs: calc(var(--w3m-border-radius-master) * 3);
+        --wui-border-radius-xs: calc(var(--w3m-border-radius-master) * 4);
+        --wui-border-radius-s: calc(var(--w3m-border-radius-master) * 5);
+        --wui-border-radius-m: calc(var(--w3m-border-radius-master) * 7);
+        --wui-border-radius-l: calc(var(--w3m-border-radius-master) * 9);
+        --wui-border-radius-3xl: calc(var(--w3m-border-radius-master) * 20);
+
+        --wui-font-weight-light: 400;
+        --wui-font-weight-regular: 500;
+        --wui-font-weight-medium: 600;
+        --wui-font-weight-bold: 700;
+
+        --wui-letter-spacing-2xl: -1.6px;
+        --wui-letter-spacing-medium-title: -0.96px;
+        --wui-letter-spacing-title-6: -0.88px;
+        --wui-letter-spacing-large: -0.8px;
+        --wui-letter-spacing-medium: -0.72px;
+        --wui-letter-spacing-paragraph: -0.64px;
+        --wui-letter-spacing-small: -0.56px;
+        --wui-letter-spacing-tiny: -0.48px;
+        --wui-letter-spacing-micro: -0.2px;
+        --wui-letter-spacing-mini: -0.16px;
+
+        --wui-spacing-0: 0px;
+        --wui-spacing-4xs: 2px;
+        --wui-spacing-3xs: 4px;
+        --wui-spacing-xxs: 6px;
+        --wui-spacing-2xs: 7px;
+        --wui-spacing-xs: 8px;
+        --wui-spacing-1xs: 10px;
+        --wui-spacing-s: 12px;
+        --wui-spacing-m: 14px;
+        --wui-spacing-l: 16px;
+        --wui-spacing-2l: 18px;
+        --wui-spacing-xl: 20px;
+        --wui-spacing-xxl: 24px;
+        --wui-spacing-2xl: 32px;
+        --wui-spacing-3xl: 40px;
+        --wui-spacing-4xl: 90px;
+        --wui-spacing-5xl: 95px;
+
+        --wui-icon-box-size-xxs: 14px;
+        --wui-icon-box-size-xs: 20px;
+        --wui-icon-box-size-sm: 24px;
+        --wui-icon-box-size-md: 32px;
+        --wui-icon-box-size-mdl: 36px;
+        --wui-icon-box-size-lg: 40px;
+        --wui-icon-box-size-2lg: 48px;
+        --wui-icon-box-size-xl: 64px;
+
+        --wui-icon-size-inherit: inherit;
+        --wui-icon-size-xxs: 10px;
+        --wui-icon-size-xs: 12px;
+        --wui-icon-size-sm: 14px;
+        --wui-icon-size-md: 16px;
+        --wui-icon-size-mdl: 18px;
+        --wui-icon-size-lg: 20px;
+        --wui-icon-size-xl: 24px;
+        --wui-icon-size-xxl: 28px;
+
+        --wui-wallet-image-size-inherit: inherit;
+        --wui-wallet-image-size-sm: 40px;
+        --wui-wallet-image-size-md: 56px;
+        --wui-wallet-image-size-lg: 80px;
+
+        --wui-visual-size-size-inherit: inherit;
+        --wui-visual-size-sm: 40px;
+        --wui-visual-size-md: 55px;
+        --wui-visual-size-lg: 80px;
+
+        --wui-box-size-md: 100px;
+        --wui-box-size-lg: 120px;
+
+        --wui-ease-out-power-2: cubic-bezier(0, 0, 0.22, 1);
+        --wui-ease-out-power-1: cubic-bezier(0, 0, 0.55, 1);
+
+        --wui-ease-in-power-3: cubic-bezier(0.66, 0, 1, 1);
+        --wui-ease-in-power-2: cubic-bezier(0.45, 0, 1, 1);
+        --wui-ease-in-power-1: cubic-bezier(0.3, 0, 1, 1);
+
+        --wui-ease-inout-power-1: cubic-bezier(0.45, 0, 0.55, 1);
+
+        --wui-duration-lg: 200ms;
+        --wui-duration-md: 125ms;
+        --wui-duration-sm: 75ms;
+
+        --wui-path-network-sm: path(
+          'M15.4 2.1a5.21 5.21 0 0 1 5.2 0l11.61 6.7a5.21 5.21 0 0 1 2.61 4.52v13.4c0 1.87-1 3.59-2.6 4.52l-11.61 6.7c-1.62.93-3.6.93-5.22 0l-11.6-6.7a5.21 5.21 0 0 1-2.61-4.51v-13.4c0-1.87 1-3.6 2.6-4.52L15.4 2.1Z'
+        );
+
+        --wui-path-network-md: path(
+          'M43.4605 10.7248L28.0485 1.61089C25.5438 0.129705 22.4562 0.129705 19.9515 1.61088L4.53951 10.7248C2.03626 12.2051 0.5 14.9365 0.5 17.886V36.1139C0.5 39.0635 2.03626 41.7949 4.53951 43.2752L19.9515 52.3891C22.4562 53.8703 25.5438 53.8703 28.0485 52.3891L43.4605 43.2752C45.9637 41.7949 47.5 39.0635 47.5 36.114V17.8861C47.5 14.9365 45.9637 12.2051 43.4605 10.7248Z'
+        );
+
+        --wui-path-network-lg: path(
+          'M78.3244 18.926L50.1808 2.45078C45.7376 -0.150261 40.2624 -0.150262 35.8192 2.45078L7.6756 18.926C3.23322 21.5266 0.5 26.3301 0.5 31.5248V64.4752C0.5 69.6699 3.23322 74.4734 7.6756 77.074L35.8192 93.5492C40.2624 96.1503 45.7376 96.1503 50.1808 93.5492L78.3244 77.074C82.7668 74.4734 85.5 69.6699 85.5 64.4752V31.5248C85.5 26.3301 82.7668 21.5266 78.3244 18.926Z'
+        );
+
+        --wui-width-network-sm: 36px;
+        --wui-width-network-md: 48px;
+        --wui-width-network-lg: 86px;
+
+        --wui-height-network-sm: 40px;
+        --wui-height-network-md: 54px;
+        --wui-height-network-lg: 96px;
+
+        --wui-icon-size-network-xs: 12px;
+        --wui-icon-size-network-sm: 16px;
+        --wui-icon-size-network-md: 24px;
+        --wui-icon-size-network-lg: 42px;
+
+        --wui-color-inherit: inherit;
+
+        --wui-color-inverse-100: #fff;
+        --wui-color-inverse-000: #000;
+
+        --wui-cover: rgba(20, 20, 20, 0.8);
+
+        --wui-color-modal-bg: var(--wui-color-modal-bg-base);
+
+        --wui-color-accent-100: var(--wui-color-accent-base-100);
+        --wui-color-accent-090: var(--wui-color-accent-base-090);
+        --wui-color-accent-080: var(--wui-color-accent-base-080);
+
+        --wui-color-success-100: var(--wui-color-success-base-100);
+        --wui-color-success-125: var(--wui-color-success-base-125);
+
+        --wui-color-warning-100: var(--wui-color-warning-base-100);
+
+        --wui-color-error-100: var(--wui-color-error-base-100);
+        --wui-color-error-125: var(--wui-color-error-base-125);
+
+        --wui-color-blue-100: var(--wui-color-blue-base-100);
+        --wui-color-blue-90: var(--wui-color-blue-base-90);
+
+        --wui-icon-box-bg-error-100: var(--wui-icon-box-bg-error-base-100);
+        --wui-icon-box-bg-blue-100: var(--wui-icon-box-bg-blue-base-100);
+        --wui-icon-box-bg-success-100: var(--wui-icon-box-bg-success-base-100);
+        --wui-icon-box-bg-inverse-100: var(--wui-icon-box-bg-inverse-base-100);
+
+        --wui-all-wallets-bg-100: var(--wui-all-wallets-bg-100);
+
+        --wui-avatar-border: var(--wui-avatar-border-base);
+
+        --wui-thumbnail-border: var(--wui-thumbnail-border-base);
+
+        --wui-wallet-button-bg: var(--wui-wallet-button-bg-base);
+
+        --wui-box-shadow-blue: var(--wui-color-accent-glass-020);
+      }
+
+      @supports (background: color-mix(in srgb, white 50%, black)) {
+        :root {
+          --wui-color-modal-bg: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-color-modal-bg-base)
+          );
+
+          --wui-box-shadow-blue: color-mix(in srgb, var(--wui-color-accent-100) 20%, transparent);
+
+          --wui-color-accent-100: color-mix(
+            in srgb,
+            var(--wui-color-accent-base-100) 100%,
+            transparent
+          );
+          --wui-color-accent-090: color-mix(
+            in srgb,
+            var(--wui-color-accent-base-100) 90%,
+            transparent
+          );
+          --wui-color-accent-080: color-mix(
+            in srgb,
+            var(--wui-color-accent-base-100) 80%,
+            transparent
+          );
+          --wui-color-accent-glass-090: color-mix(
+            in srgb,
+            var(--wui-color-accent-base-100) 90%,
+            transparent
+          );
+          --wui-color-accent-glass-080: color-mix(
+            in srgb,
+            var(--wui-color-accent-base-100) 80%,
+            transparent
+          );
+          --wui-color-accent-glass-020: color-mix(
+            in srgb,
+            var(--wui-color-accent-base-100) 20%,
+            transparent
+          );
+          --wui-color-accent-glass-015: color-mix(
+            in srgb,
+            var(--wui-color-accent-base-100) 15%,
+            transparent
+          );
+          --wui-color-accent-glass-010: color-mix(
+            in srgb,
+            var(--wui-color-accent-base-100) 10%,
+            transparent
+          );
+          --wui-color-accent-glass-005: color-mix(
+            in srgb,
+            var(--wui-color-accent-base-100) 5%,
+            transparent
+          );
+          --wui-color-accent-002: color-mix(
+            in srgb,
+            var(--wui-color-accent-base-100) 2%,
+            transparent
+          );
+
+          --wui-color-fg-100: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-color-fg-100)
+          );
+          --wui-color-fg-125: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-color-fg-125)
+          );
+          --wui-color-fg-150: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-color-fg-150)
+          );
+          --wui-color-fg-175: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-color-fg-175)
+          );
+          --wui-color-fg-200: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-color-fg-200)
+          );
+          --wui-color-fg-225: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-color-fg-225)
+          );
+          --wui-color-fg-250: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-color-fg-250)
+          );
+          --wui-color-fg-275: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-color-fg-275)
+          );
+          --wui-color-fg-300: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-color-fg-300)
+          );
+          --wui-color-fg-325: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-color-fg-325)
+          );
+          --wui-color-fg-350: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-color-fg-350)
+          );
+
+          --wui-color-bg-100: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-color-bg-100)
+          );
+          --wui-color-bg-125: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-color-bg-125)
+          );
+          --wui-color-bg-150: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-color-bg-150)
+          );
+          --wui-color-bg-175: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-color-bg-175)
+          );
+          --wui-color-bg-200: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-color-bg-200)
+          );
+          --wui-color-bg-225: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-color-bg-225)
+          );
+          --wui-color-bg-250: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-color-bg-250)
+          );
+          --wui-color-bg-275: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-color-bg-275)
+          );
+          --wui-color-bg-300: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-color-bg-300)
+          );
+          --wui-color-bg-325: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-color-bg-325)
+          );
+          --wui-color-bg-350: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-color-bg-350)
+          );
+
+          --wui-color-success-100: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-color-success-base-100)
+          );
+          --wui-color-success-125: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-color-success-base-125)
+          );
+
+          --wui-color-warning-100: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-color-warning-base-100)
+          );
+
+          --wui-color-error-100: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-color-error-base-100)
+          );
+          --wui-color-blue-100: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-color-blue-base-100)
+          );
+          --wui-color-blue-90: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-color-blue-base-90)
+          );
+          --wui-color-error-125: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-color-error-base-125)
+          );
+
+          --wui-icon-box-bg-error-100: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-icon-box-bg-error-base-100)
+          );
+          --wui-icon-box-bg-accent-100: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-icon-box-bg-blue-base-100)
+          );
+          --wui-icon-box-bg-success-100: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-icon-box-bg-success-base-100)
+          );
+          --wui-icon-box-bg-inverse-100: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-icon-box-bg-inverse-base-100)
+          );
+
+          --wui-all-wallets-bg-100: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-all-wallets-bg-100)
+          );
+
+          --wui-avatar-border: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-avatar-border-base)
+          );
+
+          --wui-thumbnail-border: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-thumbnail-border-base)
+          );
+
+          --wui-wallet-button-bg: color-mix(
+            in srgb,
+            var(--w3m-color-mix) var(--w3m-color-mix-strength),
+            var(--wui-wallet-button-bg-base)
+          );
+        }
+      }
+    </style><style media="enabled">
+      :root {
+        --w3m-color-mix: #000;
+        --w3m-accent: hsla(231, 100%, 70%, 1);
+        --w3m-default: #000;
+
+        --wui-color-modal-bg-base: #fff;
+        --wui-color-accent-base-100: var(--w3m-accent);
+
+        --wui-color-blueberry-100: hsla(231, 100%, 70%, 1);
+        --wui-color-blueberry-090: hsla(231, 97%, 72%, 1);
+        --wui-color-blueberry-080: hsla(231, 92%, 74%, 1);
+
+        --wui-color-fg-100: #141414;
+        --wui-color-fg-125: #2d3131;
+        --wui-color-fg-150: #474d4d;
+        --wui-color-fg-175: #636d6d;
+        --wui-color-fg-200: #798686;
+        --wui-color-fg-225: #828f8f;
+        --wui-color-fg-250: #8b9797;
+        --wui-color-fg-275: #95a0a0;
+        --wui-color-fg-300: #9ea9a9;
+        --wui-color-fg-325: #9a9a9a;
+        --wui-color-fg-350: #d0d0d0;
+
+        --wui-color-bg-100: #ffffff;
+        --wui-color-bg-125: #f5fafa;
+        --wui-color-bg-150: #f3f8f8;
+        --wui-color-bg-175: #eef4f4;
+        --wui-color-bg-200: #eaf1f1;
+        --wui-color-bg-225: #e5eded;
+        --wui-color-bg-250: #e1e9e9;
+        --wui-color-bg-275: #dce7e7;
+        --wui-color-bg-300: #d8e3e3;
+        --wui-color-bg-325: #f3f3f3;
+        --wui-color-bg-350: #202020;
+
+        --wui-color-success-base-100: #26b562;
+        --wui-color-success-base-125: #30a46b;
+
+        --wui-color-warning-base-100: #f3a13f;
+
+        --wui-color-error-base-100: #f05142;
+        --wui-color-error-base-125: #df4a34;
+
+        --wui-color-blue-base-100: rgba(102, 125, 255, 1);
+        --wui-color-blue-base-90: rgba(102, 125, 255, 0.9);
+
+        --wui-color-success-glass-001: rgba(38, 181, 98, 0.01);
+        --wui-color-success-glass-002: rgba(38, 181, 98, 0.02);
+        --wui-color-success-glass-005: rgba(38, 181, 98, 0.05);
+        --wui-color-success-glass-010: rgba(38, 181, 98, 0.1);
+        --wui-color-success-glass-015: rgba(38, 181, 98, 0.15);
+        --wui-color-success-glass-020: rgba(38, 181, 98, 0.2);
+        --wui-color-success-glass-025: rgba(38, 181, 98, 0.25);
+        --wui-color-success-glass-030: rgba(38, 181, 98, 0.3);
+        --wui-color-success-glass-060: rgba(38, 181, 98, 0.6);
+        --wui-color-success-glass-080: rgba(38, 181, 98, 0.8);
+
+        --wui-color-success-glass-reown-020: rgba(48, 164, 107, 0.2);
+
+        --wui-color-warning-glass-reown-020: rgba(243, 161, 63, 0.2);
+
+        --wui-color-error-glass-001: rgba(240, 81, 66, 0.01);
+        --wui-color-error-glass-002: rgba(240, 81, 66, 0.02);
+        --wui-color-error-glass-005: rgba(240, 81, 66, 0.05);
+        --wui-color-error-glass-010: rgba(240, 81, 66, 0.1);
+        --wui-color-error-glass-015: rgba(240, 81, 66, 0.15);
+        --wui-color-error-glass-020: rgba(240, 81, 66, 0.2);
+        --wui-color-error-glass-025: rgba(240, 81, 66, 0.25);
+        --wui-color-error-glass-030: rgba(240, 81, 66, 0.3);
+        --wui-color-error-glass-060: rgba(240, 81, 66, 0.6);
+        --wui-color-error-glass-080: rgba(240, 81, 66, 0.8);
+
+        --wui-color-error-glass-reown-020: rgba(223, 74, 52, 0.2);
+
+        --wui-icon-box-bg-error-base-100: #f4dfdd;
+        --wui-icon-box-bg-blue-base-100: #d9ecfb;
+        --wui-icon-box-bg-success-base-100: #daf0e4;
+        --wui-icon-box-bg-inverse-base-100: #dcecfc;
+
+        --wui-all-wallets-bg-100: #e8f1fa;
+
+        --wui-avatar-border-base: #f3f4f4;
+
+        --wui-thumbnail-border-base: #eaefef;
+
+        --wui-wallet-button-bg-base: var(--wui-color-bg-125);
+
+        --wui-color-gray-glass-001: rgba(0, 0, 0, 0.01);
+        --wui-color-gray-glass-002: rgba(0, 0, 0, 0.02);
+        --wui-color-gray-glass-005: rgba(0, 0, 0, 0.05);
+        --wui-color-gray-glass-010: rgba(0, 0, 0, 0.1);
+        --wui-color-gray-glass-015: rgba(0, 0, 0, 0.15);
+        --wui-color-gray-glass-020: rgba(0, 0, 0, 0.2);
+        --wui-color-gray-glass-025: rgba(0, 0, 0, 0.25);
+        --wui-color-gray-glass-030: rgba(0, 0, 0, 0.3);
+        --wui-color-gray-glass-060: rgba(0, 0, 0, 0.6);
+        --wui-color-gray-glass-080: rgba(0, 0, 0, 0.8);
+        --wui-color-gray-glass-090: rgba(0, 0, 0, 0.9);
+
+        --wui-color-dark-glass-100: rgba(233, 233, 233, 1);
+
+        --w3m-card-embedded-shadow-color: rgb(224 225 233 / 25%);
+      }
+    </style><style>
+      :root {
+        --w3m-color-mix: #fff;
+        --w3m-accent: hsla(230, 100%, 67%, 1);
+        --w3m-default: #fff;
+
+        --wui-color-modal-bg-base: #121313;
+        --wui-color-accent-base-100: var(--w3m-accent);
+
+        --wui-color-blueberry-100: hsla(230, 100%, 67%, 1);
+        --wui-color-blueberry-090: hsla(231, 76%, 61%, 1);
+        --wui-color-blueberry-080: hsla(230, 59%, 55%, 1);
+        --wui-color-blueberry-050: hsla(231, 100%, 70%, 0.1);
+
+        --wui-color-fg-100: #e4e7e7;
+        --wui-color-fg-125: #d0d5d5;
+        --wui-color-fg-150: #a8b1b1;
+        --wui-color-fg-175: #a8b0b0;
+        --wui-color-fg-200: #949e9e;
+        --wui-color-fg-225: #868f8f;
+        --wui-color-fg-250: #788080;
+        --wui-color-fg-275: #788181;
+        --wui-color-fg-300: #6e7777;
+        --wui-color-fg-325: #9a9a9a;
+        --wui-color-fg-350: #363636;
+
+        --wui-color-bg-100: #141414;
+        --wui-color-bg-125: #191a1a;
+        --wui-color-bg-150: #1e1f1f;
+        --wui-color-bg-175: #222525;
+        --wui-color-bg-200: #272a2a;
+        --wui-color-bg-225: #2c3030;
+        --wui-color-bg-250: #313535;
+        --wui-color-bg-275: #363b3b;
+        --wui-color-bg-300: #3b4040;
+        --wui-color-bg-325: #252525;
+        --wui-color-bg-350: #ffffff;
+
+        --wui-color-success-base-100: #26d962;
+        --wui-color-success-base-125: #30a46b;
+
+        --wui-color-warning-base-100: #f3a13f;
+
+        --wui-color-error-base-100: #f25a67;
+        --wui-color-error-base-125: #df4a34;
+
+        --wui-color-blue-base-100: rgba(102, 125, 255, 1);
+        --wui-color-blue-base-90: rgba(102, 125, 255, 0.9);
+
+        --wui-color-success-glass-001: rgba(38, 217, 98, 0.01);
+        --wui-color-success-glass-002: rgba(38, 217, 98, 0.02);
+        --wui-color-success-glass-005: rgba(38, 217, 98, 0.05);
+        --wui-color-success-glass-010: rgba(38, 217, 98, 0.1);
+        --wui-color-success-glass-015: rgba(38, 217, 98, 0.15);
+        --wui-color-success-glass-020: rgba(38, 217, 98, 0.2);
+        --wui-color-success-glass-025: rgba(38, 217, 98, 0.25);
+        --wui-color-success-glass-030: rgba(38, 217, 98, 0.3);
+        --wui-color-success-glass-060: rgba(38, 217, 98, 0.6);
+        --wui-color-success-glass-080: rgba(38, 217, 98, 0.8);
+
+        --wui-color-success-glass-reown-020: rgba(48, 164, 107, 0.2);
+
+        --wui-color-warning-glass-reown-020: rgba(243, 161, 63, 0.2);
+
+        --wui-color-error-glass-001: rgba(242, 90, 103, 0.01);
+        --wui-color-error-glass-002: rgba(242, 90, 103, 0.02);
+        --wui-color-error-glass-005: rgba(242, 90, 103, 0.05);
+        --wui-color-error-glass-010: rgba(242, 90, 103, 0.1);
+        --wui-color-error-glass-015: rgba(242, 90, 103, 0.15);
+        --wui-color-error-glass-020: rgba(242, 90, 103, 0.2);
+        --wui-color-error-glass-025: rgba(242, 90, 103, 0.25);
+        --wui-color-error-glass-030: rgba(242, 90, 103, 0.3);
+        --wui-color-error-glass-060: rgba(242, 90, 103, 0.6);
+        --wui-color-error-glass-080: rgba(242, 90, 103, 0.8);
+
+        --wui-color-error-glass-reown-020: rgba(223, 74, 52, 0.2);
+
+        --wui-color-gray-glass-001: rgba(255, 255, 255, 0.01);
+        --wui-color-gray-glass-002: rgba(255, 255, 255, 0.02);
+        --wui-color-gray-glass-005: rgba(255, 255, 255, 0.05);
+        --wui-color-gray-glass-010: rgba(255, 255, 255, 0.1);
+        --wui-color-gray-glass-015: rgba(255, 255, 255, 0.15);
+        --wui-color-gray-glass-020: rgba(255, 255, 255, 0.2);
+        --wui-color-gray-glass-025: rgba(255, 255, 255, 0.25);
+        --wui-color-gray-glass-030: rgba(255, 255, 255, 0.3);
+        --wui-color-gray-glass-060: rgba(255, 255, 255, 0.6);
+        --wui-color-gray-glass-080: rgba(255, 255, 255, 0.8);
+        --wui-color-gray-glass-090: rgba(255, 255, 255, 0.9);
+
+        --wui-color-dark-glass-100: rgba(42, 42, 42, 1);
+
+        --wui-icon-box-bg-error-base-100: #3c2426;
+        --wui-icon-box-bg-blue-base-100: #20303f;
+        --wui-icon-box-bg-success-base-100: #1f3a28;
+        --wui-icon-box-bg-inverse-base-100: #243240;
+
+        --wui-all-wallets-bg-100: #222b35;
+
+        --wui-avatar-border-base: #252525;
+
+        --wui-thumbnail-border-base: #252525;
+
+        --wui-wallet-button-bg-base: var(--wui-color-bg-125);
+
+        --w3m-card-embedded-shadow-color: rgb(17 17 18 / 25%);
+      }
+    </style><style>.hide-scrollbar[_ngcontent-ng-c2080957035]::-webkit-scrollbar{display:none}.hide-scrollbar[_ngcontent-ng-c2080957035]{-ms-overflow-style:none;scrollbar-width:none}</style></head>
+<body class=" bg-primary-dark">
+  <app-root _nghost-ng-c1974852249="" ng-version="17.3.12"><router-outlet _ngcontent-ng-c1974852249=""></router-outlet><app-layout _nghost-ng-c3650291679="" class="ng-star-inserted"><div _ngcontent-ng-c3650291679="" class="flex flex-col min-h-screen text-secondary-100 font-sans"><app-header _ngcontent-ng-c3650291679="" _nghost-ng-c2909386448=""><div _ngcontent-ng-c2909386448="" class="flex flex-row justify-between items-center px-4 sm:px-6 py-4 bg-none z-[10]"><img _ngcontent-ng-c2909386448="" src="../../../../../assets/images/logo-white-main.png" class="h-10 sm:h-12 md:h-36 cursor-pointer"><div _ngcontent-ng-c2909386448="" class="flex flex-row gap-2 sm:gap-5 items-center"><div _ngcontent-ng-c2909386448="" class="relative ng-star-inserted"><button _ngcontent-ng-c2909386448="" class="flex flex-row items-center justify-between h-9 sm:h-12 bg-action-900 text-primary-100 border border-action-700 rounded-lg px-3 cursor-pointer hover:border-primary-500 transition-all font-medium text-xs sm:text-sm md:text-base focus:outline-none focus:ring-1 focus:ring-primary-500 gap-2"><div _ngcontent-ng-c2909386448="" class="flex items-center gap-2"><img _ngcontent-ng-c2909386448="" alt="icon" class="w-5 h-5 rounded-full ng-star-inserted" src="assets/images/avalanche.png"><!----><span _ngcontent-ng-c2909386448="" class="hidden md:block">Avalanche</span></div><svg _ngcontent-ng-c2909386448="" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" class="fill-current h-4 w-4 text-primary-300 transition-transform duration-200"><path _ngcontent-ng-c2909386448="" d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"></path></svg></button><!----><!----></div><div _ngcontent-ng-c2909386448="" class="flex-row items-center gap-1.5 h-9 sm:h-12 bg-action-900 border border-action-700 rounded-lg px-3 py-2 animate-in fade-in slide-in-from-right-4 duration-500 hidden md:flex ng-star-inserted"><img _ngcontent-ng-c2909386448="" src="../../../../../assets/images/maps_icon.png" alt="MAPS" class="w-5 h-5 sm:w-6 sm:h-6"><span _ngcontent-ng-c2909386448="" class="text-gold-default font-bold text-sm sm:text-base">20,206</span></div><!----><div _ngcontent-ng-c2909386448="" class="relative ng-star-inserted"><button _ngcontent-ng-c2909386448="" class="flex flex-row items-center justify-between h-9 sm:h-12 bg-primary-default text-primary-200 border border-primary-light/20 rounded-lg px-3 sm:px-4 cursor-pointer hover:bg-primary-light transition-all font-medium text-xs sm:text-sm md:text-base focus:outline-none focus:ring-1 focus:ring-primary-500 gap-2"><div _ngcontent-ng-c2909386448="" class="flex items-center gap-2"><i _ngcontent-ng-c2909386448="" class="fa-solid fa-bars mr-1"></i><span _ngcontent-ng-c2909386448="">Menu</span></div><svg _ngcontent-ng-c2909386448="" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" class="fill-current h-4 w-4 text-primary-300 transition-transform duration-200"><path _ngcontent-ng-c2909386448="" d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"></path></svg></button><!----><!----></div><div _ngcontent-ng-c2909386448="" class="flex flex-row gap-2 justify-center items-center h-9 sm:h-12 bg-gold-default text-primary-900 text-center py-2 px-3 sm:px-4 rounded-lg cursor-pointer underline hover:text-secondary-300 transition-all hover:scale-105 text-xs sm:text-sm md:text-base whitespace-nowrap ng-star-inserted"> Connected </div><!----><!----><!----><!----><!----><!----><!----></div></div></app-header><div _ngcontent-ng-c3650291679="" class="grow w-full relative"><router-outlet _ngcontent-ng-c3650291679=""></router-outlet><app-home _nghost-ng-c2080957035="" class="ng-tns-c2080957035-2 ng-trigger ng-trigger-fadeInAnimation ng-star-inserted"><section _ngcontent-ng-c2080957035="" class="p-2 md:p-0 ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="relative bg-gold-light p-4 rounded-xl border-2 border-gold-dark container mx-auto cursor-pointer mb-4 z-[9] ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="flex items-center justify-between ng-tns-c2080957035-2"><p _ngcontent-ng-c2080957035="" class="text-sm font-semibold text-primary-default select-none ng-tns-c2080957035-2"> Moats v3 is finally here! </p><i _ngcontent-ng-c2080957035="" class="fa-solid fa-chevron-up text-primary-default transition-transform duration-300 ng-tns-c2080957035-2 rotate-180"></i></div><div _ngcontent-ng-c2080957035="" class="overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out ng-tns-c2080957035-2" style="max-height: 0px; opacity: 0;"><p _ngcontent-ng-c2080957035="" class="text-primary-light ng-tns-c2080957035-2"> The <strong _ngcontent-ng-c2080957035="" class="ng-tns-c2080957035-2">Withdraw</strong> Period for all v2 Moats is live until February 13th. Please unstake tokens and claim any remaining rewards before this time. Locked tokens will be claimable at the end of the Withdraw Period. </p></div></div></section><div _ngcontent-ng-c2080957035="" class="relative isolate mb-8 md:mb-4 lg:mb-2 ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="mt-[50] w-full min-h-[350px] justify-center items-center ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-4 w-full justify-center items-center ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="max-w-full flex-shrink-0 px-4 text-center lg:mx-0 lg:max-w-3xl lg:pt-8 ng-tns-c2080957035-2"><h1 _ngcontent-ng-c2080957035="" class="mt-10 text-5xl font-bold tracking-tight text-white sm:text-6xl ng-tns-c2080957035-2"> Welcome to <span _ngcontent-ng-c2080957035="" class="text-gold-default ng-tns-c2080957035-2">The Moats</span></h1><p _ngcontent-ng-c2080957035="" class="mt-6 text-lg leading-8 text-gray-300 ng-tns-c2080957035-2"> The Moats are a novel staking protocol designed to help protocol projects, and tokens configure an easy-to-use governance and reward distribution system.<br _ngcontent-ng-c2080957035="" class="ng-tns-c2080957035-2"> Trusted by the teams at Hefe the Walrus, Bensi Box, Lucid Things, &amp; more.<br _ngcontent-ng-c2080957035="" class="ng-tns-c2080957035-2">Explore the Moats today. </p><div _ngcontent-ng-c2080957035="" class="mt-5 flex items-center justify-center gap-x-6 ng-tns-c2080957035-2"></div></div></div></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-4 w-full justify-center items-center mb-12 p-4 overflow-x-hidden ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="w-full max-w-6xl mx-auto mb-8 ng-tns-c2080957035-2 ng-star-inserted" style=""><div _ngcontent-ng-c2080957035="" class="grid grid-cols-1 md:grid-cols-3 gap-6 ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="bg-gradient-to-br from-primary-default to-primary-light rounded-xl p-6 text-center border border-primary-light/20 shadow-lg ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="flex flex-col items-center ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg font-semibold text-gold-light mb-2 ng-tns-c2080957035-2">Total TVM</h3><div _ngcontent-ng-c2080957035="" class="text-2xl font-bold text-white ng-tns-c2080957035-2"> $228,608 </div><p _ngcontent-ng-c2080957035="" class="text-sm text-gray-400 mt-1 ng-tns-c2080957035-2">Total Value Moated</p></div></div><div _ngcontent-ng-c2080957035="" class="bg-gradient-to-br from-primary-default to-primary-light rounded-xl p-6 text-center border border-primary-light/20 shadow-lg ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="flex flex-col items-center ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg font-semibold text-blue-400 mb-2 ng-tns-c2080957035-2">Total USDC</h3><div _ngcontent-ng-c2080957035="" class="text-2xl font-bold text-white ng-tns-c2080957035-2"> 4,677.55 </div><p _ngcontent-ng-c2080957035="" class="text-sm text-gray-400 mt-1 ng-tns-c2080957035-2">USDC Rewarded</p></div></div><div _ngcontent-ng-c2080957035="" class="bg-gradient-to-br from-primary-default to-primary-light rounded-xl p-6 text-center border border-primary-light/20 shadow-lg ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="flex flex-col items-center ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg font-semibold text-red-400 mb-2 ng-tns-c2080957035-2">Total WAVAX</h3><div _ngcontent-ng-c2080957035="" class="text-2xl font-bold text-white ng-tns-c2080957035-2"> 438.16 </div><p _ngcontent-ng-c2080957035="" class="text-sm text-gray-400 mt-1 ng-tns-c2080957035-2">WAVAX Rewarded</p></div></div></div></div><!----><h1 _ngcontent-ng-c2080957035="" class="mt-10 text-2xl font-bold tracking-tight text-white sm:text-4xl ng-tns-c2080957035-2"> Our <span _ngcontent-ng-c2080957035="" class="text-gold-default ng-tns-c2080957035-2">Moats</span></h1><div _ngcontent-ng-c2080957035="" class="flex flex-col md:flex-row items-center justify-center mb-12 gap-4 w-full ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="w-full md:w-auto overflow-x-auto flex justify-start md:justify-center pb-2 md:pb-0 hide-scrollbar ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="inline-flex rounded-full bg-primary-default/60 border border-primary-light/40 p-1 min-w-max ng-tns-c2080957035-2"><button _ngcontent-ng-c2080957035="" title="Show all moats" class="px-4 py-1 text-sm font-medium rounded-full transition-all duration-200 whitespace-nowrap ng-tns-c2080957035-2 text-gray-300 hover:text-white hover:bg-primary-default/40"><i _ngcontent-ng-c2080957035="" class="fas fa-list mr-1 ng-tns-c2080957035-2"></i>All </button><button _ngcontent-ng-c2080957035="" title="Show verified moats" class="px-4 py-1 text-sm font-medium rounded-full transition-all duration-200 whitespace-nowrap ng-tns-c2080957035-2 bg-sky-500 text-primary-default"><i _ngcontent-ng-c2080957035="" class="fas fa-check-circle mr-1 ng-tns-c2080957035-2"></i>Verified </button><button _ngcontent-ng-c2080957035="" title="Show community moats" class="px-4 py-1 text-sm font-medium rounded-full transition-all duration-200 whitespace-nowrap ng-tns-c2080957035-2 text-gray-300 hover:text-white hover:bg-primary-default/40"><i _ngcontent-ng-c2080957035="" class="fas fa-users mr-1 ng-tns-c2080957035-2"></i>Community </button><button _ngcontent-ng-c2080957035="" title="Show unverified moats" class="px-4 py-1 text-sm font-medium rounded-full transition-all duration-200 whitespace-nowrap ng-tns-c2080957035-2 text-gray-300 hover:text-white hover:bg-primary-default/40"><i _ngcontent-ng-c2080957035="" class="fas fa-question-circle mr-1 ng-tns-c2080957035-2"></i>Unverified </button><button _ngcontent-ng-c2080957035="" title="Show deprecated moats" class="px-4 py-1 text-sm font-medium rounded-full transition-all duration-200 whitespace-nowrap ng-tns-c2080957035-2 text-gray-300 hover:text-white hover:bg-primary-default/40"><i _ngcontent-ng-c2080957035="" class="fas fa-archive mr-1 ng-tns-c2080957035-2"></i>Deprecated </button></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col md:flex-row items-center gap-4 ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="w-full md:w-auto overflow-x-auto flex justify-start md:justify-center pb-2 md:pb-0 hide-scrollbar ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="inline-flex rounded-full bg-primary-default/60 border border-primary-light/40 p-1 min-w-max ng-tns-c2080957035-2"><button _ngcontent-ng-c2080957035="" title="Sort by Total Value Moat" class="px-3 py-1 text-xs md:text-sm font-medium rounded-full flex items-center gap-2 transition-all duration-200 whitespace-nowrap ng-tns-c2080957035-2 bg-gold-default text-primary-default"><i _ngcontent-ng-c2080957035="" class="fas fa-arrow-down-wide-short ng-tns-c2080957035-2"></i><span _ngcontent-ng-c2080957035="" class="inline ng-tns-c2080957035-2">TVM</span></button><button _ngcontent-ng-c2080957035="" title="Sort by newest" class="px-3 py-1 text-xs md:text-sm font-medium rounded-full flex items-center gap-2 transition-all duration-200 whitespace-nowrap ng-tns-c2080957035-2 text-gray-300 hover:text-white hover:bg-primary-default/40"><i _ngcontent-ng-c2080957035="" class="fas fa-clock ng-tns-c2080957035-2"></i><span _ngcontent-ng-c2080957035="" class="inline ng-tns-c2080957035-2">Newest</span></button><button _ngcontent-ng-c2080957035="" title="Sort alphabetically" class="px-3 py-1 text-xs md:text-sm font-medium rounded-full flex items-center gap-2 transition-all duration-200 whitespace-nowrap ng-tns-c2080957035-2 text-gray-300 hover:text-white hover:bg-primary-default/40"><i _ngcontent-ng-c2080957035="" class="fas fa-arrow-a-z ng-tns-c2080957035-2"></i> A–Z </button><button _ngcontent-ng-c2080957035="" title="Sort by status" class="px-3 py-1 text-xs md:text-sm font-medium rounded-full flex items-center gap-2 transition-all duration-200 whitespace-nowrap ng-tns-c2080957035-2 text-gray-300 hover:text-white hover:bg-primary-default/40"><i _ngcontent-ng-c2080957035="" class="fas fa-filter ng-tns-c2080957035-2"></i><span _ngcontent-ng-c2080957035="" class="inline ng-tns-c2080957035-2">Status</span></button></div></div><div _ngcontent-ng-c2080957035="" class="inline-flex rounded-full bg-primary-default/60 border border-primary-light/40 p-1 flex-shrink-0 ng-tns-c2080957035-2"><button _ngcontent-ng-c2080957035="" title="Card view" class="px-3 py-1 text-xs md:text-sm font-medium rounded-full flex items-center gap-2 transition-all duration-200 ng-tns-c2080957035-2 bg-gold-default text-primary-default"><i _ngcontent-ng-c2080957035="" class="fas fa-th-large ng-tns-c2080957035-2"></i></button><button _ngcontent-ng-c2080957035="" title="List view" class="px-3 py-1 text-xs md:text-sm font-medium rounded-full flex items-center gap-2 transition-all duration-200 ng-tns-c2080957035-2 text-gray-300 hover:text-white hover:bg-primary-default/40"><i _ngcontent-ng-c2080957035="" class="fas fa-list-ul ng-tns-c2080957035-2"></i></button></div></div></div><div _ngcontent-ng-c2080957035="" class="container mx-auto w-full mt-12 ng-tns-c2080957035-2"><!----><div _ngcontent-ng-c2080957035="" class="grid grid-cols-1 gap-6 justify-items-center ng-tns-c2080957035-2 md:grid-cols-2 xl:grid-cols-3 ng-star-inserted" style=""><div _ngcontent-ng-c2080957035="" class="relative rounded-xl bg-primary-default p-4 text-center shadow-xl border-2 flex flex-col h-full ng-tns-c2080957035-2 border-primary-light hover:scale-105 transition-all w-full duration-500 animate-fade-in ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="absolute top-0 left-0 py-1 px-3 rounded-tl-lg rounded-br-lg font-bold text-xs border ng-tns-c2080957035-2 bg-sky-900 text-sky-300 border-sky-400"> Verified </div><div _ngcontent-ng-c2080957035="" class="absolute top-0 right-0 text-white py-1 px-2 md:px-3 rounded-bl-lg rounded-tr-lg font-bold text-[10px] md:text-xs bg-gold-500 ng-tns-c2080957035-2 ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="flex flex-col items-center ng-tns-c2080957035-2"><span _ngcontent-ng-c2080957035="" class="ng-tns-c2080957035-2">TVM: $39,665.98</span><span _ngcontent-ng-c2080957035="" class="ng-tns-c2080957035-2">46.98% of Total Supply</span></div></div><!----><!----><div _ngcontent-ng-c2080957035="" class="mx-auto flex h-24 w-24 -translate-y-8 -mb-6 transform items-center justify-center rounded-full ng-tns-c2080957035-2 bg-sky-400 shadow-lg shadow-sky-500/40"><img _ngcontent-ng-c2080957035="" class="rounded-full h-24 w-24 ng-tns-c2080957035-2 border-sky-500 border-2 ng-star-inserted" src="https://i.ibb.co/DHqPdkxY/LIL-Coq-Logo.png"><!----></div><h1 _ngcontent-ng-c2080957035="" class="text-primary-200 mb-3 text-3xl font-medium lg:px-14 ng-tns-c2080957035-2"> Lil Coq </h1><div _ngcontent-ng-c2080957035="" class="grid grid-cols-2 gap-2 flex-grow flex flex-col ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Staked</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 105,432,979.93 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">LIL</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Locked</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 152,227,647.03 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">LIL</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 col-span-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Burned</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 376,589,196.64 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">LIL</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 col-span-2 flex-grow relative group ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light flex items-center justify-center gap-2 ng-tns-c2080957035-2"> Historical Rewards <i _ngcontent-ng-c2080957035="" class="fa-solid fa-circle-info text-sm cursor-help ng-tns-c2080957035-2"></i></h3><!----><div _ngcontent-ng-c2080957035="" class="text-gold-default font-bold text-xl ng-tns-c2080957035-2 ng-star-inserted"> 1 Reward Token<!----></div><!----><div _ngcontent-ng-c2080957035="" class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 bg-primary-default border-2 border-gold-default rounded-lg p-4 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 ng-tns-c2080957035-2 ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="text-white text-sm font-semibold mb-2 border-b border-gold-default/30 pb-2 ng-tns-c2080957035-2"> Reward Tokens </div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 max-h-64 overflow-auto pr-1 ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="flex justify-between items-center text-sm ng-tns-c2080957035-2 ng-star-inserted"><span _ngcontent-ng-c2080957035="" class="text-primary-200 ng-tns-c2080957035-2">WAVAX</span><span _ngcontent-ng-c2080957035="" class="text-gold-default font-semibold ng-tns-c2080957035-2"> 61.61 </span></div><!----></div><div _ngcontent-ng-c2080957035="" class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="border-8 border-transparent border-t-gold-default ng-tns-c2080957035-2"></div></div></div><!----></div><button _ngcontent-ng-c2080957035="" class="col-span-2 w-full disabled:bg-gold-900 disabled:text-gold-dark disabled:cursor-not-allowed bg-gold-default hover:bg-gold-dark text-primary-light font-bold py-2 px-4 rounded transition-all hover:scale-[101%] mt-auto ng-tns-c2080957035-2"> View Moat </button></div></div><!----><div _ngcontent-ng-c2080957035="" class="relative rounded-xl bg-primary-default p-4 text-center shadow-xl border-2 flex flex-col h-full ng-tns-c2080957035-2 border-primary-light hover:scale-105 transition-all w-full duration-500 animate-fade-in ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="absolute top-0 left-0 py-1 px-3 rounded-tl-lg rounded-br-lg font-bold text-xs border ng-tns-c2080957035-2 bg-sky-900 text-sky-300 border-sky-400"> Verified </div><div _ngcontent-ng-c2080957035="" class="absolute top-0 right-0 text-white py-1 px-2 md:px-3 rounded-bl-lg rounded-tr-lg font-bold text-[10px] md:text-xs bg-gold-500 ng-tns-c2080957035-2 ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="flex flex-col items-center ng-tns-c2080957035-2"><span _ngcontent-ng-c2080957035="" class="ng-tns-c2080957035-2">TVM: $30,530.90</span><span _ngcontent-ng-c2080957035="" class="ng-tns-c2080957035-2">24.51% of Total Supply</span></div></div><!----><!----><div _ngcontent-ng-c2080957035="" class="mx-auto flex h-24 w-24 -translate-y-8 -mb-6 transform items-center justify-center rounded-full ng-tns-c2080957035-2 bg-sky-400 shadow-lg shadow-sky-500/40"><img _ngcontent-ng-c2080957035="" class="rounded-full h-24 w-24 ng-tns-c2080957035-2 border-sky-500 border-2 ng-star-inserted" src="https://i.ibb.co/HTyxbsq3/Hefelogo-new.png"><!----></div><h1 _ngcontent-ng-c2080957035="" class="text-primary-200 mb-3 text-3xl font-medium lg:px-14 ng-tns-c2080957035-2"> HEFE </h1><div _ngcontent-ng-c2080957035="" class="grid grid-cols-2 gap-2 flex-grow flex flex-col ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Staked</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 25,584,258.83 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">HEFE</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Locked</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 21,187,796.84 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">HEFE</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 col-span-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Burned</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 122,467,982.17 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">HEFE</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 col-span-2 flex-grow relative group ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light flex items-center justify-center gap-2 ng-tns-c2080957035-2"> Historical Rewards <i _ngcontent-ng-c2080957035="" class="fa-solid fa-circle-info text-sm cursor-help ng-tns-c2080957035-2"></i></h3><!----><div _ngcontent-ng-c2080957035="" class="text-gold-default font-bold text-xl ng-tns-c2080957035-2 ng-star-inserted"> 4 Reward Token<span _ngcontent-ng-c2080957035="" class="ng-tns-c2080957035-2 ng-star-inserted">s</span><!----></div><!----><div _ngcontent-ng-c2080957035="" class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 bg-primary-default border-2 border-gold-default rounded-lg p-4 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 ng-tns-c2080957035-2 ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="text-white text-sm font-semibold mb-2 border-b border-gold-default/30 pb-2 ng-tns-c2080957035-2"> Reward Tokens </div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 max-h-64 overflow-auto pr-1 ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="flex justify-between items-center text-sm ng-tns-c2080957035-2 ng-star-inserted"><span _ngcontent-ng-c2080957035="" class="text-primary-200 ng-tns-c2080957035-2">HEFE</span><span _ngcontent-ng-c2080957035="" class="text-gold-default font-semibold ng-tns-c2080957035-2"> 860,000 </span></div><div _ngcontent-ng-c2080957035="" class="flex justify-between items-center text-sm ng-tns-c2080957035-2 ng-star-inserted"><span _ngcontent-ng-c2080957035="" class="text-primary-200 ng-tns-c2080957035-2">WAVAX</span><span _ngcontent-ng-c2080957035="" class="text-gold-default font-semibold ng-tns-c2080957035-2"> 11.61 </span></div><div _ngcontent-ng-c2080957035="" class="flex justify-between items-center text-sm ng-tns-c2080957035-2 ng-star-inserted"><span _ngcontent-ng-c2080957035="" class="text-primary-200 ng-tns-c2080957035-2">USDC</span><span _ngcontent-ng-c2080957035="" class="text-gold-default font-semibold ng-tns-c2080957035-2"> 23.79 </span></div><div _ngcontent-ng-c2080957035="" class="flex justify-between items-center text-sm ng-tns-c2080957035-2 ng-star-inserted"><span _ngcontent-ng-c2080957035="" class="text-primary-200 ng-tns-c2080957035-2">BTC.b</span><span _ngcontent-ng-c2080957035="" class="text-gold-default font-semibold ng-tns-c2080957035-2"> 0 </span></div><!----></div><div _ngcontent-ng-c2080957035="" class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="border-8 border-transparent border-t-gold-default ng-tns-c2080957035-2"></div></div></div><!----></div><button _ngcontent-ng-c2080957035="" class="col-span-2 w-full disabled:bg-gold-900 disabled:text-gold-dark disabled:cursor-not-allowed bg-gold-default hover:bg-gold-dark text-primary-light font-bold py-2 px-4 rounded transition-all hover:scale-[101%] mt-auto ng-tns-c2080957035-2"> View Moat </button></div></div><!----><div _ngcontent-ng-c2080957035="" class="relative rounded-xl bg-primary-default p-4 text-center shadow-xl border-2 flex flex-col h-full ng-tns-c2080957035-2 border-primary-light hover:scale-105 transition-all w-full duration-500 animate-fade-in ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="absolute top-0 left-0 py-1 px-3 rounded-tl-lg rounded-br-lg font-bold text-xs border ng-tns-c2080957035-2 bg-sky-900 text-sky-300 border-sky-400"> Verified </div><div _ngcontent-ng-c2080957035="" class="absolute top-0 right-0 text-white py-1 px-2 md:px-3 rounded-bl-lg rounded-tr-lg font-bold text-[10px] md:text-xs bg-gold-500 ng-tns-c2080957035-2 ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="flex flex-col items-center ng-tns-c2080957035-2"><span _ngcontent-ng-c2080957035="" class="ng-tns-c2080957035-2">TVM: $20,469.25</span><span _ngcontent-ng-c2080957035="" class="ng-tns-c2080957035-2">44.46% of Total Supply</span></div></div><!----><!----><div _ngcontent-ng-c2080957035="" class="mx-auto flex h-24 w-24 -translate-y-8 -mb-6 transform items-center justify-center rounded-full ng-tns-c2080957035-2 bg-sky-400 shadow-lg shadow-sky-500/40"><img _ngcontent-ng-c2080957035="" class="rounded-full h-24 w-24 ng-tns-c2080957035-2 border-sky-500 border-2 ng-star-inserted" src="https://i.ibb.co/LXFYNcJ6/hashcashclub.png"><!----></div><h1 _ngcontent-ng-c2080957035="" class="text-primary-200 mb-3 text-3xl font-medium lg:px-14 ng-tns-c2080957035-2"> LP WAVAX/hCASH </h1><div _ngcontent-ng-c2080957035="" class="grid grid-cols-2 gap-2 flex-grow flex flex-col ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Staked</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 172.84 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">Volatile - WAVAX/hCASH</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Locked</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 10,779.88 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">Volatile - WAVAX/hCASH</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 col-span-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Burned</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 0.00 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">Volatile - WAVAX/hCASH</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 col-span-2 flex-grow relative group ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light flex items-center justify-center gap-2 ng-tns-c2080957035-2"> Historical Rewards <i _ngcontent-ng-c2080957035="" class="fa-solid fa-circle-info text-sm cursor-help ng-tns-c2080957035-2"></i></h3><div _ngcontent-ng-c2080957035="" class="text-gold-default font-bold text-sm ng-tns-c2080957035-2 ng-star-inserted"> No rewards set </div><!----><!----><!----></div><button _ngcontent-ng-c2080957035="" class="col-span-2 w-full disabled:bg-gold-900 disabled:text-gold-dark disabled:cursor-not-allowed bg-gold-default hover:bg-gold-dark text-primary-light font-bold py-2 px-4 rounded transition-all hover:scale-[101%] mt-auto ng-tns-c2080957035-2"> View Moat </button></div></div><!----><div _ngcontent-ng-c2080957035="" class="relative rounded-xl bg-primary-default p-4 text-center shadow-xl border-2 flex flex-col h-full ng-tns-c2080957035-2 border-primary-light hover:scale-105 transition-all w-full duration-500 animate-fade-in ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="absolute top-0 left-0 py-1 px-3 rounded-tl-lg rounded-br-lg font-bold text-xs border ng-tns-c2080957035-2 bg-sky-900 text-sky-300 border-sky-400"> Verified </div><div _ngcontent-ng-c2080957035="" class="absolute top-0 right-0 text-white py-1 px-2 md:px-3 rounded-bl-lg rounded-tr-lg font-bold text-[10px] md:text-xs bg-gold-500 ng-tns-c2080957035-2 ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="flex flex-col items-center ng-tns-c2080957035-2"><span _ngcontent-ng-c2080957035="" class="ng-tns-c2080957035-2">TVM: $11,514.58</span><span _ngcontent-ng-c2080957035="" class="ng-tns-c2080957035-2">38.46% of Total Supply</span></div></div><!----><!----><div _ngcontent-ng-c2080957035="" class="mx-auto flex h-24 w-24 -translate-y-8 -mb-6 transform items-center justify-center rounded-full ng-tns-c2080957035-2 bg-sky-400 shadow-lg shadow-sky-500/40"><img _ngcontent-ng-c2080957035="" class="rounded-full h-24 w-24 ng-tns-c2080957035-2 border-sky-500 border-2 ng-star-inserted" src="https://i.ibb.co/twrWDLC9/GATOR-logo.jpg"><!----></div><h1 _ngcontent-ng-c2080957035="" class="text-primary-200 mb-3 text-3xl font-medium lg:px-14 ng-tns-c2080957035-2"> Gator Dont Play  </h1><div _ngcontent-ng-c2080957035="" class="grid grid-cols-2 gap-2 flex-grow flex flex-col ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Staked</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 1,651,228,058.14 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">GATOR</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Locked</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 2,122,350,564.68 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">GATOR</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 col-span-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Burned</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 72,306,698.14 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">GATOR</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 col-span-2 flex-grow relative group ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light flex items-center justify-center gap-2 ng-tns-c2080957035-2"> Historical Rewards <i _ngcontent-ng-c2080957035="" class="fa-solid fa-circle-info text-sm cursor-help ng-tns-c2080957035-2"></i></h3><!----><div _ngcontent-ng-c2080957035="" class="text-gold-default font-bold text-xl ng-tns-c2080957035-2 ng-star-inserted"> 1 Reward Token<!----></div><!----><div _ngcontent-ng-c2080957035="" class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 bg-primary-default border-2 border-gold-default rounded-lg p-4 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 ng-tns-c2080957035-2 ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="text-white text-sm font-semibold mb-2 border-b border-gold-default/30 pb-2 ng-tns-c2080957035-2"> Reward Tokens </div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 max-h-64 overflow-auto pr-1 ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="flex justify-between items-center text-sm ng-tns-c2080957035-2 ng-star-inserted"><span _ngcontent-ng-c2080957035="" class="text-primary-200 ng-tns-c2080957035-2">GATOR</span><span _ngcontent-ng-c2080957035="" class="text-gold-default font-semibold ng-tns-c2080957035-2"> 2,800,000 </span></div><!----></div><div _ngcontent-ng-c2080957035="" class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="border-8 border-transparent border-t-gold-default ng-tns-c2080957035-2"></div></div></div><!----></div><button _ngcontent-ng-c2080957035="" class="col-span-2 w-full disabled:bg-gold-900 disabled:text-gold-dark disabled:cursor-not-allowed bg-gold-default hover:bg-gold-dark text-primary-light font-bold py-2 px-4 rounded transition-all hover:scale-[101%] mt-auto ng-tns-c2080957035-2"> View Moat </button></div></div><!----><div _ngcontent-ng-c2080957035="" class="relative rounded-xl bg-primary-default p-4 text-center shadow-xl border-2 flex flex-col h-full ng-tns-c2080957035-2 border-primary-light hover:scale-105 transition-all w-full duration-500 animate-fade-in ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="absolute top-0 left-0 py-1 px-3 rounded-tl-lg rounded-br-lg font-bold text-xs border ng-tns-c2080957035-2 bg-sky-900 text-sky-300 border-sky-400"> Verified </div><div _ngcontent-ng-c2080957035="" class="absolute top-0 right-0 text-white py-1 px-2 md:px-3 rounded-bl-lg rounded-tr-lg font-bold text-[10px] md:text-xs bg-gold-500 ng-tns-c2080957035-2 ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="flex flex-col items-center ng-tns-c2080957035-2"><span _ngcontent-ng-c2080957035="" class="ng-tns-c2080957035-2">TVM: $10,758.28</span><span _ngcontent-ng-c2080957035="" class="ng-tns-c2080957035-2">43.45% of Total Supply</span></div></div><!----><!----><div _ngcontent-ng-c2080957035="" class="mx-auto flex h-24 w-24 -translate-y-8 -mb-6 transform items-center justify-center rounded-full ng-tns-c2080957035-2 bg-sky-400 shadow-lg shadow-sky-500/40"><img _ngcontent-ng-c2080957035="" class="rounded-full h-24 w-24 ng-tns-c2080957035-2 border-sky-500 border-2 ng-star-inserted" src="https://fortifi.fra1.cdn.digitaloceanspaces.com/FREAK_Anon.png"><!----></div><h1 _ngcontent-ng-c2080957035="" class="text-primary-200 mb-3 text-3xl font-medium lg:px-14 ng-tns-c2080957035-2"> FREAK Anon </h1><div _ngcontent-ng-c2080957035="" class="grid grid-cols-2 gap-2 flex-grow flex flex-col ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Staked</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 51,718,228.7 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">FREAK</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Locked</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 26,605,219.3 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">FREAK</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 col-span-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Burned</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 356,178,800.94 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">FREAK</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 col-span-2 flex-grow relative group ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light flex items-center justify-center gap-2 ng-tns-c2080957035-2"> Historical Rewards <i _ngcontent-ng-c2080957035="" class="fa-solid fa-circle-info text-sm cursor-help ng-tns-c2080957035-2"></i></h3><!----><div _ngcontent-ng-c2080957035="" class="text-gold-default font-bold text-xl ng-tns-c2080957035-2 ng-star-inserted"> 2 Reward Token<span _ngcontent-ng-c2080957035="" class="ng-tns-c2080957035-2 ng-star-inserted">s</span><!----></div><!----><div _ngcontent-ng-c2080957035="" class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 bg-primary-default border-2 border-gold-default rounded-lg p-4 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 ng-tns-c2080957035-2 ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="text-white text-sm font-semibold mb-2 border-b border-gold-default/30 pb-2 ng-tns-c2080957035-2"> Reward Tokens </div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 max-h-64 overflow-auto pr-1 ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="flex justify-between items-center text-sm ng-tns-c2080957035-2 ng-star-inserted"><span _ngcontent-ng-c2080957035="" class="text-primary-200 ng-tns-c2080957035-2">USDC</span><span _ngcontent-ng-c2080957035="" class="text-gold-default font-semibold ng-tns-c2080957035-2"> 207.56 </span></div><div _ngcontent-ng-c2080957035="" class="flex justify-between items-center text-sm ng-tns-c2080957035-2 ng-star-inserted"><span _ngcontent-ng-c2080957035="" class="text-primary-200 ng-tns-c2080957035-2">FREAK</span><span _ngcontent-ng-c2080957035="" class="text-gold-default font-semibold ng-tns-c2080957035-2"> 2,500,000 </span></div><!----></div><div _ngcontent-ng-c2080957035="" class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="border-8 border-transparent border-t-gold-default ng-tns-c2080957035-2"></div></div></div><!----></div><button _ngcontent-ng-c2080957035="" class="col-span-2 w-full disabled:bg-gold-900 disabled:text-gold-dark disabled:cursor-not-allowed bg-gold-default hover:bg-gold-dark text-primary-light font-bold py-2 px-4 rounded transition-all hover:scale-[101%] mt-auto ng-tns-c2080957035-2"> View Moat </button></div></div><!----><div _ngcontent-ng-c2080957035="" class="relative rounded-xl bg-primary-default p-4 text-center shadow-xl border-2 flex flex-col h-full ng-tns-c2080957035-2 border-primary-light hover:scale-105 transition-all w-full duration-500 animate-fade-in ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="absolute top-0 left-0 py-1 px-3 rounded-tl-lg rounded-br-lg font-bold text-xs border ng-tns-c2080957035-2 bg-sky-900 text-sky-300 border-sky-400"> Verified </div><div _ngcontent-ng-c2080957035="" class="absolute top-0 right-0 text-white py-1 px-2 md:px-3 rounded-bl-lg rounded-tr-lg font-bold text-[10px] md:text-xs bg-gold-500 ng-tns-c2080957035-2 ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="flex flex-col items-center ng-tns-c2080957035-2"><span _ngcontent-ng-c2080957035="" class="ng-tns-c2080957035-2">TVM: $7,368.14</span><span _ngcontent-ng-c2080957035="" class="ng-tns-c2080957035-2">23.05% of Total Supply</span></div></div><!----><!----><div _ngcontent-ng-c2080957035="" class="mx-auto flex h-24 w-24 -translate-y-8 -mb-6 transform items-center justify-center rounded-full ng-tns-c2080957035-2 bg-sky-400 shadow-lg shadow-sky-500/40"><img _ngcontent-ng-c2080957035="" class="rounded-full h-24 w-24 ng-tns-c2080957035-2 border-sky-500 border-2 ng-star-inserted" src="https://i.ibb.co/RTT2BWRK/balln-token.jpg"><!----></div><h1 _ngcontent-ng-c2080957035="" class="text-primary-200 mb-3 text-3xl font-medium lg:px-14 ng-tns-c2080957035-2"> Balln Chikn  </h1><div _ngcontent-ng-c2080957035="" class="grid grid-cols-2 gap-2 flex-grow flex flex-col ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Staked</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 7,013.68 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">Balln</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Locked</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 13,015.37 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">Balln</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 col-span-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Burned</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 3,018 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">Balln</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 col-span-2 flex-grow relative group ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light flex items-center justify-center gap-2 ng-tns-c2080957035-2"> Historical Rewards <i _ngcontent-ng-c2080957035="" class="fa-solid fa-circle-info text-sm cursor-help ng-tns-c2080957035-2"></i></h3><div _ngcontent-ng-c2080957035="" class="text-gold-default font-bold text-sm ng-tns-c2080957035-2 ng-star-inserted"> No rewards set </div><!----><!----><!----></div><button _ngcontent-ng-c2080957035="" class="col-span-2 w-full disabled:bg-gold-900 disabled:text-gold-dark disabled:cursor-not-allowed bg-gold-default hover:bg-gold-dark text-primary-light font-bold py-2 px-4 rounded transition-all hover:scale-[101%] mt-auto ng-tns-c2080957035-2"> View Moat </button></div></div><!----><div _ngcontent-ng-c2080957035="" class="relative rounded-xl bg-primary-default p-4 text-center shadow-xl border-2 flex flex-col h-full ng-tns-c2080957035-2 border-primary-light hover:scale-105 transition-all w-full duration-500 animate-fade-in ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="absolute top-0 left-0 py-1 px-3 rounded-tl-lg rounded-br-lg font-bold text-xs border ng-tns-c2080957035-2 bg-sky-900 text-sky-300 border-sky-400"> Verified </div><div _ngcontent-ng-c2080957035="" class="absolute top-0 right-0 text-white py-1 px-2 md:px-3 rounded-bl-lg rounded-tr-lg font-bold text-[10px] md:text-xs bg-gold-500 ng-tns-c2080957035-2 ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="flex flex-col items-center ng-tns-c2080957035-2"><span _ngcontent-ng-c2080957035="" class="ng-tns-c2080957035-2">TVM: $7,076.32</span><span _ngcontent-ng-c2080957035="" class="ng-tns-c2080957035-2">19.28% of Total Supply</span></div></div><!----><!----><div _ngcontent-ng-c2080957035="" class="mx-auto flex h-24 w-24 -translate-y-8 -mb-6 transform items-center justify-center rounded-full ng-tns-c2080957035-2 bg-sky-400 shadow-lg shadow-sky-500/40"><img _ngcontent-ng-c2080957035="" class="rounded-full h-24 w-24 ng-tns-c2080957035-2 border-sky-500 border-2 ng-star-inserted" src="https://i.ibb.co/Z6FPpYS7/supercycle.jpg"><!----></div><h1 _ngcontent-ng-c2080957035="" class="text-primary-200 mb-3 text-3xl font-medium lg:px-14 ng-tns-c2080957035-2"> supercycle (real) </h1><div _ngcontent-ng-c2080957035="" class="grid grid-cols-2 gap-2 flex-grow flex flex-col ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Staked</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 103,631,914.02 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">SUPER</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Locked</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 454,910,808.51 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">SUPER</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 col-span-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Burned</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 1,369,609,429.34 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">SUPER</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 col-span-2 flex-grow relative group ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light flex items-center justify-center gap-2 ng-tns-c2080957035-2"> Historical Rewards <i _ngcontent-ng-c2080957035="" class="fa-solid fa-circle-info text-sm cursor-help ng-tns-c2080957035-2"></i></h3><!----><div _ngcontent-ng-c2080957035="" class="text-gold-default font-bold text-xl ng-tns-c2080957035-2 ng-star-inserted"> 1 Reward Token<!----></div><!----><div _ngcontent-ng-c2080957035="" class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 bg-primary-default border-2 border-gold-default rounded-lg p-4 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 ng-tns-c2080957035-2 ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="text-white text-sm font-semibold mb-2 border-b border-gold-default/30 pb-2 ng-tns-c2080957035-2"> Reward Tokens </div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 max-h-64 overflow-auto pr-1 ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="flex justify-between items-center text-sm ng-tns-c2080957035-2 ng-star-inserted"><span _ngcontent-ng-c2080957035="" class="text-primary-200 ng-tns-c2080957035-2">BLAZE</span><span _ngcontent-ng-c2080957035="" class="text-gold-default font-semibold ng-tns-c2080957035-2"> 226,730 </span></div><!----></div><div _ngcontent-ng-c2080957035="" class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="border-8 border-transparent border-t-gold-default ng-tns-c2080957035-2"></div></div></div><!----></div><button _ngcontent-ng-c2080957035="" class="col-span-2 w-full disabled:bg-gold-900 disabled:text-gold-dark disabled:cursor-not-allowed bg-gold-default hover:bg-gold-dark text-primary-light font-bold py-2 px-4 rounded transition-all hover:scale-[101%] mt-auto ng-tns-c2080957035-2"> View Moat </button></div></div><!----><div _ngcontent-ng-c2080957035="" class="relative rounded-xl bg-primary-default p-4 text-center shadow-xl border-2 flex flex-col h-full ng-tns-c2080957035-2 border-primary-light hover:scale-105 transition-all w-full duration-500 animate-fade-in ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="absolute top-0 left-0 py-1 px-3 rounded-tl-lg rounded-br-lg font-bold text-xs border ng-tns-c2080957035-2 bg-sky-900 text-sky-300 border-sky-400"> Verified </div><div _ngcontent-ng-c2080957035="" class="absolute top-0 right-0 text-white py-1 px-2 md:px-3 rounded-bl-lg rounded-tr-lg font-bold text-[10px] md:text-xs bg-gold-500 ng-tns-c2080957035-2 ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="flex flex-col items-center ng-tns-c2080957035-2"><span _ngcontent-ng-c2080957035="" class="ng-tns-c2080957035-2">TVM: $6,497.96</span><span _ngcontent-ng-c2080957035="" class="ng-tns-c2080957035-2">55.07% of Total Supply</span></div></div><!----><!----><div _ngcontent-ng-c2080957035="" class="mx-auto flex h-24 w-24 -translate-y-8 -mb-6 transform items-center justify-center rounded-full ng-tns-c2080957035-2 bg-sky-400 shadow-lg shadow-sky-500/40"><img _ngcontent-ng-c2080957035="" class="rounded-full h-24 w-24 ng-tns-c2080957035-2 border-sky-500 border-2 ng-star-inserted" src="https://i.ibb.co/0RRDSYjG/Seeds.png"><!----></div><h1 _ngcontent-ng-c2080957035="" class="text-primary-200 mb-3 text-3xl font-medium lg:px-14 ng-tns-c2080957035-2"> SEEDS </h1><div _ngcontent-ng-c2080957035="" class="grid grid-cols-2 gap-2 flex-grow flex flex-col ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Staked</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 0.00 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">SEEDS</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Locked</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 50,000,000 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">SEEDS</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 col-span-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Burned</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 5,456,744,767.74 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">SEEDS</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 col-span-2 flex-grow relative group ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light flex items-center justify-center gap-2 ng-tns-c2080957035-2"> Historical Rewards <i _ngcontent-ng-c2080957035="" class="fa-solid fa-circle-info text-sm cursor-help ng-tns-c2080957035-2"></i></h3><!----><div _ngcontent-ng-c2080957035="" class="text-gold-default font-bold text-xl ng-tns-c2080957035-2 ng-star-inserted"> 2 Reward Token<span _ngcontent-ng-c2080957035="" class="ng-tns-c2080957035-2 ng-star-inserted">s</span><!----></div><!----><div _ngcontent-ng-c2080957035="" class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 bg-primary-default border-2 border-gold-default rounded-lg p-4 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 ng-tns-c2080957035-2 ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="text-white text-sm font-semibold mb-2 border-b border-gold-default/30 pb-2 ng-tns-c2080957035-2"> Reward Tokens </div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 max-h-64 overflow-auto pr-1 ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="flex justify-between items-center text-sm ng-tns-c2080957035-2 ng-star-inserted"><span _ngcontent-ng-c2080957035="" class="text-primary-200 ng-tns-c2080957035-2">BLAZE</span><span _ngcontent-ng-c2080957035="" class="text-gold-default font-semibold ng-tns-c2080957035-2"> 0.00 </span></div><div _ngcontent-ng-c2080957035="" class="flex justify-between items-center text-sm ng-tns-c2080957035-2 ng-star-inserted"><span _ngcontent-ng-c2080957035="" class="text-primary-200 ng-tns-c2080957035-2">USDC</span><span _ngcontent-ng-c2080957035="" class="text-gold-default font-semibold ng-tns-c2080957035-2"> 0.00 </span></div><!----></div><div _ngcontent-ng-c2080957035="" class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="border-8 border-transparent border-t-gold-default ng-tns-c2080957035-2"></div></div></div><!----></div><button _ngcontent-ng-c2080957035="" class="col-span-2 w-full disabled:bg-gold-900 disabled:text-gold-dark disabled:cursor-not-allowed bg-gold-default hover:bg-gold-dark text-primary-light font-bold py-2 px-4 rounded transition-all hover:scale-[101%] mt-auto ng-tns-c2080957035-2"> View Moat </button></div></div><!----><div _ngcontent-ng-c2080957035="" class="relative rounded-xl bg-primary-default p-4 text-center shadow-xl border-2 flex flex-col h-full ng-tns-c2080957035-2 border-primary-light hover:scale-105 transition-all w-full duration-500 animate-fade-in ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="absolute top-0 left-0 py-1 px-3 rounded-tl-lg rounded-br-lg font-bold text-xs border ng-tns-c2080957035-2 bg-sky-900 text-sky-300 border-sky-400"> Verified </div><div _ngcontent-ng-c2080957035="" class="absolute top-0 right-0 text-white py-1 px-2 md:px-3 rounded-bl-lg rounded-tr-lg font-bold text-[10px] md:text-xs bg-gold-500 ng-tns-c2080957035-2 ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="flex flex-col items-center ng-tns-c2080957035-2"><span _ngcontent-ng-c2080957035="" class="ng-tns-c2080957035-2">TVM: $4,079.86</span><span _ngcontent-ng-c2080957035="" class="ng-tns-c2080957035-2">30.18% of Total Supply</span></div></div><!----><!----><div _ngcontent-ng-c2080957035="" class="mx-auto flex h-24 w-24 -translate-y-8 -mb-6 transform items-center justify-center rounded-full ng-tns-c2080957035-2 bg-sky-400 shadow-lg shadow-sky-500/40"><img _ngcontent-ng-c2080957035="" class="rounded-full h-24 w-24 ng-tns-c2080957035-2 border-sky-500 border-2 ng-star-inserted" src="https://i.ibb.co/sv6DPXkH/Dimish1000px.png"><!----></div><h1 _ngcontent-ng-c2080957035="" class="text-primary-200 mb-3 text-3xl font-medium lg:px-14 ng-tns-c2080957035-2"> Dimish </h1><div _ngcontent-ng-c2080957035="" class="grid grid-cols-2 gap-2 flex-grow flex flex-col ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Staked</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 12,602,899.27 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">DISH</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Locked</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 11,717,672.83 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">DISH</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 col-span-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Burned</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 277,443,892.75 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">DISH</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 col-span-2 flex-grow relative group ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light flex items-center justify-center gap-2 ng-tns-c2080957035-2"> Historical Rewards <i _ngcontent-ng-c2080957035="" class="fa-solid fa-circle-info text-sm cursor-help ng-tns-c2080957035-2"></i></h3><div _ngcontent-ng-c2080957035="" class="text-gold-default font-bold text-sm ng-tns-c2080957035-2 ng-star-inserted"> No rewards set </div><!----><!----><!----></div><button _ngcontent-ng-c2080957035="" class="col-span-2 w-full disabled:bg-gold-900 disabled:text-gold-dark disabled:cursor-not-allowed bg-gold-default hover:bg-gold-dark text-primary-light font-bold py-2 px-4 rounded transition-all hover:scale-[101%] mt-auto ng-tns-c2080957035-2"> View Moat </button></div></div><!----><div _ngcontent-ng-c2080957035="" class="relative rounded-xl bg-primary-default p-4 text-center shadow-xl border-2 flex flex-col h-full ng-tns-c2080957035-2 border-primary-light hover:scale-105 transition-all w-full duration-500 animate-fade-in ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="absolute top-0 left-0 py-1 px-3 rounded-tl-lg rounded-br-lg font-bold text-xs border ng-tns-c2080957035-2 bg-sky-900 text-sky-300 border-sky-400"> Verified </div><div _ngcontent-ng-c2080957035="" class="absolute top-0 right-0 text-white py-1 px-2 md:px-3 rounded-bl-lg rounded-tr-lg font-bold text-[10px] md:text-xs bg-gold-500 ng-tns-c2080957035-2 ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="flex flex-col items-center ng-tns-c2080957035-2"><span _ngcontent-ng-c2080957035="" class="ng-tns-c2080957035-2">TVM: $3,453.16</span><span _ngcontent-ng-c2080957035="" class="ng-tns-c2080957035-2">7.48% of Total Supply</span></div></div><!----><!----><div _ngcontent-ng-c2080957035="" class="mx-auto flex h-24 w-24 -translate-y-8 -mb-6 transform items-center justify-center rounded-full ng-tns-c2080957035-2 bg-sky-400 shadow-lg shadow-sky-500/40"><img _ngcontent-ng-c2080957035="" class="rounded-full h-24 w-24 ng-tns-c2080957035-2 border-sky-500 border-2 ng-star-inserted" src="https://i.ibb.co/0R2J3Vsm/VIT-Logo-Alternative-2.jpg"><!----></div><h1 _ngcontent-ng-c2080957035="" class="text-primary-200 mb-3 text-3xl font-medium lg:px-14 ng-tns-c2080957035-2"> Vitrene </h1><div _ngcontent-ng-c2080957035="" class="grid grid-cols-2 gap-2 flex-grow flex flex-col ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Staked</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 467,818,965.55 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">VIT</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Locked</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 226,527,775.73 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">VIT</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 col-span-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Burned</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 53,575,509.01 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">VIT</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 col-span-2 flex-grow relative group ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light flex items-center justify-center gap-2 ng-tns-c2080957035-2"> Historical Rewards <i _ngcontent-ng-c2080957035="" class="fa-solid fa-circle-info text-sm cursor-help ng-tns-c2080957035-2"></i></h3><div _ngcontent-ng-c2080957035="" class="text-gold-default font-bold text-sm ng-tns-c2080957035-2 ng-star-inserted"> No rewards set </div><!----><!----><!----></div><button _ngcontent-ng-c2080957035="" class="col-span-2 w-full disabled:bg-gold-900 disabled:text-gold-dark disabled:cursor-not-allowed bg-gold-default hover:bg-gold-dark text-primary-light font-bold py-2 px-4 rounded transition-all hover:scale-[101%] mt-auto ng-tns-c2080957035-2"> View Moat </button></div></div><!----><div _ngcontent-ng-c2080957035="" class="relative rounded-xl bg-primary-default p-4 text-center shadow-xl border-2 flex flex-col h-full ng-tns-c2080957035-2 border-primary-light hover:scale-105 transition-all w-full duration-500 animate-fade-in ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="absolute top-0 left-0 py-1 px-3 rounded-tl-lg rounded-br-lg font-bold text-xs border ng-tns-c2080957035-2 bg-sky-900 text-sky-300 border-sky-400"> Verified </div><div _ngcontent-ng-c2080957035="" class="absolute top-0 right-0 text-white py-1 px-2 md:px-3 rounded-bl-lg rounded-tr-lg font-bold text-[10px] md:text-xs bg-gold-500 ng-tns-c2080957035-2 ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="flex flex-col items-center ng-tns-c2080957035-2"><span _ngcontent-ng-c2080957035="" class="ng-tns-c2080957035-2">TVM: $3,287.26</span><span _ngcontent-ng-c2080957035="" class="ng-tns-c2080957035-2">45.47% of Total Supply</span></div></div><!----><!----><div _ngcontent-ng-c2080957035="" class="mx-auto flex h-24 w-24 -translate-y-8 -mb-6 transform items-center justify-center rounded-full ng-tns-c2080957035-2 bg-sky-400 shadow-lg shadow-sky-500/40"><img _ngcontent-ng-c2080957035="" class="rounded-full h-24 w-24 ng-tns-c2080957035-2 border-sky-500 border-2 ng-star-inserted" src="https://fortifi.fra1.cdn.digitaloceanspaces.com/AVAX_Drama_-_Black_BG.png"><!----></div><h1 _ngcontent-ng-c2080957035="" class="text-primary-200 mb-3 text-3xl font-medium lg:px-14 ng-tns-c2080957035-2"> AVAX Drama </h1><div _ngcontent-ng-c2080957035="" class="grid grid-cols-2 gap-2 flex-grow flex flex-col ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Staked</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 5,016,096 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">DRAMA</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Locked</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 0.00 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">DRAMA</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 col-span-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Burned</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 4,541,678,276.07 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">DRAMA</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 col-span-2 flex-grow relative group ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light flex items-center justify-center gap-2 ng-tns-c2080957035-2"> Historical Rewards <i _ngcontent-ng-c2080957035="" class="fa-solid fa-circle-info text-sm cursor-help ng-tns-c2080957035-2"></i></h3><!----><div _ngcontent-ng-c2080957035="" class="text-gold-default font-bold text-xl ng-tns-c2080957035-2 ng-star-inserted"> 2 Reward Token<span _ngcontent-ng-c2080957035="" class="ng-tns-c2080957035-2 ng-star-inserted">s</span><!----></div><!----><div _ngcontent-ng-c2080957035="" class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 bg-primary-default border-2 border-gold-default rounded-lg p-4 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 ng-tns-c2080957035-2 ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="text-white text-sm font-semibold mb-2 border-b border-gold-default/30 pb-2 ng-tns-c2080957035-2"> Reward Tokens </div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 max-h-64 overflow-auto pr-1 ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="flex justify-between items-center text-sm ng-tns-c2080957035-2 ng-star-inserted"><span _ngcontent-ng-c2080957035="" class="text-primary-200 ng-tns-c2080957035-2">USDC</span><span _ngcontent-ng-c2080957035="" class="text-gold-default font-semibold ng-tns-c2080957035-2"> 0.00 </span></div><div _ngcontent-ng-c2080957035="" class="flex justify-between items-center text-sm ng-tns-c2080957035-2 ng-star-inserted"><span _ngcontent-ng-c2080957035="" class="text-primary-200 ng-tns-c2080957035-2">BLAZE</span><span _ngcontent-ng-c2080957035="" class="text-gold-default font-semibold ng-tns-c2080957035-2"> 0.00 </span></div><!----></div><div _ngcontent-ng-c2080957035="" class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="border-8 border-transparent border-t-gold-default ng-tns-c2080957035-2"></div></div></div><!----></div><button _ngcontent-ng-c2080957035="" class="col-span-2 w-full disabled:bg-gold-900 disabled:text-gold-dark disabled:cursor-not-allowed bg-gold-default hover:bg-gold-dark text-primary-light font-bold py-2 px-4 rounded transition-all hover:scale-[101%] mt-auto ng-tns-c2080957035-2"> View Moat </button></div></div><!----><div _ngcontent-ng-c2080957035="" class="relative rounded-xl bg-primary-default p-4 text-center shadow-xl border-2 flex flex-col h-full ng-tns-c2080957035-2 border-primary-light hover:scale-105 transition-all w-full duration-500 animate-fade-in ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="absolute top-0 left-0 py-1 px-3 rounded-tl-lg rounded-br-lg font-bold text-xs border ng-tns-c2080957035-2 bg-sky-900 text-sky-300 border-sky-400"> Verified </div><!----><div _ngcontent-ng-c2080957035="" class="absolute top-0 right-0 bg-gold-500 text-white py-1 px-3 rounded-bl-lg rounded-tr-lg font-bold text-xs ng-tns-c2080957035-2 ng-star-inserted"> TVM: N/A </div><!----><div _ngcontent-ng-c2080957035="" class="mx-auto flex h-24 w-24 -translate-y-8 -mb-6 transform items-center justify-center rounded-full ng-tns-c2080957035-2 bg-sky-400 shadow-lg shadow-sky-500/40"><img _ngcontent-ng-c2080957035="" class="rounded-full h-24 w-24 ng-tns-c2080957035-2 border-sky-500 border-2 ng-star-inserted" src="https://i.ibb.co/nMNcnpnd/Bensi-Box-logo-new.jpg"><!----></div><h1 _ngcontent-ng-c2080957035="" class="text-primary-200 mb-3 text-3xl font-medium lg:px-14 ng-tns-c2080957035-2"> Bensi Box Token </h1><div _ngcontent-ng-c2080957035="" class="grid grid-cols-2 gap-2 flex-grow flex flex-col ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Staked</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 24,030,748.58 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">BENSI</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Locked</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 79,510,186.75 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">BENSI</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 col-span-2 ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light ng-tns-c2080957035-2">Burned</h3><div _ngcontent-ng-c2080957035="" class="text-primary-300 font-bold text-xl ng-tns-c2080957035-2"> 66,793,473.21 <span _ngcontent-ng-c2080957035="" class="text-sm ng-tns-c2080957035-2">BENSI</span></div></div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 col-span-2 flex-grow relative group ng-tns-c2080957035-2"><h3 _ngcontent-ng-c2080957035="" class="text-lg text-gold-light flex items-center justify-center gap-2 ng-tns-c2080957035-2"> Historical Rewards <i _ngcontent-ng-c2080957035="" class="fa-solid fa-circle-info text-sm cursor-help ng-tns-c2080957035-2"></i></h3><!----><div _ngcontent-ng-c2080957035="" class="text-gold-default font-bold text-xl ng-tns-c2080957035-2 ng-star-inserted"> 1 Reward Token<!----></div><!----><div _ngcontent-ng-c2080957035="" class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 bg-primary-default border-2 border-gold-default rounded-lg p-4 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 ng-tns-c2080957035-2 ng-star-inserted"><div _ngcontent-ng-c2080957035="" class="text-white text-sm font-semibold mb-2 border-b border-gold-default/30 pb-2 ng-tns-c2080957035-2"> Reward Tokens </div><div _ngcontent-ng-c2080957035="" class="flex flex-col gap-2 max-h-64 overflow-auto pr-1 ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="flex justify-between items-center text-sm ng-tns-c2080957035-2 ng-star-inserted"><span _ngcontent-ng-c2080957035="" class="text-primary-200 ng-tns-c2080957035-2">WAVAX</span><span _ngcontent-ng-c2080957035="" class="text-gold-default font-semibold ng-tns-c2080957035-2"> 4.01 </span></div><!----></div><div _ngcontent-ng-c2080957035="" class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1 ng-tns-c2080957035-2"><div _ngcontent-ng-c2080957035="" class="border-8 border-transparent border-t-gold-default ng-tns-c2080957035-2"></div></div></div><!----></div><button _ngcontent-ng-c2080957035="" class="col-span-2 w-full disabled:bg-gold-900 disabled:text-gold-dark disabled:cursor-not-allowed bg-gold-default hover:bg-gold-dark text-primary-light font-bold py-2 px-4 rounded transition-all hover:scale-[101%] mt-auto ng-tns-c2080957035-2"> View Moat </button></div></div><!----><!----></div><!----><!----><!----><!----><!----><!----></div></div><!----><!----></app-home><!----></div><app-footer _ngcontent-ng-c3650291679="" _nghost-ng-c1629391272=""><div _ngcontent-ng-c1629391272="" class="flex flex-col gap-4 text-gold-default md:flex-row justify-between items-center mb-4 px-6"><div _ngcontent-ng-c1629391272=""><a _ngcontent-ng-c1629391272="" routerlink="/" href="/"><img _ngcontent-ng-c1629391272="" src="../../../../../assets/images/logo-white-main.png" class="h-12 md:h-24"></a></div><div _ngcontent-ng-c1629391272="" class="flex flex-col items-center gap-2"><div _ngcontent-ng-c1629391272="" class="flex flex-row gap-6 text-sm uppercase tracking-wider font-semibold"><a _ngcontent-ng-c1629391272="" routerlink="/analytics" class="hover:text-white transition-all cursor-pointer" href="/analytics">Analytics</a> - <a _ngcontent-ng-c1629391272="" routerlink="/snapshot" class="hover:text-white transition-all cursor-pointer" href="/snapshot">Snapshot</a> - <a _ngcontent-ng-c1629391272="" routerlink="/create" class="hover:text-white transition-all cursor-pointer" href="/create">Create Moat</a></div><div _ngcontent-ng-c1629391272="" class="flex flex-row justify-center items-center bg-secondary-600 p-2"><span _ngcontent-ng-c1629391272="">© The Moats 2025 - 2026</span></div></div><div _ngcontent-ng-c1629391272="" class="flex flex-row gap-2"><a _ngcontent-ng-c1629391272="" href="https://fortifi.substack.com/" target="_blank"><svg _ngcontent-ng-c1629391272="" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path _ngcontent-ng-c1629391272="" fill="currentColor" d="M22.539 8.242H1.46V5.406h21.08zM1.46 10.812V24L12 18.11L22.54 24V10.812zM22.54 0H1.46v2.836h21.08z"></path></svg></a><a _ngcontent-ng-c1629391272="" href="https://fortifi.gitbook.io/the-moat-protocol" target="_blank"><svg _ngcontent-ng-c1629391272="" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path _ngcontent-ng-c1629391272="" fill="currentColor" d="M10.802 17.77a.703.703 0 11-.002 1.406.703.703 0 01.002-1.406m11.024-4.347a.703.703 0 11.001-1.406.703.703 0 01-.001 1.406m0-2.876a2.176 2.176 0 00-2.174 2.174c0 .233.039.465.115.691l-7.181 3.823a2.165 2.165 0 00-1.784-.937c-.829 0-1.584.475-1.95 1.216l-6.451-3.402c-.682-.358-1.192-1.48-1.138-2.502.028-.533.212-.947.493-1.107.178-.1.392-.092.62.027l.042.023c1.71.9 7.304 3.847 7.54 3.956.363.169.565.237 1.185-.057l11.564-6.014c.17-.064.368-.227.368-.474 0-.342-.354-.477-.355-.477-.658-.315-1.669-.788-2.655-1.25-2.108-.987-4.497-2.105-5.546-2.655-.906-.474-1.635-.074-1.765.006l-.252.125C7.78 6.048 1.46 9.178 1.1 9.397.457 9.789.058 10.57.006 11.539c-.08 1.537.703 3.14 1.824 3.727l6.822 3.518a2.175 2.175 0 002.15 1.862 2.177 2.177 0 002.173-2.14l7.514-4.073c.38.298.853.461 1.337.461A2.176 2.176 0 0024 12.72a2.176 2.176 0 00-2.174-2.174"></path></svg></a><a _ngcontent-ng-c1629391272="" href="https://x.com/fortifi_" target="_blank"><svg _ngcontent-ng-c1629391272="" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" class="fill-current"><path _ngcontent-ng-c1629391272="" d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"></path></svg></a><a _ngcontent-ng-c1629391272="" href="https://discord.gg/fU7YNAbkyU" target="_blank"><svg _ngcontent-ng-c1629391272="" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path _ngcontent-ng-c1629391272="" fill="currentColor" d="M19.27 5.33C17.94 4.71 16.5 4.26 15 4a.1.1 0 0 0-.07.03c-.18.33-.39.76-.53 1.09a16.1 16.1 0 0 0-4.8 0c-.14-.34-.35-.76-.54-1.09c-.01-.02-.04-.03-.07-.03c-1.5.26-2.93.71-4.27 1.33c-.01 0-.02.01-.03.02c-2.72 4.07-3.47 8.03-3.1 11.95c0 .02.01.04.03.05c1.8 1.32 3.53 2.12 5.24 2.65c.03.01.06 0 .07-.02c.4-.55.76-1.13 1.07-1.74c.02-.04 0-.08-.04-.09c-.57-.22-1.11-.48-1.64-.78c-.04-.02-.04-.08-.01-.11c.11-.08.22-.17.33-.25c.02-.02.05-.02.07-.01c3.44 1.57 7.15 1.57 10.55 0c.02-.01.05-.01.07.01c.11.09.22.17.33.26c.04.03.04.09-.01.11c-.52.31-1.07.56-1.64.78c-.04.01-.05.06-.04.09c.32.61.68 1.19 1.07 1.74c.03.01.06.02.09.01c1.72-.53 3.45-1.33 5.25-2.65c.02-.01.03-.03.03-.05c.44-4.53-.73-8.46-3.1-11.95c-.01-.01-.02-.02-.04-.02M8.52 14.91c-1.03 0-1.89-.95-1.89-2.12s.84-2.12 1.89-2.12c1.06 0 1.9.96 1.89 2.12c0 1.17-.84 2.12-1.89 2.12m6.97 0c-1.03 0-1.89-.95-1.89-2.12s.84-2.12 1.89-2.12c1.06 0 1.9.96 1.89 2.12c0 1.17-.83 2.12-1.89 2.12"></path></svg></a></div></div></app-footer></div><app-toast _ngcontent-ng-c3650291679="" _nghost-ng-c555640420=""><div _ngcontent-ng-c555640420="" class="fixed bottom-0 w-full flex flex-col items-center justify-center z-[9999]"><!----></div></app-toast></app-layout><!----><!----></app-root>
+<script src="runtime.62da573cd13d3d31.js" type="module"></script><script src="polyfills.93db2ed21bea9301.js" type="module"></script><script src="main.9b1695d1c7bf5e53.js" type="module"></script>
+
+<w3m-modal style="--local-border-bottom-mobile-radius: 0px;"><template shadowrootmode="open"><!----></template></w3m-modal></body></html>

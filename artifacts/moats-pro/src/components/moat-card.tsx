@@ -92,7 +92,7 @@ export function MoatCard({ moat, priceMap, tvlUSD }: MoatCardProps) {
   const statusStyle = statusColors[moat.status] || statusColors.Community;
   const activeRewardTokens = moat.rewardTokens.filter((t) => t.enabled);
   const meta = getMoatMeta(moat.contractAddress);
-  const primaryTokenAddress = activeRewardTokens[0]?.tokenAddress || meta.tokenAddress;
+  const primaryTokenAddress = meta.tokenAddress || activeRewardTokens[0]?.tokenAddress;
 
   const dailyRewardUSD = activeRewardTokens.reduce((sum, token) => {
     if (!token.tokenAddress || !priceMap) return sum;
