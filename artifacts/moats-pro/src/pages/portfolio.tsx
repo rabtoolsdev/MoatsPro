@@ -1,9 +1,11 @@
 import { useMemo } from "react";
-import { useAccount } from "wagmi";
+import { useAccount, useReadContracts } from "wagmi";
+import { formatUnits } from "viem";
 import { motion } from "framer-motion";
 import { Wallet, TrendingUp, Award, AlertCircle, ArrowDownRight, ArrowUpRight, Lock, DollarSign } from "lucide-react";
 import { useMapsScore, useAllMoatConfigs, useUserEvents } from "@/hooks/use-moats-api";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
+import { MOAT_V3_ABI, ERC20_ABI } from "@/lib/moat-abi";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { formatAddress, getEventTypeLabel, getEventTypeColor, getExplorerUrl, timeAgo, formatUSD, getMoatMeta } from "@/lib/moat-metadata";
@@ -66,6 +68,49 @@ export default function Portfolio() {
     return { ...pos, config };
   });
 
+  const stakingTokenContracts = useMemo(() => {
+    return positions.map((pos) => ({
+      address: pos.contractAddress as `0x${string}`,
+      abi: MOAT_V3_ABI,
+      functionName: "stakingToken" as const,
+    }));
+  }, [positions]);
+
+  const { data: stakingTokenResults } = useReadContracts({
+    contracts: stakingTokenContracts,
+    query: { enabled: stakingTokenContracts.length > 0 },
+  });
+
+  const positionStakingTokens = useMemo(() => {
+    return positions.map((_, i) => {
+      const r = stakingTokenResults?.[i];
+      return r?.status === "success" ? (r.result as string) : "";
+    });
+  }, [stakingTokenResults, positions]);
+
+  const uniquePosStakingTokens = useMemo(
+    () => [...new Set(positionStakingTokens.filter(Boolean))],
+    [positionStakingTokens]
+  );
+
+  const { data: posDecimalsData } = useReadContracts({
+    contracts: uniquePosStakingTokens.map((addr) => ({
+      address: addr as `0x${string}`,
+      abi: ERC20_ABI,
+      functionName: "decimals" as const,
+    })),
+    query: { enabled: uniquePosStakingTokens.length > 0 },
+  });
+
+  const posDecimalsMap = useMemo((): Record<string, number> => {
+    const m: Record<string, number> = {};
+    uniquePosStakingTokens.forEach((addr, i) => {
+      const r = posDecimalsData?.[i];
+      m[addr.toLowerCase()] = r?.status === "success" ? Number(r.result) : 18;
+    });
+    return m;
+  }, [uniquePosStakingTokens, posDecimalsData]);
+
   const allLlamaIds = useMemo(() => {
     if (!configs) return [];
     const ids = new Set<string>();
@@ -76,8 +121,11 @@ export default function Portfolio() {
         }
       }
     }
+    positionStakingTokens.forEach((addr, i) => {
+      if (addr && positions[i]) ids.add(getLlamaId(positions[i].network, addr));
+    });
     return [...ids];
-  }, [configs]);
+  }, [configs, positionStakingTokens, positions]);
 
   const { data: priceMap } = useTokenPrices(allLlamaIds);
 
@@ -92,6 +140,22 @@ export default function Portfolio() {
   };
 
   const totalDailyUSD = enrichedPositions.reduce((sum, pos) => sum + getDailyRewardUSD(pos), 0);
+
+  const getPositionValueUSD = (pos: (typeof positions)[0], idx: number): number => {
+    const tokenAddr = positionStakingTokens[idx];
+    if (!tokenAddr || !priceMap) return 0;
+    const dec = posDecimalsMap[tokenAddr.toLowerCase()] ?? 18;
+    const llamaId = getLlamaId(pos.network, tokenAddr);
+    const price = priceMap[llamaId] ?? 0;
+    if (price === 0) return 0;
+    const total = pos.staked + pos.locked;
+    return parseFloat(formatUnits(total, dec)) * price;
+  };
+
+  const totalPortfolioValueUSD = positions.reduce(
+    (sum, pos, i) => sum + getPositionValueUSD(pos, i),
+    0
+  );
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -187,11 +251,31 @@ export default function Portfolio() {
                 </div>
               </motion.div>
 
-              {totalDailyUSD > 0 && (
+              {totalPortfolioValueUSD > 0 && (
                 <motion.div
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.15 }}
+                  data-testid="stat-portfolio-value-usd"
+                  className="rounded-2xl border border-primary/20 bg-primary/5 p-6 flex items-center gap-4"
+                >
+                  <div className="p-3 rounded-xl bg-primary/10 shrink-0">
+                    <DollarSign className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-3xl font-bold tabular-nums text-primary">
+                      {formatUSD(totalPortfolioValueUSD)}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Portfolio Value</p>
+                  </div>
+                </motion.div>
+              )}
+
+              {totalDailyUSD > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
                   data-testid="stat-daily-rewards-usd"
                   className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-6 flex items-center gap-4"
                 >
@@ -265,7 +349,7 @@ export default function Portfolio() {
                           Manage
                         </Link>
                       </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
                         {pos.staked > 0n && (
                           <div className="flex items-center gap-2">
                             <ArrowUpRight size={14} className="text-emerald-400" />
@@ -284,6 +368,18 @@ export default function Portfolio() {
                             </div>
                           </div>
                         )}
+                        {(() => {
+                          const posVal = getPositionValueUSD(pos, i);
+                          return posVal > 0 ? (
+                            <div className="flex items-center gap-2">
+                              <DollarSign size={14} className="text-primary" />
+                              <div>
+                                <p className="text-sm font-bold text-primary">{formatUSD(posVal)}</p>
+                                <p className="text-xs text-muted-foreground">Position Value</p>
+                              </div>
+                            </div>
+                          ) : null;
+                        })()}
                         {(() => {
                           const dailyUSD = getDailyRewardUSD(pos);
                           return dailyUSD > 0 ? (

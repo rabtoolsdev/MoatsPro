@@ -8,6 +8,7 @@ import type { MoatConfig } from "@/lib/moats-api";
 interface MoatCardProps {
   moat: MoatConfig;
   priceMap?: Record<string, number>;
+  tvlUSD?: number;
 }
 
 const statusColors: Record<string, { border: string; badge: string; text: string }> = {
@@ -46,7 +47,7 @@ function NetworkBadge({ network }: { network?: string }) {
   );
 }
 
-export function MoatCard({ moat, priceMap }: MoatCardProps) {
+export function MoatCard({ moat, priceMap, tvlUSD }: MoatCardProps) {
   const statusStyle = statusColors[moat.status] || statusColors.Community;
   const activeRewardTokens = moat.rewardTokens.filter((t) => t.enabled);
   const meta = getMoatMeta(moat.contractAddress);
@@ -140,27 +141,38 @@ export function MoatCard({ moat, priceMap }: MoatCardProps) {
             </div>
           )}
 
-          <div className="mt-auto flex items-center justify-between pt-3 border-t border-border/40">
-            <div className="text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">
-                FortWeight:
-              </span>{" "}
-              <span data-testid={`text-fortweight-${moat.contractAddress}`} className="text-primary font-bold">
-                {moat.fortWeight}x
-              </span>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              {dailyRewardUSD > 0 && (
-                <span className="text-emerald-400 font-semibold tabular-nums">
-                  {formatUSD(dailyRewardUSD)}/day
+          <div className="mt-auto pt-3 border-t border-border/40 space-y-2">
+            {tvlUSD !== undefined && tvlUSD > 0 && (
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">TVL</span>
+                <span
+                  data-testid={`text-tvl-${moat.contractAddress}`}
+                  className="font-bold text-foreground tabular-nums"
+                >
+                  {formatUSD(tvlUSD)}
                 </span>
-              )}
-              <span>v{moat.moatVersion}</span>
-              {moat.automatedRewards && (
-                <span className="px-1.5 py-0.5 rounded bg-violet-500/10 border border-violet-500/20 text-violet-400 text-xs">
-                  Auto
+              </div>
+            )}
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <div>
+                <span className="font-medium text-foreground">FortWeight:</span>{" "}
+                <span data-testid={`text-fortweight-${moat.contractAddress}`} className="text-primary font-bold">
+                  {moat.fortWeight}x
                 </span>
-              )}
+              </div>
+              <div className="flex items-center gap-2">
+                {dailyRewardUSD > 0 && (
+                  <span className="text-emerald-400 font-semibold tabular-nums">
+                    {formatUSD(dailyRewardUSD)}/day
+                  </span>
+                )}
+                <span>v{moat.moatVersion}</span>
+                {moat.automatedRewards && (
+                  <span className="px-1.5 py-0.5 rounded bg-violet-500/10 border border-violet-500/20 text-violet-400 text-xs">
+                    Auto
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>

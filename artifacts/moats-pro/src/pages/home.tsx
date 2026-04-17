@@ -1,8 +1,11 @@
 import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
+import { useReadContracts } from "wagmi";
+import { formatUnits } from "viem";
 import { useAllMoatConfigs, useMapsLeaderboard, useEvents } from "@/hooks/use-moats-api";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
+import { MOAT_V3_ABI, ERC20_ABI } from "@/lib/moat-abi";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { MoatCard } from "@/components/moat-card";
@@ -15,6 +18,50 @@ export default function Home() {
   const { data: leaderboard } = useMapsLeaderboard();
   const { data: eventsData } = useEvents();
 
+  const moatOnchainContracts = useMemo(() => {
+    if (!configs) return [];
+    return configs.flatMap((c) => [
+      { address: c.contractAddress as `0x${string}`, abi: MOAT_V3_ABI, functionName: "totalStaked" as const },
+      { address: c.contractAddress as `0x${string}`, abi: MOAT_V3_ABI, functionName: "stakingToken" as const },
+    ]);
+  }, [configs]);
+
+  const { data: moatOnchainData } = useReadContracts({
+    contracts: moatOnchainContracts,
+    query: { enabled: moatOnchainContracts.length > 0 },
+  });
+
+  const stakingTokenAddrs = useMemo(() => {
+    if (!moatOnchainData || !configs) return [] as string[];
+    return configs.map((_, i) => {
+      const r = moatOnchainData[i * 2 + 1];
+      return r?.status === "success" ? (r.result as string) : "";
+    });
+  }, [moatOnchainData, configs]);
+
+  const uniqueStakingTokens = useMemo(
+    () => [...new Set(stakingTokenAddrs.filter(Boolean))],
+    [stakingTokenAddrs]
+  );
+
+  const { data: decimalsData } = useReadContracts({
+    contracts: uniqueStakingTokens.map((addr) => ({
+      address: addr as `0x${string}`,
+      abi: ERC20_ABI,
+      functionName: "decimals" as const,
+    })),
+    query: { enabled: uniqueStakingTokens.length > 0 },
+  });
+
+  const decimalsMap = useMemo((): Record<string, number> => {
+    const m: Record<string, number> = {};
+    uniqueStakingTokens.forEach((addr, i) => {
+      const r = decimalsData?.[i];
+      m[addr.toLowerCase()] = r?.status === "success" ? Number(r.result) : 18;
+    });
+    return m;
+  }, [uniqueStakingTokens, decimalsData]);
+
   const allLlamaIds = useMemo(() => {
     if (!configs) return [];
     const ids = new Set<string>();
@@ -25,10 +72,32 @@ export default function Home() {
         }
       }
     }
+    stakingTokenAddrs.forEach((addr, i) => {
+      if (addr && configs[i]) ids.add(getLlamaId(configs[i].network, addr));
+    });
     return [...ids];
-  }, [configs]);
+  }, [configs, stakingTokenAddrs]);
 
   const { data: priceMap } = useTokenPrices(allLlamaIds);
+
+  const tvlMap = useMemo((): Record<string, number> => {
+    if (!moatOnchainData || !configs || !priceMap) return {};
+    const m: Record<string, number> = {};
+    configs.forEach((c, i) => {
+      const stakedResult = moatOnchainData[i * 2];
+      const tokenResult = moatOnchainData[i * 2 + 1];
+      if (stakedResult?.status !== "success" || tokenResult?.status !== "success") return;
+      const totalStaked = stakedResult.result as bigint;
+      const tokenAddr = (tokenResult.result as string).toLowerCase();
+      const dec = decimalsMap[tokenAddr] ?? 18;
+      const llamaId = getLlamaId(c.network, tokenAddr);
+      const price = priceMap[llamaId] ?? 0;
+      if (price > 0) {
+        m[c.contractAddress.toLowerCase()] = parseFloat(formatUnits(totalStaked, dec)) * price;
+      }
+    });
+    return m;
+  }, [moatOnchainData, configs, priceMap, decimalsMap]);
 
   const statusOptions = configs
     ? ["all", ...new Set(configs.map((c) => c.status))]
@@ -167,7 +236,11 @@ export default function Home() {
           >
             {filteredMoats.map((moat) => (
               <motion.div key={moat.contractAddress} variants={itemVariants}>
-                <MoatCard moat={moat} priceMap={priceMap} />
+                <MoatCard
+                  moat={moat}
+                  priceMap={priceMap}
+                  tvlUSD={tvlMap[moat.contractAddress.toLowerCase()]}
+                />
               </motion.div>
             ))}
           </motion.div>

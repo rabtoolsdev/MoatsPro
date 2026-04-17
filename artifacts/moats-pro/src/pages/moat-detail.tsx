@@ -482,15 +482,28 @@ export default function MoatDetail() {
                   <div className="mt-4 pt-4 border-t border-border/50">
                     <p className="text-xs text-muted-foreground mb-2">Pending Rewards</p>
                     <div className="flex flex-wrap gap-2">
-                      {userInfo.pendingRewards[0].map((token, i) => (
-                        <span
-                          key={token}
-                          className="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs font-mono text-emerald-400"
-                        >
-                          {parseFloat(formatUnits(userInfo.pendingRewards![1][i], 18)).toFixed(6)}{" "}
-                          from {formatAddress(token)}
-                        </span>
-                      ))}
+                      {userInfo.pendingRewards[0].map((token, i) => {
+                        const amount = parseFloat(formatUnits(userInfo.pendingRewards![1][i], 18));
+                        const llamaId = getLlamaId(network, token);
+                        const price = priceMap?.[llamaId] ?? 0;
+                        const usdVal = amount * price;
+                        const rewardConfig = moatConfig?.rewardTokens.find(
+                          (t) => t.tokenAddress?.toLowerCase() === token.toLowerCase()
+                        );
+                        return (
+                          <div
+                            key={token}
+                            className="px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400"
+                          >
+                            <span className="font-bold">
+                              {amount.toFixed(6)} {rewardConfig?.symbol ?? formatAddress(token)}
+                            </span>
+                            {usdVal > 0 && (
+                              <span className="ml-1.5 text-emerald-300/70">≈ {formatUSD(usdVal)}</span>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
