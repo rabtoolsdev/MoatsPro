@@ -57,6 +57,8 @@ export default function Portfolio() {
         if (r?.status !== "success") return null;
         const [stakedAmount, totalUserBurn, stakingPoints, burnPoints, activeLockCount] =
           r.result as [bigint, bigint, bigint, bigint, bigint];
+        // Skip deprecated moats
+        if (config.status === "Deprecated") return null;
         // Show if any kind of participation exists
         if (
           stakedAmount === 0n &&
