@@ -74,7 +74,7 @@ export default function Home() {
       }
     }
     stakingTokenAddrs.forEach((addr, i) => {
-      if (addr && configs[i]) ids.add(getLlamaId(configs[i].network, addr));
+      if (addr && configs[i]?.network) ids.add(getLlamaId(configs[i].network, addr));
     });
     return [...ids];
   }, [configs, stakingTokenAddrs]);

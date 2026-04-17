@@ -6,6 +6,8 @@ import { formatAddress, getMoatMeta, formatUSD, getTokenLogoUrl } from "@/lib/mo
 import type { MoatMeta } from "@/lib/moat-metadata";
 import { getLlamaId } from "@/hooks/use-token-prices";
 import type { MoatConfig } from "@/lib/moats-api";
+import { useReadContract } from "wagmi";
+import { MOAT_LOGO_ABI } from "@/lib/moat-abi";
 
 interface MoatCardProps {
   moat: MoatConfig;
@@ -52,19 +54,31 @@ function NetworkBadge({ network }: { network?: string }) {
 function MoatLogo({
   meta,
   primaryTokenAddress,
+  contractAddress,
   size = "sm",
 }: {
   meta: MoatMeta;
   primaryTokenAddress?: string;
+  contractAddress?: string;
   size?: "sm" | "lg";
 }) {
   const [imgError, setImgError] = useState(false);
+
+  const { data: onChainLogoUrl } = useReadContract({
+    address: contractAddress as `0x${string}` | undefined,
+    abi: MOAT_LOGO_ABI,
+    functionName: "getLogoURL",
+    query: { enabled: !!contractAddress },
+  });
 
   const sizeClass = size === "sm"
     ? "w-10 h-10 text-sm"
     : "w-14 h-14 text-xl";
 
-  const logoUrl = meta.logoUrl || (primaryTokenAddress ? getTokenLogoUrl(primaryTokenAddress) : "");
+  const logoUrl =
+    (onChainLogoUrl && onChainLogoUrl.length > 0 ? onChainLogoUrl : null) ||
+    meta.logoUrl ||
+    (primaryTokenAddress ? getTokenLogoUrl(primaryTokenAddress) : "");
 
   if (logoUrl && !imgError) {
     return (
@@ -116,7 +130,7 @@ export function MoatCard({ moat, priceMap, tvlUSD }: MoatCardProps) {
         <div className="relative p-6 flex flex-col flex-1">
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3 min-w-0">
-              <MoatLogo meta={meta} primaryTokenAddress={primaryTokenAddress} size="sm" />
+              <MoatLogo meta={meta} primaryTokenAddress={primaryTokenAddress} contractAddress={moat.contractAddress} size="sm" />
               <div className="min-w-0">
                 <p
                   data-testid={`text-moat-name-${moat.contractAddress}`}

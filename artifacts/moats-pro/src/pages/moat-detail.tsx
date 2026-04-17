@@ -293,6 +293,7 @@ export default function MoatDetail() {
                   moatConfig?.rewardTokens?.filter((t) => t.enabled)[0]?.tokenAddress ||
                   getMoatMeta(contractAddress).tokenAddress
                 }
+                contractAddress={contractAddress}
                 size="lg"
               />
               <div>

@@ -11,8 +11,9 @@ const CHAIN_MAP: Record<string, string> = {
   bsc: "bsc",
 };
 
-export function getLlamaId(network: string, address: string): string {
-  const chain = CHAIN_MAP[network.toLowerCase()] ?? network.toLowerCase();
+export function getLlamaId(network: string | null | undefined, address: string): string {
+  const net = network ?? "avax";
+  const chain = CHAIN_MAP[net.toLowerCase()] ?? net.toLowerCase();
   return `${chain}:${address.toLowerCase()}`;
 }
 

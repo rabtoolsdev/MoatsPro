@@ -213,3 +213,13 @@ export const ERC20_ABI = [
     type: "function",
   },
 ] as const;
+
+export const MOAT_LOGO_ABI = [
+  {
+    inputs: [],
+    name: "getLogoURL",
+    outputs: [{ internalType: "string", name: "", type: "string" }],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;

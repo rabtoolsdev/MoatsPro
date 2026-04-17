@@ -2,6 +2,7 @@ import { createAppKit } from "@reown/appkit/react";
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
 import { mainnet, arbitrum, base, optimism, polygon, avalanche } from "@reown/appkit/networks";
 import type { AppKitNetwork } from "@reown/appkit/networks";
+import { http } from "wagmi";
 
 export const projectId = "13318bff388bcd13cf50b4a10e9d7671";
 
@@ -12,6 +13,14 @@ export const wagmiAdapter = new WagmiAdapter({
   networks,
   projectId,
   ssr: false,
+  transports: {
+    [avalanche.id]: http("https://api.avax.network/ext/bc/C/rpc"),
+    [mainnet.id]: http("https://eth.llamarpc.com"),
+    [arbitrum.id]: http("https://arb1.arbitrum.io/rpc"),
+    [base.id]: http("https://mainnet.base.org"),
+    [optimism.id]: http("https://mainnet.optimism.io"),
+    [polygon.id]: http("https://polygon-rpc.com"),
+  },
 });
 
 createAppKit({
