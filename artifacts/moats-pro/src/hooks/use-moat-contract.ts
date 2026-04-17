@@ -57,6 +57,13 @@ export function useMoatStats(contractAddress: MoatContractAddress | undefined) {
     query: { enabled },
   });
 
+  const unstakeFee = useReadContract({
+    address: contractAddress,
+    abi: MOAT_V3_ABI,
+    functionName: "unstakeFee",
+    query: { enabled },
+  });
+
   return {
     totalStaked: totalStaked.data,
     totalLocked: totalLocked.data,
@@ -65,6 +72,7 @@ export function useMoatStats(contractAddress: MoatContractAddress | undefined) {
     activeUserCount: activeUserCount.data,
     stakingEnabled: stakingEnabled.data,
     stakingToken: stakingToken.data,
+    unstakeFee: unstakeFee.data,
     isLoading:
       totalStaked.isLoading ||
       totalLocked.isLoading ||
