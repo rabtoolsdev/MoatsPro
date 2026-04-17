@@ -81,13 +81,10 @@ export default function MoatDetail() {
     ? allowance.data >= BigInt(Math.floor(parseFloat(burnAmount || "0") * 10 ** decimals))
     : false;
 
-  const totalPoints = pointsV2
-    ? pointsV2.reduce((sum, p) => sum + p.points, 0)
-    : 0;
-  const totalTimeWeightedPoints = pointsV2
-    ? pointsV2.reduce((sum, p) => sum + (p.timeWeightedPoints || 0), 0)
-    : 0;
-  const participantCount = pointsV2?.length || 0;
+  const pointsV2Array = Array.isArray(pointsV2) ? pointsV2 : [];
+  const totalPoints = pointsV2Array.reduce((sum, p) => sum + p.points, 0);
+  const totalTimeWeightedPoints = pointsV2Array.reduce((sum, p) => sum + (p.timeWeightedPoints || 0), 0);
+  const participantCount = pointsV2Array.length;
 
   const totalStakedFormatted =
     stats.totalStaked !== undefined
@@ -468,7 +465,7 @@ export default function MoatDetail() {
             )}
 
             {/* Top Stakers (from points v2) */}
-            {pointsV2 && pointsV2.length > 0 && (
+            {pointsV2Array.length > 0 && (
               <div className="rounded-2xl border border-border bg-card/30 overflow-hidden">
                 <div className="px-6 py-4 border-b border-border/50 flex items-center justify-between">
                   <h3 className="font-semibold">Top Stakers</h3>
@@ -477,7 +474,7 @@ export default function MoatDetail() {
                   </span>
                 </div>
                 <div className="divide-y divide-border/50">
-                  {[...pointsV2]
+                  {[...pointsV2Array]
                     .sort((a, b) => b.points - a.points)
                     .slice(0, 10)
                     .map((entry, i) => (
