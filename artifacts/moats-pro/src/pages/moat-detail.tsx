@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams } from "wouter";
-import { useAccount } from "wagmi";
+import { useAccount, useReadContracts } from "wagmi";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Zap, Users, TrendingUp, Lock, Gift, Flame,
@@ -19,6 +19,7 @@ import { Footer } from "@/components/footer";
 import { ActivityFeed } from "@/components/activity-feed";
 import { formatAddress, formatPoints, timeAgo, getMoatMeta, formatUSD } from "@/lib/moat-metadata";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
+import { ERC20_ABI } from "@/lib/moat-abi";
 
 type ActionTab = "stake" | "lock" | "claim" | "withdraw" | "burn";
 
@@ -78,6 +79,24 @@ export default function MoatDetail() {
   const stakingLlamaId = stats.stakingToken ? getLlamaId(network, stats.stakingToken) : "";
   const allLlamaIds = [...new Set([...rewardLlamaIds, ...(stakingLlamaId ? [stakingLlamaId] : [])])];
   const { data: priceMap } = useTokenPrices(allLlamaIds);
+
+  const pendingRewardTokenAddrs = userInfo.pendingRewards?.[0] ?? [];
+  const { data: pendingRewardDecimals } = useReadContracts({
+    contracts: pendingRewardTokenAddrs.map((addr) => ({
+      address: addr as `0x${string}`,
+      abi: ERC20_ABI,
+      functionName: "decimals" as const,
+    })),
+    query: { enabled: pendingRewardTokenAddrs.length > 0 },
+  });
+  const getPendingRewardDecimals = (idx: number): number => {
+    const fromConfig = moatConfig?.rewardTokens.find(
+      (t) => t.tokenAddress?.toLowerCase() === pendingRewardTokenAddrs[idx]?.toLowerCase()
+    );
+    if (fromConfig && (fromConfig as any).decimals) return (fromConfig as any).decimals as number;
+    const r = pendingRewardDecimals?.[idx];
+    return r?.status === "success" ? Number(r.result) : 18;
+  };
 
   const decimals = tokenBalance.decimals ?? 18;
   const hasAllowanceForStake = allowance.data !== undefined && stakeAmount
@@ -483,7 +502,8 @@ export default function MoatDetail() {
                     <p className="text-xs text-muted-foreground mb-2">Pending Rewards</p>
                     <div className="flex flex-wrap gap-2">
                       {userInfo.pendingRewards[0].map((token, i) => {
-                        const amount = parseFloat(formatUnits(userInfo.pendingRewards![1][i], 18));
+                        const rewardDec = getPendingRewardDecimals(i);
+                        const amount = parseFloat(formatUnits(userInfo.pendingRewards![1][i], rewardDec));
                         const llamaId = getLlamaId(network, token);
                         const price = priceMap?.[llamaId] ?? 0;
                         const usdVal = amount * price;
@@ -915,19 +935,31 @@ export default function MoatDetail() {
                           </p>
                           {userInfo.pendingRewards && userInfo.pendingRewards[0].length > 0 ? (
                             <div className="mt-3 space-y-1.5">
-                              {userInfo.pendingRewards[0].map((token, i) => (
-                                <div
-                                  key={token}
-                                  className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-background/50 text-xs"
-                                >
-                                  <span className="font-mono text-muted-foreground">
-                                    {formatAddress(token)}
-                                  </span>
-                                  <span className="font-bold text-emerald-400">
-                                    {parseFloat(formatUnits(userInfo.pendingRewards![1][i], 18)).toFixed(6)}
-                                  </span>
-                                </div>
-                              ))}
+                              {userInfo.pendingRewards[0].map((token, i) => {
+                                const claimDec = getPendingRewardDecimals(i);
+                                const claimAmt = parseFloat(formatUnits(userInfo.pendingRewards![1][i], claimDec));
+                                const claimConfig = moatConfig?.rewardTokens.find(
+                                  (t) => t.tokenAddress?.toLowerCase() === token.toLowerCase()
+                                );
+                                const claimLlamaId = getLlamaId(network, token);
+                                const claimUSD = claimAmt * (priceMap?.[claimLlamaId] ?? 0);
+                                return (
+                                  <div
+                                    key={token}
+                                    className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-background/50 text-xs"
+                                  >
+                                    <span className="font-semibold text-muted-foreground">
+                                      {claimConfig?.symbol ?? formatAddress(token)}
+                                    </span>
+                                    <span className="font-bold text-emerald-400">
+                                      {claimAmt.toFixed(6)}
+                                      {claimUSD > 0 && (
+                                        <span className="ml-1.5 text-emerald-300/60">≈ {formatUSD(claimUSD)}</span>
+                                      )}
+                                    </span>
+                                  </div>
+                                );
+                              })}
                             </div>
                           ) : (
                             <p className="text-xs text-muted-foreground mt-2">No pending rewards</p>
