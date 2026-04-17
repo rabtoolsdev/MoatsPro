@@ -75,6 +75,40 @@ export interface MoatPointV2 {
   lastUpdated: number;
 }
 
+export interface MoatLeaderboardEntry {
+  rank: number;
+  address: string;
+  username?: string;
+  points: number;
+  basePoints: number;
+  boosted: boolean;
+  boostMultiplier: number;
+  weight: number;
+}
+
+export interface MoatPointsV2Response {
+  currentEpoch?: {
+    epochNumber: number;
+    startTime: string;
+    endTime: string | null;
+    isComplete: boolean;
+  };
+  isTimeWeighted: boolean;
+  leaderboard: MoatLeaderboardEntry[];
+}
+
+export interface UserMoatPointsV2Response {
+  points: number;
+  isTimeWeighted: boolean;
+  fallbackInfo?: {
+    staked: number;
+    locked: number;
+    burnt: number;
+    total: number;
+    tokenAmounts?: { staked: number; locked: number; burnt: number };
+  };
+}
+
 // ---- Moat Config ----
 export interface RewardToken {
   _id: string;
@@ -126,10 +160,10 @@ export const moatsApi = {
   },
 
   getMoatPointsV2: (contractAddress: string) =>
-    apiFetch<MoatPointV2[]>(`/moat-points/v2/all?contractAddress=${contractAddress}`),
+    apiFetch<MoatPointsV2Response>(`/moat-points/v2/all?contractAddress=${contractAddress}`),
 
   getUserMoatPointsV2: (address: string, contractAddress: string) =>
-    apiFetch<MoatPointV2>(`/moat-points/v2/user/${address}?contractAddress=${contractAddress}`),
+    apiFetch<UserMoatPointsV2Response>(`/moat-points/v2/user/${address}?contractAddress=${contractAddress}`),
 
   getMapsLeaderboard: () =>
     apiFetch<MapsLeaderboardResponse>("/maps/score/all"),

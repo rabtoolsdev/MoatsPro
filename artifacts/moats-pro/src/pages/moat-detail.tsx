@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import { formatUnits } from "viem";
-import { useMoatConfig, useMoatPointsV2, useEvents } from "@/hooks/use-moats-api";
+import { useMoatConfig, useMoatPointsV2, useUserMoatPointsV2, useEvents } from "@/hooks/use-moats-api";
 import {
   useMoatStats, useUserMoatInfo, useTokenBalance,
   useTokenAllowance, useStakeMoat, useLockMoat, useClaimRewards, useApproveToken, useUnstakeMoat, useNftBoostBalance, useBurnMoat, useExitLock, useUserLocks,
@@ -91,6 +91,7 @@ export default function MoatDetail() {
     query: { enabled: !!contractAddress, staleTime: 5 * 60 * 1000, gcTime: 30 * 60 * 1000 },
   });
   const { data: pointsV2 } = useMoatPointsV2(contractAddress);
+  const { data: userMoatPoints } = useUserMoatPointsV2(userAddress, contractAddress);
   const { data: eventsData } = useEvents(contractAddress);
   const stats = useMoatStats(contractAddress as MoatContractAddress | undefined);
   const userInfo = useUserMoatInfo(contractAddress as MoatContractAddress | undefined);
@@ -164,10 +165,10 @@ export default function MoatDetail() {
     ? allowance.data >= BigInt(Math.floor(parseFloat(burnAmount || "0") * 10 ** decimals))
     : false;
 
-  const pointsV2Array = Array.isArray(pointsV2) ? pointsV2 : [];
-  const totalPoints = pointsV2Array.reduce((sum, p) => sum + p.points, 0);
-  const totalTimeWeightedPoints = pointsV2Array.reduce((sum, p) => sum + (p.timeWeightedPoints || 0), 0);
-  const participantCount = pointsV2Array.length;
+  const leaderboard = pointsV2?.leaderboard ?? [];
+  const totalPoints = leaderboard.reduce((sum, p) => sum + p.points, 0);
+  const totalTimeWeightedPoints = 0; // not available in v2 leaderboard response
+  const participantCount = leaderboard.length;
 
   const totalStakedFormatted =
     stats.totalStaked !== undefined
@@ -191,6 +192,9 @@ export default function MoatDetail() {
     userInfo.userInfo !== undefined
       ? parseFloat(formatUnits(userInfo.userInfo[1], decimals)).toFixed(4)
       : "0";
+  const userLockedAmount = locks.filter((l) => l.active).reduce((sum, l) => sum + l.amount, 0n);
+  const userLockedFormatted = parseFloat(formatUnits(userLockedAmount, decimals)).toFixed(4);
+  const userMoatPointsValue = userMoatPoints?.points ?? 0;
 
   const handleStake = () => {
     if (!stakeAmount || !isConnected) return;
@@ -526,6 +530,16 @@ export default function MoatDetail() {
                       })(),
                     },
                     {
+                      label: "Locked",
+                      value: userLockedFormatted,
+                      testId: "user-locked",
+                      usd: (() => {
+                        if (!stakingLlamaId || !priceMap) return 0;
+                        const price = priceMap[stakingLlamaId] ?? 0;
+                        return parseFloat(formatUnits(userLockedAmount, decimals)) * price;
+                      })(),
+                    },
+                    {
                       label: "Burned",
                       value: userBurnFormatted,
                       testId: "user-burned",
@@ -536,15 +550,13 @@ export default function MoatDetail() {
                       })(),
                     },
                     {
-                      label: "Staking Pts",
-                      value: formatPoints(Number(userInfo.userInfo?.[2] ?? 0n)),
-                      testId: "user-staking-points",
-                      usd: 0,
-                    },
-                    {
-                      label: "Burn Pts",
-                      value: formatPoints(Number(userInfo.userInfo?.[3] ?? 0n)),
-                      testId: "user-burn-points",
+                      label: "Moat Points",
+                      value: userMoatPointsValue >= 1_000_000
+                        ? `${(userMoatPointsValue / 1_000_000).toFixed(2)}M`
+                        : userMoatPointsValue >= 1_000
+                        ? `${(userMoatPointsValue / 1_000).toFixed(1)}K`
+                        : userMoatPointsValue.toLocaleString(),
+                      testId: "user-moat-points",
                       usd: 0,
                     },
                   ].map((item) => (
@@ -768,22 +780,22 @@ export default function MoatDetail() {
               </div>
             )}
 
-            {/* Top Stakers (from points v2) */}
-            {pointsV2Array.length > 0 && (
+            {/* Top Stakers (from points v2 leaderboard) */}
+            {leaderboard.length > 0 && (
               <div className="rounded-2xl border border-border bg-card/30 overflow-hidden">
                 <div className="px-6 py-4 border-b border-border/50 flex items-center justify-between">
                   <h3 className="font-semibold">Top Stakers</h3>
                   <span className="text-xs text-muted-foreground">
-                    {totalTimeWeightedPoints > 0 && `${formatPoints(totalTimeWeightedPoints)} TW pts total`}
+                    {participantCount} participants
                   </span>
                 </div>
                 <div className="divide-y divide-border/50">
-                  {[...pointsV2Array]
+                  {[...leaderboard]
                     .sort((a, b) => b.points - a.points)
                     .slice(0, 10)
                     .map((entry, i) => (
                       <div
-                        key={entry.walletAddress}
+                        key={entry.address}
                         data-testid={`row-staker-${i}`}
                         className="px-6 py-3 flex items-center justify-between"
                       >
@@ -791,15 +803,15 @@ export default function MoatDetail() {
                           <span className="w-6 h-6 rounded-full bg-muted/50 flex items-center justify-center text-xs font-bold text-muted-foreground">
                             {i + 1}
                           </span>
-                          <span className="font-mono text-sm">{formatAddress(entry.walletAddress)}</span>
+                          <span className="font-mono text-sm">{formatAddress(entry.address)}</span>
                         </div>
                         <div className="flex flex-col items-end">
                           <span className="font-bold text-primary text-sm tabular-nums">
                             {formatPoints(entry.points)} pts
                           </span>
-                          {entry.timeWeightedPoints > 0 && (
+                          {entry.boosted && (
                             <span className="text-xs text-muted-foreground tabular-nums">
-                              {formatPoints(entry.timeWeightedPoints)} TW
+                              {entry.boostMultiplier}x boost
                             </span>
                           )}
                         </div>
