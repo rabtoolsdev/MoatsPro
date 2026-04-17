@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useAccount, useReadContracts } from "wagmi";
 import { formatUnits } from "viem";
 import { motion } from "framer-motion";
-import { Wallet, TrendingUp, Award, AlertCircle, ArrowDownRight, Lock, DollarSign, ArrowUpRight } from "lucide-react";
+import { Wallet, TrendingUp, Award, AlertCircle, ArrowDownRight, Lock, DollarSign, ArrowUpRight, Flame } from "lucide-react";
 import { useMapsScore, useAllMoatConfigs, useUserEvents } from "@/hooks/use-moats-api";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
 import { MOAT_V3_ABI, ERC20_ABI } from "@/lib/moat-abi";
@@ -15,7 +15,14 @@ function formatTokenAmount(raw: bigint, decimals: number = 18): string {
   const val = parseFloat(formatUnits(raw, decimals));
   if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(2)}M`;
   if (val >= 1_000) return `${(val / 1_000).toFixed(1)}K`;
-  return val.toFixed(2);
+  return val.toFixed(4);
+}
+
+function formatPoints(pts: bigint): string {
+  const n = Number(pts);
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return n.toLocaleString();
 }
 
 export default function Portfolio() {
@@ -25,6 +32,7 @@ export default function Portfolio() {
   const { data: userEvents, isLoading: eventsLoading } = useUserEvents(address);
 
   // ── Step 1: batch userInfo(wallet) for ALL moats ──────────────────────────
+  // userInfo returns: (stakedAmount, totalUserBurn, stakingPoints, burnPoints, activeLockCount)
   const userInfoContracts = useMemo(() => {
     if (!configs || !address) return [];
     return configs.map((c) => ({
@@ -40,20 +48,31 @@ export default function Portfolio() {
     query: { enabled: userInfoContracts.length > 0 },
   });
 
-  // Build active positions purely from on-chain data
+  // Build active positions: include staked, locked, OR burn/staking points
   const activePositions = useMemo(() => {
     if (!userInfoResults || !configs) return [];
     return configs
       .map((config, i) => {
         const r = userInfoResults[i];
         if (r?.status !== "success") return null;
-        const [stakedAmount, , , , activeLockCount] = r.result as [bigint, bigint, bigint, bigint, bigint];
-        if (stakedAmount === 0n && activeLockCount === 0n) return null;
-        return { config, stakedAmount, activeLockCount };
+        const [stakedAmount, totalUserBurn, stakingPoints, burnPoints, activeLockCount] =
+          r.result as [bigint, bigint, bigint, bigint, bigint];
+        // Show if any kind of participation exists
+        if (
+          stakedAmount === 0n &&
+          activeLockCount === 0n &&
+          stakingPoints === 0n &&
+          burnPoints === 0n &&
+          totalUserBurn === 0n
+        ) return null;
+        return { config, stakedAmount, totalUserBurn, stakingPoints, burnPoints, activeLockCount };
       })
       .filter(Boolean) as Array<{
         config: NonNullable<typeof configs>[0];
         stakedAmount: bigint;
+        totalUserBurn: bigint;
+        stakingPoints: bigint;
+        burnPoints: bigint;
         activeLockCount: bigint;
       }>;
   }, [userInfoResults, configs]);
@@ -105,7 +124,7 @@ export default function Portfolio() {
     return m;
   }, [lockResults, activePositions]);
 
-  // ── Step 3: staking token + decimals for USD valuation ───────────────────
+  // ── Step 3: staking token + decimals for token amounts ────────────────────
   const stakingTokenContracts = useMemo(() => {
     return activePositions.map((pos) => ({
       address: pos.config.contractAddress as `0x${string}`,
@@ -192,6 +211,18 @@ export default function Portfolio() {
   const totalPortfolioValueUSD = activePositions.reduce((sum, pos, i) => sum + getPositionValueUSD(pos, i), 0);
   const totalDailyUSD = activePositions.reduce((sum, pos) => sum + getDailyRewardUSD(pos), 0);
   const isPositionsLoading = configsLoading || (userInfoContracts.length > 0 && infoLoading);
+
+  // Transaction history: only this wallet's own actions
+  const ownTransactions = useMemo(() => {
+    if (!userEvents || !address) return [];
+    const lowerAddr = address.toLowerCase();
+    const userActionTypes = new Set(["Staked", "Withdrawn", "Locked", "LockExited", "EarlyExit", "Burned", "RewardClaimed"]);
+    return userEvents.filter(
+      (ev) =>
+        userActionTypes.has(ev.eventType) &&
+        ev.args?.user?.toLowerCase() === lowerAddr
+    );
+  }, [userEvents, address]);
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -335,7 +366,7 @@ export default function Portfolio() {
                 <div>
                   <p className="text-sm font-medium text-amber-400">No MAPS Score Found</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Your wallet hasn't earned MAPS points yet. Stake or lock tokens in a Moat to start earning.
+                    Your wallet hasn't earned MAPS points yet. Stake, lock, or burn tokens in a Moat to start earning.
                   </p>
                 </div>
               </div>
@@ -353,7 +384,7 @@ export default function Portfolio() {
               ) : activePositions.length === 0 ? (
                 <div className="rounded-2xl border border-border bg-card/30 p-10 text-center text-muted-foreground">
                   <p className="text-sm">No active positions found for this wallet.</p>
-                  <p className="text-xs mt-1">Stake or lock tokens in a Moat to get started.</p>
+                  <p className="text-xs mt-1">Stake, lock, or burn tokens in a Moat to get started.</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -364,13 +395,14 @@ export default function Portfolio() {
                     const locked = lockedMap[pos.config.contractAddress.toLowerCase()] ?? 0n;
                     const posVal = getPositionValueUSD(pos, i);
                     const dailyUSD = getDailyRewardUSD(pos);
+                    const totalPoints = pos.stakingPoints + pos.burnPoints;
 
                     return (
                       <motion.div
                         key={pos.config.contractAddress}
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.05 }}
+                        transition={{ delay: i * 0.04 }}
                         className="rounded-2xl border border-border bg-card/30 p-5"
                       >
                         <div className="flex items-center justify-between gap-4">
@@ -392,7 +424,8 @@ export default function Portfolio() {
                             Manage
                           </Link>
                         </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
+
+                        <div className="flex flex-wrap gap-x-6 gap-y-3 mt-4">
                           {pos.stakedAmount > 0n && (
                             <div className="flex items-center gap-2">
                               <ArrowUpRight size={14} className="text-emerald-400" />
@@ -417,6 +450,24 @@ export default function Portfolio() {
                               <div>
                                 <p className="text-sm font-bold">{Number(pos.activeLockCount)}</p>
                                 <p className="text-xs text-muted-foreground">Active Locks</p>
+                              </div>
+                            </div>
+                          )}
+                          {pos.totalUserBurn > 0n && (
+                            <div className="flex items-center gap-2">
+                              <Flame size={14} className="text-rose-400" />
+                              <div>
+                                <p className="text-sm font-bold">{formatTokenAmount(pos.totalUserBurn, dec)}</p>
+                                <p className="text-xs text-muted-foreground">Burned</p>
+                              </div>
+                            </div>
+                          )}
+                          {totalPoints > 0n && (
+                            <div className="flex items-center gap-2">
+                              <Award size={14} className="text-violet-400" />
+                              <div>
+                                <p className="text-sm font-bold text-violet-400">{formatPoints(totalPoints)}</p>
+                                <p className="text-xs text-muted-foreground">MAPS Points</p>
                               </div>
                             </div>
                           )}
@@ -446,29 +497,29 @@ export default function Portfolio() {
               )}
             </div>
 
-            {/* Recent Transaction History — from indexed events */}
-            {!eventsLoading && userEvents && userEvents.length > 0 && (
+            {/* Transaction History — only this wallet's own transactions */}
+            {!eventsLoading && (
               <div>
                 <h2 className="text-xl font-bold mb-4">Transaction History</h2>
-                <div className="rounded-2xl border border-border bg-card/30 divide-y divide-border/50 overflow-hidden">
-                  {userEvents
-                    .filter((ev) =>
-                      ["Staked", "Withdrawn", "Locked", "LockExited", "EarlyExit", "Burned", "RewardClaimed"].includes(ev.eventType)
-                    )
-                    .slice(0, 15)
-                    .map((ev, i) => (
+                {ownTransactions.length === 0 ? (
+                  <div className="rounded-2xl border border-border bg-card/30 p-8 text-center text-muted-foreground text-sm">
+                    No personal transactions found.
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-border bg-card/30 divide-y divide-border/50 overflow-hidden">
+                    {ownTransactions.slice(0, 20).map((ev, i) => (
                       <motion.div
                         key={ev._id || i}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        transition={{ delay: i * 0.03 }}
+                        transition={{ delay: i * 0.02 }}
                         className="px-5 py-3 flex items-center justify-between gap-4"
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           <span className={`text-sm font-semibold shrink-0 ${getEventTypeColor(ev.eventType)}`}>
                             {getEventTypeLabel(ev.eventType)}
                           </span>
-                          <span className="text-xs text-muted-foreground font-mono truncate">
+                          <span className="text-xs text-muted-foreground truncate">
                             {getMoatMeta(ev.contractAddress).name}
                           </span>
                         </div>
@@ -486,7 +537,8 @@ export default function Portfolio() {
                         </div>
                       </motion.div>
                     ))}
-                </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
