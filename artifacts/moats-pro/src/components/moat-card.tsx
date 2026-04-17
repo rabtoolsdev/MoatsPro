@@ -6,13 +6,12 @@ import { formatAddress, getMoatMeta, formatUSD, getTokenLogoUrl } from "@/lib/mo
 import type { MoatMeta } from "@/lib/moat-metadata";
 import { getLlamaId } from "@/hooks/use-token-prices";
 import type { MoatConfig } from "@/lib/moats-api";
-import { useReadContract } from "wagmi";
-import { MOAT_LOGO_ABI } from "@/lib/moat-abi";
 
 interface MoatCardProps {
   moat: MoatConfig;
   priceMap?: Record<string, number>;
   tvlUSD?: number;
+  logoUrl?: string;
 }
 
 const statusColors: Record<string, { border: string; badge: string; text: string }> = {
@@ -54,22 +53,15 @@ function NetworkBadge({ network }: { network?: string }) {
 function MoatLogo({
   meta,
   primaryTokenAddress,
-  contractAddress,
+  onChainLogoUrl,
   size = "sm",
 }: {
   meta: MoatMeta;
   primaryTokenAddress?: string;
-  contractAddress?: string;
+  onChainLogoUrl?: string;
   size?: "sm" | "lg";
 }) {
-  const [imgError, setImgError] = useState(false);
-
-  const { data: onChainLogoUrl } = useReadContract({
-    address: contractAddress as `0x${string}` | undefined,
-    abi: MOAT_LOGO_ABI,
-    functionName: "getLogoURL",
-    query: { enabled: !!contractAddress },
-  });
+  const [failedUrl, setFailedUrl] = useState("");
 
   const sizeClass = size === "sm"
     ? "w-10 h-10 text-sm"
@@ -80,13 +72,13 @@ function MoatLogo({
     meta.logoUrl ||
     (primaryTokenAddress ? getTokenLogoUrl(primaryTokenAddress) : "");
 
-  if (logoUrl && !imgError) {
+  if (logoUrl && logoUrl !== failedUrl) {
     return (
       <img
         src={logoUrl}
         alt={meta.name}
         className={`${sizeClass} rounded-xl object-cover shrink-0 border border-border/30`}
-        onError={() => setImgError(true)}
+        onError={() => setFailedUrl(logoUrl)}
       />
     );
   }
@@ -102,7 +94,7 @@ function MoatLogo({
 
 export { MoatLogo };
 
-export function MoatCard({ moat, priceMap, tvlUSD }: MoatCardProps) {
+export function MoatCard({ moat, priceMap, tvlUSD, logoUrl }: MoatCardProps) {
   const statusStyle = statusColors[moat.status] || statusColors.Community;
   const activeRewardTokens = moat.rewardTokens.filter((t) => t.enabled);
   const meta = getMoatMeta(moat.contractAddress);
@@ -130,7 +122,7 @@ export function MoatCard({ moat, priceMap, tvlUSD }: MoatCardProps) {
         <div className="relative p-6 flex flex-col flex-1">
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3 min-w-0">
-              <MoatLogo meta={meta} primaryTokenAddress={primaryTokenAddress} contractAddress={moat.contractAddress} size="sm" />
+              <MoatLogo meta={meta} primaryTokenAddress={primaryTokenAddress} onChainLogoUrl={logoUrl} size="sm" />
               <div className="min-w-0">
                 <p
                   data-testid={`text-moat-name-${moat.contractAddress}`}

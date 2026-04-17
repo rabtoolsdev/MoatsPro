@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams } from "wouter";
-import { useAccount, useReadContracts } from "wagmi";
+import { useAccount, useReadContracts, useReadContract } from "wagmi";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Zap, Users, TrendingUp, Lock, Gift, Flame,
@@ -21,7 +21,7 @@ import { ActivityFeed } from "@/components/activity-feed";
 import { MoatLogo } from "@/components/moat-card";
 import { formatAddress, formatPoints, timeAgo, getMoatMeta, formatUSD } from "@/lib/moat-metadata";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
-import { ERC20_ABI } from "@/lib/moat-abi";
+import { ERC20_ABI, MOAT_LOGO_ABI } from "@/lib/moat-abi";
 
 type ActionTab = "stake" | "lock" | "claim" | "withdraw" | "burn";
 
@@ -84,6 +84,12 @@ export default function MoatDetail() {
   const [lockDays, setLockDays] = useState(30);
 
   const { data: moatConfig, isLoading: configLoading } = useMoatConfig(contractAddress);
+  const { data: onChainLogoUrl } = useReadContract({
+    address: contractAddress as `0x${string}` | undefined,
+    abi: MOAT_LOGO_ABI,
+    functionName: "getLogoURL",
+    query: { enabled: !!contractAddress, staleTime: 5 * 60 * 1000, gcTime: 30 * 60 * 1000 },
+  });
   const { data: pointsV2 } = useMoatPointsV2(contractAddress);
   const { data: eventsData } = useEvents(contractAddress);
   const stats = useMoatStats(contractAddress as MoatContractAddress | undefined);
@@ -293,7 +299,7 @@ export default function MoatDetail() {
                   moatConfig?.rewardTokens?.filter((t) => t.enabled)[0]?.tokenAddress ||
                   getMoatMeta(contractAddress).tokenAddress
                 }
-                contractAddress={contractAddress}
+                onChainLogoUrl={onChainLogoUrl ?? undefined}
                 size="lg"
               />
               <div>

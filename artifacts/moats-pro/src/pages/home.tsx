@@ -5,7 +5,7 @@ import { useReadContracts } from "wagmi";
 import { formatUnits } from "viem";
 import { useAllMoatConfigs, useMapsLeaderboard, useEvents } from "@/hooks/use-moats-api";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
-import { MOAT_V3_ABI, ERC20_ABI } from "@/lib/moat-abi";
+import { MOAT_V3_ABI, ERC20_ABI, MOAT_LOGO_ABI } from "@/lib/moat-abi";
 import { getMoatMeta } from "@/lib/moat-metadata";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
@@ -62,6 +62,32 @@ export default function Home() {
     });
     return m;
   }, [uniqueStakingTokens, decimalsData]);
+
+  const logoContracts = useMemo(() => {
+    if (!configs) return [];
+    return configs.map((c) => ({
+      address: c.contractAddress as `0x${string}`,
+      abi: MOAT_LOGO_ABI,
+      functionName: "getLogoURL" as const,
+    }));
+  }, [configs]);
+
+  const { data: logoData } = useReadContracts({
+    contracts: logoContracts,
+    query: { enabled: logoContracts.length > 0, staleTime: 5 * 60 * 1000, gcTime: 30 * 60 * 1000 },
+  });
+
+  const logoMap = useMemo((): Record<string, string> => {
+    if (!logoData || !configs) return {};
+    const m: Record<string, string> = {};
+    configs.forEach((c, i) => {
+      const r = logoData[i];
+      if (r?.status === "success" && typeof r.result === "string" && r.result.length > 0) {
+        m[c.contractAddress.toLowerCase()] = r.result;
+      }
+    });
+    return m;
+  }, [logoData, configs]);
 
   const allLlamaIds = useMemo(() => {
     if (!configs) return [];
@@ -246,6 +272,7 @@ export default function Home() {
                   moat={moat}
                   priceMap={priceMap}
                   tvlUSD={tvlMap[moat.contractAddress.toLowerCase()]}
+                  logoUrl={logoMap[moat.contractAddress.toLowerCase()]}
                 />
               </motion.div>
             ))}
