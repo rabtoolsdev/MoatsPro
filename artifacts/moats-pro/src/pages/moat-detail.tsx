@@ -5,13 +5,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Zap, Users, TrendingUp, Lock, Gift, Flame,
   AlertCircle, CheckCircle, Loader2, Coins, ExternalLink,
+  Unlock, Clock, AlertTriangle,
 } from "lucide-react";
 import { Link } from "wouter";
 import { formatUnits } from "viem";
 import { useMoatConfig, useMoatPointsV2, useEvents } from "@/hooks/use-moats-api";
 import {
   useMoatStats, useUserMoatInfo, useTokenBalance,
-  useTokenAllowance, useStakeMoat, useLockMoat, useClaimRewards, useApproveToken, useUnstakeMoat, useNftBoostBalance, useBurnMoat,
+  useTokenAllowance, useStakeMoat, useLockMoat, useClaimRewards, useApproveToken, useUnstakeMoat, useNftBoostBalance, useBurnMoat, useExitLock, useUserLocks,
 } from "@/hooks/use-moat-contract";
 import type { MoatContractAddress } from "@/hooks/use-moat-contract";
 import { Navbar } from "@/components/navbar";
@@ -40,6 +41,37 @@ const lockMultiplierInfo = [
   { days: 730, multiplier: "5x", label: "2 Years" },
 ];
 
+function getLockDurationLabel(originalDurationSecs: bigint): string {
+  const secs = Number(originalDurationSecs);
+  const days = Math.round(secs / (24 * 3600));
+  if (days >= 700) return "2 Years · 5x";
+  if (days >= 350) return "1 Year · 4x";
+  if (days >= 150) return "6 Months · 3x";
+  if (days >= 80) return "3 Months · 2.5x";
+  if (days >= 25) return "1 Month · 2x";
+  return `${days} days`;
+}
+
+function formatTimeRemaining(endTimestamp: bigint): string {
+  const remainingMs = Number(endTimestamp) * 1000 - Date.now();
+  if (remainingMs <= 0) return "Ready to exit";
+  const secs = Math.floor(remainingMs / 1000);
+  if (secs >= 365 * 24 * 3600) {
+    const y = Math.floor(secs / (365 * 24 * 3600));
+    return `${y} year${y > 1 ? "s" : ""} left`;
+  }
+  if (secs >= 30 * 24 * 3600) {
+    const m = Math.floor(secs / (30 * 24 * 3600));
+    return `${m} month${m > 1 ? "s" : ""} left`;
+  }
+  if (secs >= 24 * 3600) {
+    const d = Math.floor(secs / (24 * 3600));
+    return `${d} day${d > 1 ? "s" : ""} left`;
+  }
+  const h = Math.floor(secs / 3600);
+  return h > 0 ? `${h}h left` : "< 1h left";
+}
+
 export default function MoatDetail() {
   const params = useParams<{ address: string }>();
   const contractAddress = params.address as MoatContractAddress | undefined;
@@ -63,6 +95,7 @@ export default function MoatDetail() {
 
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [burnAmount, setBurnAmount] = useState("");
+  const [earlyExitConfirm, setEarlyExitConfirm] = useState<number | null>(null);
 
   const stakeAction = useStakeMoat(contractAddress as MoatContractAddress | undefined);
   const lockAction = useLockMoat(contractAddress as MoatContractAddress | undefined);
@@ -70,7 +103,15 @@ export default function MoatDetail() {
   const approveAction = useApproveToken(stats.stakingToken as MoatContractAddress | undefined);
   const unstakeAction = useUnstakeMoat(contractAddress as MoatContractAddress | undefined);
   const burnAction = useBurnMoat(contractAddress as MoatContractAddress | undefined);
+  const exitAction = useExitLock(contractAddress as MoatContractAddress | undefined);
   const nftBoostBalance = useNftBoostBalance(moatConfig?.nftBoostContract as MoatContractAddress | undefined);
+
+  const activeLockCount = Number(userInfo.userInfo?.[4] ?? 0n);
+  const { locks, isLoading: locksLoading, refetch: refetchLocks } = useUserLocks(
+    contractAddress as MoatContractAddress | undefined,
+    userAddress,
+    activeLockCount
+  );
 
   const network = moatConfig?.network ?? "avalanche";
   const rewardLlamaIds = (moatConfig?.rewardTokens ?? [])
@@ -536,6 +577,173 @@ export default function MoatDetail() {
                     </span>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* My Locks */}
+            {isConnected && (activeLockCount > 0 || locksLoading) && (
+              <div
+                data-testid="section-my-locks"
+                className="rounded-2xl border border-cyan-500/20 bg-card/30 overflow-hidden"
+              >
+                <div className="px-6 py-4 border-b border-border/50 flex items-center justify-between">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <Lock size={16} className="text-cyan-400" />
+                    My Locks
+                    {locks.length > 0 && (
+                      <span className="px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-xs text-cyan-400">
+                        {locks.length} active
+                      </span>
+                    )}
+                  </h3>
+                </div>
+
+                {locksLoading ? (
+                  <div className="p-6 flex items-center gap-2 text-muted-foreground text-sm">
+                    <Loader2 size={16} className="animate-spin" /> Loading locks…
+                  </div>
+                ) : locks.length === 0 ? (
+                  <div className="p-6 text-center">
+                    <Lock size={28} className="mx-auto mb-2 text-muted-foreground/30" />
+                    <p className="text-sm text-muted-foreground">No active locks found</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border/50">
+                    {locks.map((lock) => {
+                      const nowSec = BigInt(Math.floor(Date.now() / 1000));
+                      const isMatured = nowSec >= lock.end;
+                      const endDate = new Date(Number(lock.end) * 1000);
+                      const timeLeft = formatTimeRemaining(lock.end);
+                      const durationLabel = getLockDurationLabel(lock.originalDuration);
+                      const amountFormatted = parseFloat(
+                        formatUnits(lock.amount, decimals)
+                      ).toLocaleString(undefined, { maximumFractionDigits: 4 });
+                      const isBusy = exitAction.isPending || exitAction.isConfirming;
+
+                      return (
+                        <motion.div
+                          key={lock.index}
+                          data-testid={`lock-row-${lock.index}`}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className="px-6 py-5 space-y-4"
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                {isMatured ? (
+                                  <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                                    <Unlock size={10} /> Ready
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+                                    <Lock size={10} /> Locked
+                                  </span>
+                                )}
+                                <span className="text-xs text-muted-foreground">
+                                  Lock #{lock.index + 1}
+                                </span>
+                              </div>
+                              <p className="text-xl font-bold tabular-nums">
+                                {amountFormatted}{" "}
+                                <span className="text-sm font-normal text-muted-foreground">
+                                  {tokenBalance.symbol}
+                                </span>
+                              </p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className="text-xs text-muted-foreground mb-0.5 flex items-center justify-end gap-1">
+                                <Clock size={11} /> Unlocks
+                              </p>
+                              <p className="text-sm font-medium tabular-nums">
+                                {endDate.toLocaleDateString(undefined, {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                })}
+                              </p>
+                              <p className={`text-xs font-medium ${isMatured ? "text-emerald-400" : "text-cyan-400"}`}>
+                                {timeLeft}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4 text-xs">
+                            <div>
+                              <p className="text-muted-foreground mb-0.5">Duration</p>
+                              <p className="font-semibold">{durationLabel}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground mb-0.5">Lock Points</p>
+                              <p className="font-semibold text-primary">
+                                {formatPoints(Number(lock.points))}
+                              </p>
+                            </div>
+                          </div>
+
+                          {isMatured ? (
+                            <button
+                              data-testid={`btn-exit-lock-${lock.index}`}
+                              onClick={() => exitAction.exitLock(lock.index)}
+                              disabled={isBusy}
+                              className="w-full py-2.5 px-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-medium hover:bg-emerald-500/20 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                              {isBusy ? <Loader2 size={14} className="animate-spin" /> : <Unlock size={14} />}
+                              {exitAction.isConfirming ? "Confirming…" : exitAction.isPending ? "Submitting…" : "Exit Lock"}
+                            </button>
+                          ) : earlyExitConfirm === lock.index ? (
+                            <div className="space-y-2">
+                              <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400">
+                                <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                                <span>
+                                  Early exit will forfeit lock point bonuses and may incur a penalty fee set by the Moat owner. This cannot be undone.
+                                </span>
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => setEarlyExitConfirm(null)}
+                                  className="flex-1 py-2 rounded-xl border border-border text-muted-foreground text-xs hover:border-primary/50 transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  data-testid={`btn-early-exit-confirm-${lock.index}`}
+                                  onClick={() => {
+                                    exitAction.earlyExitLock(lock.index);
+                                    setEarlyExitConfirm(null);
+                                  }}
+                                  disabled={isBusy}
+                                  className="flex-1 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-medium hover:bg-amber-500/20 transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
+                                >
+                                  {isBusy ? <Loader2 size={12} className="animate-spin" /> : <AlertTriangle size={12} />}
+                                  Confirm Early Exit
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              data-testid={`btn-early-exit-${lock.index}`}
+                              onClick={() => setEarlyExitConfirm(lock.index)}
+                              className="w-full py-2.5 px-4 rounded-xl border border-amber-500/20 bg-amber-500/5 text-amber-400 text-sm font-medium hover:bg-amber-500/10 transition-colors flex items-center justify-center gap-2"
+                            >
+                              <AlertTriangle size={14} />
+                              Early Exit
+                            </button>
+                          )}
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div className="px-6 pb-4">
+                  <TxStatus
+                    isPending={exitAction.isPending}
+                    isConfirming={exitAction.isConfirming}
+                    isSuccess={exitAction.isSuccess}
+                    error={exitAction.error}
+                  />
+                </div>
               </div>
             )}
 

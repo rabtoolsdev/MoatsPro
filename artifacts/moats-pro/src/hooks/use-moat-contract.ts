@@ -1,6 +1,7 @@
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { useAccount } from "wagmi";
 import { parseUnits, formatUnits } from "viem";
+import { useMemo } from "react";
 import { MOAT_V3_ABI, ERC20_ABI } from "@/lib/moat-abi";
 
 export type MoatContractAddress = `0x${string}`;
@@ -308,4 +309,50 @@ export function useExitLock(contractAddress: MoatContractAddress | undefined) {
   };
 
   return { exitLock, earlyExitLock, isPending, isConfirming, isSuccess, error, hash };
+}
+
+export interface UserLock {
+  index: number;
+  amount: bigint;
+  end: bigint;
+  points: bigint;
+  originalDuration: bigint;
+  lastUpdated: bigint;
+  active: boolean;
+}
+
+export function useUserLocks(
+  contractAddress: MoatContractAddress | undefined,
+  userAddress: `0x${string}` | undefined,
+  activeLockCount: number
+) {
+  const contracts = useMemo(() => {
+    if (!contractAddress || !userAddress || activeLockCount === 0) return [];
+    return Array.from({ length: activeLockCount }, (_, i) => ({
+      address: contractAddress,
+      abi: MOAT_V3_ABI,
+      functionName: "getUserLock" as const,
+      args: [userAddress, BigInt(i)] as const,
+    }));
+  }, [contractAddress, userAddress, activeLockCount]);
+
+  const { data, isLoading, refetch } = useReadContracts({
+    contracts,
+    query: { enabled: contracts.length > 0 },
+  });
+
+  const locks = useMemo((): UserLock[] => {
+    if (!data) return [];
+    return data
+      .map((r, index) => {
+        if (r.status !== "success") return null;
+        const [amount, end, points, originalDuration, lastUpdated, active] = r.result as [
+          bigint, bigint, bigint, bigint, bigint, boolean
+        ];
+        return { index, amount, end, points, originalDuration, lastUpdated, active };
+      })
+      .filter((l): l is UserLock => l !== null && l.active);
+  }, [data]);
+
+  return { locks, isLoading, refetch };
 }
