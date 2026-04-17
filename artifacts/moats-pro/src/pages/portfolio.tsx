@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useQueries } from "@tanstack/react-query";
 import { useAccount, useReadContracts } from "wagmi";
 import { formatUnits } from "viem";
 import { motion } from "framer-motion";
@@ -6,6 +7,7 @@ import { Wallet, TrendingUp, Award, AlertCircle, ArrowDownRight, Lock, DollarSig
 import { useMapsScore, useAllMoatConfigs, useUserEvents } from "@/hooks/use-moats-api";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
 import { MOAT_V3_ABI, ERC20_ABI } from "@/lib/moat-abi";
+import { moatsApi } from "@/lib/moats-api";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { formatAddress, getEventTypeLabel, getEventTypeColor, getExplorerUrl, timeAgo, formatUSD, getMoatMeta } from "@/lib/moat-metadata";
@@ -18,12 +20,6 @@ function formatTokenAmount(raw: bigint, decimals: number = 18): string {
   return val.toFixed(4);
 }
 
-function formatPoints(pts: bigint): string {
-  const n = Number(pts);
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return n.toLocaleString();
-}
 
 export default function Portfolio() {
   const { address, isConnected } = useAccount();
@@ -214,6 +210,27 @@ export default function Portfolio() {
   const totalDailyUSD = activePositions.reduce((sum, pos) => sum + getDailyRewardUSD(pos), 0);
   const isPositionsLoading = configsLoading || (userInfoContracts.length > 0 && infoLoading);
 
+  // ── Step 5: fetch per-moat MAPS points from the API ──────────────────────
+  const moatPointsResults = useQueries({
+    queries: activePositions.map((pos) => ({
+      queryKey: ["moats", "points", "v2", "user", address, pos.config.contractAddress],
+      queryFn: () => moatsApi.getUserMoatPointsV2(address!, pos.config.contractAddress),
+      enabled: !!address,
+      staleTime: 60_000,
+    })),
+  });
+
+  const moatPointsMap = useMemo((): Record<string, number> => {
+    const m: Record<string, number> = {};
+    activePositions.forEach((pos, i) => {
+      const result = moatPointsResults[i];
+      if (result?.data?.points != null) {
+        m[pos.config.contractAddress.toLowerCase()] = result.data.points;
+      }
+    });
+    return m;
+  }, [moatPointsResults, activePositions]);
+
   // Transaction history: only this wallet's own actions
   const ownTransactions = useMemo(() => {
     if (!userEvents || !address) return [];
@@ -397,7 +414,7 @@ export default function Portfolio() {
                     const locked = lockedMap[pos.config.contractAddress.toLowerCase()] ?? 0n;
                     const posVal = getPositionValueUSD(pos, i);
                     const dailyUSD = getDailyRewardUSD(pos);
-                    const totalPoints = pos.stakingPoints + pos.burnPoints;
+                    const mapsPoints = moatPointsMap[pos.config.contractAddress.toLowerCase()] ?? 0;
 
                     return (
                       <motion.div
@@ -464,12 +481,18 @@ export default function Portfolio() {
                               </div>
                             </div>
                           )}
-                          {totalPoints > 0n && (
+                          {mapsPoints > 0 && (
                             <div className="flex items-center gap-2">
                               <Award size={14} className="text-violet-400" />
                               <div>
-                                <p className="text-sm font-bold text-violet-400">{formatPoints(totalPoints)}</p>
-                                <p className="text-xs text-muted-foreground">MAPS Points</p>
+                                <p className="text-sm font-bold text-violet-400">
+                                  {mapsPoints >= 1_000_000
+                                    ? `${(mapsPoints / 1_000_000).toFixed(2)}M`
+                                    : mapsPoints >= 1_000
+                                    ? `${(mapsPoints / 1_000).toFixed(1)}K`
+                                    : mapsPoints.toLocaleString()}
+                                </p>
+                                <p className="text-xs text-muted-foreground">Moat Points</p>
                               </div>
                             </div>
                           )}
