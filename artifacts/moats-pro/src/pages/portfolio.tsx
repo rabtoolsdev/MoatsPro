@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useAccount, useReadContracts } from "wagmi";
 import { formatUnits } from "viem";
 import { motion } from "framer-motion";
-import { Wallet, TrendingUp, Award, AlertCircle, ArrowDownRight, ArrowUpRight, Lock, DollarSign } from "lucide-react";
+import { Wallet, TrendingUp, Award, AlertCircle, ArrowDownRight, Lock, DollarSign, ArrowUpRight } from "lucide-react";
 import { useMapsScore, useAllMoatConfigs, useUserEvents } from "@/hooks/use-moats-api";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
 import { MOAT_V3_ABI, ERC20_ABI } from "@/lib/moat-abi";
@@ -10,44 +10,9 @@ import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { formatAddress, getEventTypeLabel, getEventTypeColor, getExplorerUrl, timeAgo, formatUSD, getMoatMeta } from "@/lib/moat-metadata";
 import { Link } from "wouter";
-import type { MoatEvent } from "@/lib/moats-api";
 
-function derivePositions(events: MoatEvent[]) {
-  const moatMap: Record<
-    string,
-    { contractAddress: string; network: string; staked: bigint; locked: bigint; claimed: bigint; lastActivity: string }
-  > = {};
-
-  for (const ev of events) {
-    const key = ev.contractAddress.toLowerCase();
-    if (!moatMap[key]) {
-      moatMap[key] = {
-        contractAddress: ev.contractAddress,
-        network: ev.network,
-        staked: 0n,
-        locked: 0n,
-        claimed: 0n,
-        lastActivity: ev.timestamp,
-      };
-    }
-    const entry = moatMap[key];
-    const amt = ev.args.amount ? BigInt(ev.args.amount) : 0n;
-    if (ev.timestamp > entry.lastActivity) entry.lastActivity = ev.timestamp;
-
-    if (ev.eventType === "Staked") entry.staked += amt;
-    if (ev.eventType === "Withdrawn") entry.staked -= amt < entry.staked ? amt : entry.staked;
-    if (ev.eventType === "Locked") entry.locked += amt;
-    if (ev.eventType === "LockExited" || ev.eventType === "EarlyExit") entry.locked -= amt < entry.locked ? amt : entry.locked;
-    if (ev.eventType === "RewardClaimed") entry.claimed += amt;
-  }
-
-  return Object.values(moatMap).filter(
-    (p) => p.staked > 0n || p.locked > 0n
-  );
-}
-
-function formatTokens(raw: bigint): string {
-  const val = Number(raw) / 1e18;
+function formatTokenAmount(raw: bigint, decimals: number = 18): string {
+  const val = parseFloat(formatUnits(raw, decimals));
   if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(2)}M`;
   if (val >= 1_000) return `${(val / 1_000).toFixed(1)}K`;
   return val.toFixed(2);
@@ -59,22 +24,95 @@ export default function Portfolio() {
   const { data: configs, isLoading: configsLoading } = useAllMoatConfigs();
   const { data: userEvents, isLoading: eventsLoading } = useUserEvents(address);
 
-  const positions = userEvents ? derivePositions(userEvents) : [];
+  // ── Step 1: batch userInfo(wallet) for ALL moats ──────────────────────────
+  const userInfoContracts = useMemo(() => {
+    if (!configs || !address) return [];
+    return configs.map((c) => ({
+      address: c.contractAddress as `0x${string}`,
+      abi: MOAT_V3_ABI,
+      functionName: "userInfo" as const,
+      args: [address as `0x${string}`],
+    }));
+  }, [configs, address]);
 
-  const enrichedPositions = positions.map((pos) => {
-    const config = configs?.find(
-      (c) => c.contractAddress.toLowerCase() === pos.contractAddress.toLowerCase()
-    );
-    return { ...pos, config };
+  const { data: userInfoResults, isLoading: infoLoading } = useReadContracts({
+    contracts: userInfoContracts,
+    query: { enabled: userInfoContracts.length > 0 },
   });
 
+  // Build active positions purely from on-chain data
+  const activePositions = useMemo(() => {
+    if (!userInfoResults || !configs) return [];
+    return configs
+      .map((config, i) => {
+        const r = userInfoResults[i];
+        if (r?.status !== "success") return null;
+        const [stakedAmount, , , , activeLockCount] = r.result as [bigint, bigint, bigint, bigint, bigint];
+        if (stakedAmount === 0n && activeLockCount === 0n) return null;
+        return { config, stakedAmount, activeLockCount };
+      })
+      .filter(Boolean) as Array<{
+        config: NonNullable<typeof configs>[0];
+        stakedAmount: bigint;
+        activeLockCount: bigint;
+      }>;
+  }, [userInfoResults, configs]);
+
+  // ── Step 2: batch getUserLock for all active locks ─────────────────────────
+  const lockContracts = useMemo(() => {
+    if (!address) return [];
+    const calls: Array<{
+      address: `0x${string}`;
+      abi: typeof MOAT_V3_ABI;
+      functionName: "getUserLock";
+      args: [`0x${string}`, bigint];
+    }> = [];
+    activePositions.forEach((pos) => {
+      const count = Number(pos.activeLockCount);
+      for (let i = 0; i < count; i++) {
+        calls.push({
+          address: pos.config.contractAddress as `0x${string}`,
+          abi: MOAT_V3_ABI,
+          functionName: "getUserLock" as const,
+          args: [address as `0x${string}`, BigInt(i)],
+        });
+      }
+    });
+    return calls;
+  }, [activePositions, address]);
+
+  const { data: lockResults } = useReadContracts({
+    contracts: lockContracts,
+    query: { enabled: lockContracts.length > 0 },
+  });
+
+  const lockedMap = useMemo((): Record<string, bigint> => {
+    const m: Record<string, bigint> = {};
+    let idx = 0;
+    activePositions.forEach((pos) => {
+      const count = Number(pos.activeLockCount);
+      let total = 0n;
+      for (let i = 0; i < count; i++) {
+        const r = lockResults?.[idx];
+        if (r?.status === "success") {
+          const [amount, , , , , active] = r.result as [bigint, bigint, bigint, bigint, bigint, boolean];
+          if (active) total += amount;
+        }
+        idx++;
+      }
+      m[pos.config.contractAddress.toLowerCase()] = total;
+    });
+    return m;
+  }, [lockResults, activePositions]);
+
+  // ── Step 3: staking token + decimals for USD valuation ───────────────────
   const stakingTokenContracts = useMemo(() => {
-    return positions.map((pos) => ({
-      address: pos.contractAddress as `0x${string}`,
+    return activePositions.map((pos) => ({
+      address: pos.config.contractAddress as `0x${string}`,
       abi: MOAT_V3_ABI,
       functionName: "stakingToken" as const,
     }));
-  }, [positions]);
+  }, [activePositions]);
 
   const { data: stakingTokenResults } = useReadContracts({
     contracts: stakingTokenContracts,
@@ -82,80 +120,78 @@ export default function Portfolio() {
   });
 
   const positionStakingTokens = useMemo(() => {
-    return positions.map((_, i) => {
+    return activePositions.map((_, i) => {
       const r = stakingTokenResults?.[i];
       return r?.status === "success" ? (r.result as string) : "";
     });
-  }, [stakingTokenResults, positions]);
+  }, [stakingTokenResults, activePositions]);
 
-  const uniquePosStakingTokens = useMemo(
+  const uniqueStakingTokens = useMemo(
     () => [...new Set(positionStakingTokens.filter(Boolean))],
     [positionStakingTokens]
   );
 
-  const { data: posDecimalsData } = useReadContracts({
-    contracts: uniquePosStakingTokens.map((addr) => ({
+  const { data: decimalsData } = useReadContracts({
+    contracts: uniqueStakingTokens.map((addr) => ({
       address: addr as `0x${string}`,
       abi: ERC20_ABI,
       functionName: "decimals" as const,
     })),
-    query: { enabled: uniquePosStakingTokens.length > 0 },
+    query: { enabled: uniqueStakingTokens.length > 0 },
   });
 
-  const posDecimalsMap = useMemo((): Record<string, number> => {
+  const decimalsMap = useMemo((): Record<string, number> => {
     const m: Record<string, number> = {};
-    uniquePosStakingTokens.forEach((addr, i) => {
-      const r = posDecimalsData?.[i];
+    uniqueStakingTokens.forEach((addr, i) => {
+      const r = decimalsData?.[i];
       m[addr.toLowerCase()] = r?.status === "success" ? Number(r.result) : 18;
     });
     return m;
-  }, [uniquePosStakingTokens, posDecimalsData]);
+  }, [uniqueStakingTokens, decimalsData]);
 
   const allLlamaIds = useMemo(() => {
     if (!configs) return [];
     const ids = new Set<string>();
     for (const c of configs) {
       for (const t of c.rewardTokens) {
-        if (t.enabled && t.tokenAddress) {
+        if (t.enabled && t.tokenAddress && c.network) {
           ids.add(getLlamaId(c.network, t.tokenAddress));
         }
       }
     }
     positionStakingTokens.forEach((addr, i) => {
-      if (addr && positions[i]) ids.add(getLlamaId(positions[i].network, addr));
+      const net = activePositions[i]?.config.network;
+      if (addr && net) ids.add(getLlamaId(net, addr));
     });
     return [...ids];
-  }, [configs, positionStakingTokens, positions]);
+  }, [configs, positionStakingTokens, activePositions]);
 
   const { data: priceMap } = useTokenPrices(allLlamaIds);
 
-  const getDailyRewardUSD = (pos: (typeof enrichedPositions)[0]): number => {
-    if (!pos.config || !priceMap) return 0;
+  const getPositionValueUSD = (pos: typeof activePositions[0], idx: number): number => {
+    const tokenAddr = positionStakingTokens[idx];
+    if (!tokenAddr || !priceMap) return 0;
+    const dec = decimalsMap[tokenAddr.toLowerCase()] ?? 18;
+    const llamaId = getLlamaId(pos.config.network, tokenAddr);
+    const price = priceMap[llamaId] ?? 0;
+    if (price === 0) return 0;
+    const locked = lockedMap[pos.config.contractAddress.toLowerCase()] ?? 0n;
+    return parseFloat(formatUnits(pos.stakedAmount + locked, dec)) * price;
+  };
+
+  const getDailyRewardUSD = (pos: typeof activePositions[0]): number => {
+    if (!priceMap) return 0;
     return pos.config.rewardTokens
-      .filter((t) => t.enabled && t.tokenAddress)
+      .filter((t) => t.enabled && t.tokenAddress && pos.config.network)
       .reduce((sum, t) => {
-        const id = getLlamaId(pos.config!.network, t.tokenAddress);
+        const id = getLlamaId(pos.config.network, t.tokenAddress);
         return sum + t.tokenAmount * (priceMap[id] ?? 0);
       }, 0);
   };
 
-  const totalDailyUSD = enrichedPositions.reduce((sum, pos) => sum + getDailyRewardUSD(pos), 0);
-
-  const getPositionValueUSD = (pos: (typeof positions)[0], idx: number): number => {
-    const tokenAddr = positionStakingTokens[idx];
-    if (!tokenAddr || !priceMap) return 0;
-    const dec = posDecimalsMap[tokenAddr.toLowerCase()] ?? 18;
-    const llamaId = getLlamaId(pos.network, tokenAddr);
-    const price = priceMap[llamaId] ?? 0;
-    if (price === 0) return 0;
-    const total = pos.staked + pos.locked;
-    return parseFloat(formatUnits(total, dec)) * price;
-  };
-
-  const totalPortfolioValueUSD = positions.reduce(
-    (sum, pos, i) => sum + getPositionValueUSD(pos, i),
-    0
-  );
+  const totalPortfolioValueUSD = activePositions.reduce((sum, pos, i) => sum + getPositionValueUSD(pos, i), 0);
+  const totalDailyUSD = activePositions.reduce((sum, pos) => sum + getDailyRewardUSD(pos), 0);
+  const isPositionsLoading = configsLoading || (userInfoContracts.length > 0 && infoLoading);
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -227,7 +263,7 @@ export default function Portfolio() {
                 </div>
                 <div>
                   <p className="text-3xl font-bold tabular-nums">
-                    {eventsLoading ? "..." : positions.length}
+                    {isPositionsLoading ? "..." : activePositions.length}
                   </p>
                   <p className="text-sm text-muted-foreground">Active Positions</p>
                 </div>
@@ -299,8 +335,7 @@ export default function Portfolio() {
                 <div>
                   <p className="text-sm font-medium text-amber-400">No MAPS Score Found</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Your wallet hasn't earned MAPS points yet. Stake or lock tokens in a Moat below
-                    to start earning points and appear on the leaderboard.
+                    Your wallet hasn't earned MAPS points yet. Stake or lock tokens in a Moat to start earning.
                   </p>
                 </div>
               </div>
@@ -309,68 +344,83 @@ export default function Portfolio() {
             {/* Active Positions */}
             <div>
               <h2 className="text-xl font-bold mb-4">My Positions</h2>
-              {eventsLoading ? (
+              {isPositionsLoading ? (
                 <div className="space-y-3">
                   {[...Array(3)].map((_, i) => (
                     <div key={i} className="h-24 rounded-2xl bg-card/50 animate-pulse border border-border" />
                   ))}
                 </div>
-              ) : enrichedPositions.length === 0 ? (
+              ) : activePositions.length === 0 ? (
                 <div className="rounded-2xl border border-border bg-card/30 p-10 text-center text-muted-foreground">
                   <p className="text-sm">No active positions found for this wallet.</p>
-                  <p className="text-xs mt-1">Stake or lock tokens in a Moat below to get started.</p>
+                  <p className="text-xs mt-1">Stake or lock tokens in a Moat to get started.</p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {enrichedPositions.map((pos, i) => (
-                    <motion.div
-                      key={pos.contractAddress}
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.05 }}
-                      className="rounded-2xl border border-border bg-card/30 p-5"
-                    >
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="min-w-0">
+                  {activePositions.map((pos, i) => {
+                    const meta = getMoatMeta(pos.config.contractAddress);
+                    const tokenAddr = positionStakingTokens[i];
+                    const dec = decimalsMap[tokenAddr?.toLowerCase()] ?? 18;
+                    const locked = lockedMap[pos.config.contractAddress.toLowerCase()] ?? 0n;
+                    const posVal = getPositionValueUSD(pos, i);
+                    const dailyUSD = getDailyRewardUSD(pos);
+
+                    return (
+                      <motion.div
+                        key={pos.config.contractAddress}
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.05 }}
+                        className="rounded-2xl border border-border bg-card/30 p-5"
+                      >
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="min-w-0">
+                            <Link
+                              href={`/moat/${pos.config.contractAddress}`}
+                              className="font-semibold text-foreground hover:text-primary transition-colors text-sm"
+                            >
+                              {meta.name}
+                            </Link>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {meta.protocol} · {pos.config.status} · {pos.config.network}
+                            </p>
+                          </div>
                           <Link
-                            href={`/moat/${pos.contractAddress}`}
-                            className="font-semibold text-foreground hover:text-primary transition-colors text-sm"
+                            href={`/moat/${pos.config.contractAddress}`}
+                            className="shrink-0 px-4 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors"
                           >
-                            {getMoatMeta(pos.contractAddress).name}
+                            Manage
                           </Link>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {getMoatMeta(pos.contractAddress).protocol} · {pos.config?.status ?? pos.network} · Last: {timeAgo(new Date(pos.lastActivity).getTime())}
-                          </p>
                         </div>
-                        <Link
-                          href={`/moat/${pos.contractAddress}`}
-                          className="shrink-0 px-4 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors"
-                        >
-                          Manage
-                        </Link>
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
-                        {pos.staked > 0n && (
-                          <div className="flex items-center gap-2">
-                            <ArrowUpRight size={14} className="text-emerald-400" />
-                            <div>
-                              <p className="text-sm font-bold">{formatTokens(pos.staked)}</p>
-                              <p className="text-xs text-muted-foreground">Staked</p>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
+                          {pos.stakedAmount > 0n && (
+                            <div className="flex items-center gap-2">
+                              <ArrowUpRight size={14} className="text-emerald-400" />
+                              <div>
+                                <p className="text-sm font-bold">{formatTokenAmount(pos.stakedAmount, dec)}</p>
+                                <p className="text-xs text-muted-foreground">Staked</p>
+                              </div>
                             </div>
-                          </div>
-                        )}
-                        {pos.locked > 0n && (
-                          <div className="flex items-center gap-2">
-                            <Lock size={14} className="text-cyan-400" />
-                            <div>
-                              <p className="text-sm font-bold">{formatTokens(pos.locked)}</p>
-                              <p className="text-xs text-muted-foreground">Locked</p>
+                          )}
+                          {locked > 0n && (
+                            <div className="flex items-center gap-2">
+                              <Lock size={14} className="text-cyan-400" />
+                              <div>
+                                <p className="text-sm font-bold">{formatTokenAmount(locked, dec)}</p>
+                                <p className="text-xs text-muted-foreground">Locked</p>
+                              </div>
                             </div>
-                          </div>
-                        )}
-                        {(() => {
-                          const posVal = getPositionValueUSD(pos, i);
-                          return posVal > 0 ? (
+                          )}
+                          {pos.activeLockCount > 0n && locked === 0n && (
+                            <div className="flex items-center gap-2">
+                              <Lock size={14} className="text-cyan-400" />
+                              <div>
+                                <p className="text-sm font-bold">{Number(pos.activeLockCount)}</p>
+                                <p className="text-xs text-muted-foreground">Active Locks</p>
+                              </div>
+                            </div>
+                          )}
+                          {posVal > 0 && (
                             <div className="flex items-center gap-2">
                               <DollarSign size={14} className="text-primary" />
                               <div>
@@ -378,11 +428,8 @@ export default function Portfolio() {
                                 <p className="text-xs text-muted-foreground">Position Value</p>
                               </div>
                             </div>
-                          ) : null;
-                        })()}
-                        {(() => {
-                          const dailyUSD = getDailyRewardUSD(pos);
-                          return dailyUSD > 0 ? (
+                          )}
+                          {dailyUSD > 0 && (
                             <div className="flex items-center gap-2">
                               <DollarSign size={14} className="text-emerald-400" />
                               <div>
@@ -390,50 +437,55 @@ export default function Portfolio() {
                                 <p className="text-xs text-muted-foreground">Est. Rewards</p>
                               </div>
                             </div>
-                          ) : null;
-                        })()}
-                      </div>
-                    </motion.div>
-                  ))}
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
                 </div>
               )}
             </div>
 
-            {/* Recent Transaction History */}
-            {userEvents && userEvents.length > 0 && (
+            {/* Recent Transaction History — from indexed events */}
+            {!eventsLoading && userEvents && userEvents.length > 0 && (
               <div>
                 <h2 className="text-xl font-bold mb-4">Transaction History</h2>
                 <div className="rounded-2xl border border-border bg-card/30 divide-y divide-border/50 overflow-hidden">
-                  {userEvents.slice(0, 10).map((ev, i) => (
-                    <motion.div
-                      key={ev._id || i}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: i * 0.03 }}
-                      className="px-5 py-3 flex items-center justify-between gap-4"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className={`text-sm font-semibold shrink-0 ${getEventTypeColor(ev.eventType)}`}>
-                          {getEventTypeLabel(ev.eventType)}
-                        </span>
-                        <span className="text-xs text-muted-foreground font-mono truncate">
-                          {formatAddress(ev.contractAddress)}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        <span className="text-xs text-muted-foreground">{timeAgo(new Date(ev.timestamp).getTime())}</span>
-                        <a
-                          href={`${getExplorerUrl(ev.network)}/tx/${ev.transactionHash}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-xs text-primary/60 hover:text-primary transition-colors"
-                        >
-                          <ArrowDownRight size={12} />
-                          {ev.transactionHash.slice(0, 8)}…
-                        </a>
-                      </div>
-                    </motion.div>
-                  ))}
+                  {userEvents
+                    .filter((ev) =>
+                      ["Staked", "Withdrawn", "Locked", "LockExited", "EarlyExit", "Burned", "RewardClaimed"].includes(ev.eventType)
+                    )
+                    .slice(0, 15)
+                    .map((ev, i) => (
+                      <motion.div
+                        key={ev._id || i}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: i * 0.03 }}
+                        className="px-5 py-3 flex items-center justify-between gap-4"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className={`text-sm font-semibold shrink-0 ${getEventTypeColor(ev.eventType)}`}>
+                            {getEventTypeLabel(ev.eventType)}
+                          </span>
+                          <span className="text-xs text-muted-foreground font-mono truncate">
+                            {getMoatMeta(ev.contractAddress).name}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className="text-xs text-muted-foreground">{timeAgo(new Date(ev.timestamp).getTime())}</span>
+                          <a
+                            href={`${getExplorerUrl(ev.network)}/tx/${ev.transactionHash}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-xs text-primary/60 hover:text-primary transition-colors"
+                          >
+                            <ArrowDownRight size={12} />
+                            {ev.transactionHash.slice(0, 8)}…
+                          </a>
+                        </div>
+                      </motion.div>
+                    ))}
                 </div>
               </div>
             )}

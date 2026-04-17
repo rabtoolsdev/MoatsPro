@@ -101,9 +101,9 @@ export function useMapsScore(address: string | undefined) {
 export function useUserEvents(address: string | undefined) {
   return useQuery({
     queryKey: ["moats", "events", "user", address],
-    queryFn: () => moatsApi.getEventsByUser(address!, 100),
+    queryFn: () => moatsApi.getEventsByUser(address!, 500),
     enabled: !!address,
-    staleTime: 30_000,
+    staleTime: 60_000,
     select: (data) => data?.results ?? [],
   });
 }
