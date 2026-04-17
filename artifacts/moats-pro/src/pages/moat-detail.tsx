@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "wouter";
 import { useAccount, useReadContracts } from "wagmi";
 import { motion, AnimatePresence } from "framer-motion";
@@ -112,6 +112,13 @@ export default function MoatDetail() {
     userAddress,
     activeLockCount
   );
+
+  useEffect(() => {
+    if (exitAction.isSuccess) {
+      refetchLocks();
+      userInfo.refetch();
+    }
+  }, [exitAction.isSuccess]);
 
   const network = moatConfig?.network ?? "avalanche";
   const rewardLlamaIds = (moatConfig?.rewardTokens ?? [])
@@ -724,7 +731,8 @@ export default function MoatDetail() {
                             <button
                               data-testid={`btn-early-exit-${lock.index}`}
                               onClick={() => setEarlyExitConfirm(lock.index)}
-                              className="w-full py-2.5 px-4 rounded-xl border border-amber-500/20 bg-amber-500/5 text-amber-400 text-sm font-medium hover:bg-amber-500/10 transition-colors flex items-center justify-center gap-2"
+                              disabled={isBusy}
+                              className="w-full py-2.5 px-4 rounded-xl border border-amber-500/20 bg-amber-500/5 text-amber-400 text-sm font-medium hover:bg-amber-500/10 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                             >
                               <AlertTriangle size={14} />
                               Early Exit
