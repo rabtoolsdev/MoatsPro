@@ -1,11 +1,12 @@
 import { createAppKit } from "@reown/appkit/react";
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
-import { mainnet, arbitrum, base, optimism, polygon } from "@reown/appkit/networks";
+import { mainnet, arbitrum, base, optimism, polygon, avalanche } from "@reown/appkit/networks";
 import type { AppKitNetwork } from "@reown/appkit/networks";
 
 export const projectId = "13318bff388bcd13cf50b4a10e9d7671";
 
-export const networks: [AppKitNetwork, ...AppKitNetwork[]] = [mainnet, arbitrum, base, optimism, polygon];
+// Avalanche is first — primary Moat Protocol deployment network
+export const networks: [AppKitNetwork, ...AppKitNetwork[]] = [avalanche, mainnet, arbitrum, base, optimism, polygon];
 
 export const wagmiAdapter = new WagmiAdapter({
   networks,

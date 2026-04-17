@@ -135,6 +135,9 @@ export const moatsApi = {
   getMapsScore: (address: string) =>
     apiFetch<MapsScore>(`/maps/score/${address}`),
 
+  getEventsByUser: (userAddress: string, limit = 100) =>
+    apiFetch<EventsResponse>(`/events?userAddress=${userAddress}&limit=${limit}`),
+
   getAllMoatConfigs: () =>
     apiFetch<MoatConfig[]>("/moat-config"),
 

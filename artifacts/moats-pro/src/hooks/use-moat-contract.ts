@@ -233,3 +233,47 @@ export function useApproveToken(tokenAddress: MoatContractAddress | undefined) {
 
   return { approve, isPending, isConfirming, isSuccess, error, hash };
 }
+
+export function useUnstakeMoat(contractAddress: MoatContractAddress | undefined) {
+  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  const unstake = (amount: string, decimals: number = 18) => {
+    if (!contractAddress) return;
+    writeContract({
+      address: contractAddress,
+      abi: MOAT_V3_ABI,
+      functionName: "unstake",
+      args: [parseUnits(amount, decimals)],
+    });
+  };
+
+  return { unstake, isPending, isConfirming, isSuccess, error, hash };
+}
+
+export function useExitLock(contractAddress: MoatContractAddress | undefined) {
+  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  const exitLock = (lockIndex: number) => {
+    if (!contractAddress) return;
+    writeContract({
+      address: contractAddress,
+      abi: MOAT_V3_ABI,
+      functionName: "exitLock",
+      args: [BigInt(lockIndex)],
+    });
+  };
+
+  const earlyExitLock = (lockIndex: number) => {
+    if (!contractAddress) return;
+    writeContract({
+      address: contractAddress,
+      abi: MOAT_V3_ABI,
+      functionName: "earlyExitLock",
+      args: [BigInt(lockIndex)],
+    });
+  };
+
+  return { exitLock, earlyExitLock, isPending, isConfirming, isSuccess, error, hash };
+}

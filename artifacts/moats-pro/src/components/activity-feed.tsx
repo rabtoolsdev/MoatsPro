@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { formatAddress, timeAgo, getEventTypeLabel, getEventTypeColor } from "@/lib/moat-metadata";
+import { formatAddress, timeAgo, getEventTypeLabel, getEventTypeColor, getExplorerUrl } from "@/lib/moat-metadata";
 import { formatUnits } from "viem";
 import type { MoatEvent } from "@/lib/moats-api";
 
@@ -77,7 +77,7 @@ export function ActivityFeed({ events }: ActivityFeedProps) {
                   {timeAgo(new Date(event.timestamp).getTime())}
                 </span>
                 <a
-                  href={`https://snowtrace.io/tx/${event.transactionHash}`}
+                  href={`${getExplorerUrl(event.network)}/tx/${event.transactionHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs text-primary/60 hover:text-primary transition-colors font-mono"

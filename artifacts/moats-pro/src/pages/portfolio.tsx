@@ -1,18 +1,68 @@
 import { useAccount } from "wagmi";
 import { motion } from "framer-motion";
-import { Wallet, TrendingUp, Award, AlertCircle } from "lucide-react";
-import { useMapsScore, useAllMoatConfigs } from "@/hooks/use-moats-api";
+import { Wallet, TrendingUp, Award, AlertCircle, ArrowDownRight, ArrowUpRight, Lock } from "lucide-react";
+import { useMapsScore, useAllMoatConfigs, useUserEvents } from "@/hooks/use-moats-api";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
-import { formatAddress } from "@/lib/moat-metadata";
-import { MoatCard } from "@/components/moat-card";
+import { formatAddress, getEventTypeLabel, getEventTypeColor, getExplorerUrl, timeAgo } from "@/lib/moat-metadata";
+import { Link } from "wouter";
+import type { MoatEvent } from "@/lib/moats-api";
+
+function derivePositions(events: MoatEvent[]) {
+  const moatMap: Record<
+    string,
+    { contractAddress: string; network: string; staked: bigint; locked: bigint; claimed: bigint; lastActivity: string }
+  > = {};
+
+  for (const ev of events) {
+    const key = ev.contractAddress.toLowerCase();
+    if (!moatMap[key]) {
+      moatMap[key] = {
+        contractAddress: ev.contractAddress,
+        network: ev.network,
+        staked: 0n,
+        locked: 0n,
+        claimed: 0n,
+        lastActivity: ev.timestamp,
+      };
+    }
+    const entry = moatMap[key];
+    const amt = ev.args.amount ? BigInt(ev.args.amount) : 0n;
+    if (ev.timestamp > entry.lastActivity) entry.lastActivity = ev.timestamp;
+
+    if (ev.eventType === "Staked") entry.staked += amt;
+    if (ev.eventType === "Withdrawn") entry.staked -= amt < entry.staked ? amt : entry.staked;
+    if (ev.eventType === "Locked") entry.locked += amt;
+    if (ev.eventType === "LockExited" || ev.eventType === "EarlyExit") entry.locked -= amt < entry.locked ? amt : entry.locked;
+    if (ev.eventType === "RewardClaimed") entry.claimed += amt;
+  }
+
+  return Object.values(moatMap).filter(
+    (p) => p.staked > 0n || p.locked > 0n
+  );
+}
+
+function formatTokens(raw: bigint): string {
+  const val = Number(raw) / 1e18;
+  if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(2)}M`;
+  if (val >= 1_000) return `${(val / 1_000).toFixed(1)}K`;
+  return val.toFixed(2);
+}
 
 export default function Portfolio() {
   const { address, isConnected } = useAccount();
   const { data: mapsScore, isLoading: scoreLoading } = useMapsScore(address);
   const { data: configs, isLoading: configsLoading } = useAllMoatConfigs();
+  const { data: userEvents, isLoading: eventsLoading } = useUserEvents(address);
 
-  const verifiedMoats = configs?.filter((c) => c.status === "Verified") || [];
+  const positions = userEvents ? derivePositions(userEvents) : [];
+
+  const enrichedPositions = positions.map((pos) => {
+    const config = configs?.find(
+      (c) => c.contractAddress.toLowerCase() === pos.contractAddress.toLowerCase()
+    );
+    return { ...pos, config };
+  });
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -27,7 +77,7 @@ export default function Portfolio() {
           <h1 className="text-4xl font-bold mb-2">Portfolio</h1>
           <p className="text-muted-foreground">
             {isConnected && address
-              ? `Viewing positions for ${formatAddress(address)}`
+              ? `Positions for ${formatAddress(address)}`
               : "Connect your wallet to view your positions"}
           </p>
         </motion.div>
@@ -50,8 +100,8 @@ export default function Portfolio() {
           </motion.div>
         ) : (
           <div className="space-y-8">
-            {/* MAPS Score Card */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Stats row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -63,11 +113,7 @@ export default function Portfolio() {
                 </div>
                 <div>
                   <p className="text-3xl font-bold tabular-nums">
-                    {scoreLoading
-                      ? "..."
-                      : mapsScore?.points
-                      ? mapsScore.points.toLocaleString()
-                      : "—"}
+                    {scoreLoading ? "..." : mapsScore?.points != null ? mapsScore.points.toLocaleString() : "—"}
                   </p>
                   <p className="text-sm text-muted-foreground">MAPS Score</p>
                   {mapsScore?.rank && (
@@ -79,8 +125,8 @@ export default function Portfolio() {
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                data-testid="stat-active-moats"
+                transition={{ delay: 0.05 }}
+                data-testid="stat-active-positions"
                 className="rounded-2xl border border-border bg-card/30 p-6 flex items-center gap-4"
               >
                 <div className="p-3 rounded-xl bg-cyan-400/10 shrink-0">
@@ -88,47 +134,152 @@ export default function Portfolio() {
                 </div>
                 <div>
                   <p className="text-3xl font-bold tabular-nums">
-                    {configsLoading ? "..." : (configs?.length || 0).toLocaleString()}
+                    {eventsLoading ? "..." : positions.length}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Active Positions</p>
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                data-testid="stat-total-moats"
+                className="rounded-2xl border border-border bg-card/30 p-6 flex items-center gap-4"
+              >
+                <div className="p-3 rounded-xl bg-emerald-400/10 shrink-0">
+                  <Lock className="w-6 h-6 text-emerald-400" />
+                </div>
+                <div>
+                  <p className="text-3xl font-bold tabular-nums">
+                    {configsLoading ? "..." : (configs?.length || 0)}
                   </p>
                   <p className="text-sm text-muted-foreground">Available Moats</p>
                 </div>
               </motion.div>
             </div>
 
-            {/* Alert if no MAPS score */}
+            {/* No MAPS score notice */}
             {!scoreLoading && !mapsScore && (
               <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 flex items-start gap-3">
                 <AlertCircle size={18} className="text-amber-400 shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-amber-400">No MAPS Score Found</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Your wallet hasn't earned MAPS points yet. Stake or interact with a Moat
-                    below to start earning points and appear on the leaderboard.
+                    Your wallet hasn't earned MAPS points yet. Stake or lock tokens in a Moat below
+                    to start earning points and appear on the leaderboard.
                   </p>
                 </div>
               </div>
             )}
 
-            {/* Explore Moats to interact with */}
+            {/* Active Positions */}
             <div>
-              <h2 className="text-xl font-bold mb-4">Verified Moats</h2>
-              <p className="text-sm text-muted-foreground mb-6">
-                Connect to any Moat below to stake tokens and start earning rewards and points.
-              </p>
-              {configsLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[...Array(4)].map((_, i) => (
-                    <div key={i} className="h-52 rounded-2xl bg-card/50 animate-pulse border border-border" />
+              <h2 className="text-xl font-bold mb-4">My Positions</h2>
+              {eventsLoading ? (
+                <div className="space-y-3">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="h-24 rounded-2xl bg-card/50 animate-pulse border border-border" />
                   ))}
                 </div>
+              ) : enrichedPositions.length === 0 ? (
+                <div className="rounded-2xl border border-border bg-card/30 p-10 text-center text-muted-foreground">
+                  <p className="text-sm">No active positions found for this wallet.</p>
+                  <p className="text-xs mt-1">Stake or lock tokens in a Moat below to get started.</p>
+                </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {verifiedMoats.slice(0, 6).map((moat) => (
-                    <MoatCard key={moat.contractAddress} moat={moat} />
+                <div className="space-y-3">
+                  {enrichedPositions.map((pos, i) => (
+                    <motion.div
+                      key={pos.contractAddress}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      className="rounded-2xl border border-border bg-card/30 p-5"
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="min-w-0">
+                          <Link
+                            href={`/moat/${pos.contractAddress}`}
+                            className="font-semibold text-primary hover:underline font-mono text-sm"
+                          >
+                            {formatAddress(pos.contractAddress)}
+                          </Link>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {pos.config?.status ?? pos.network} · Last activity: {timeAgo(new Date(pos.lastActivity).getTime())}
+                          </p>
+                        </div>
+                        <Link
+                          href={`/moat/${pos.contractAddress}`}
+                          className="shrink-0 px-4 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors"
+                        >
+                          Manage
+                        </Link>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 mt-4">
+                        {pos.staked > 0n && (
+                          <div className="flex items-center gap-2">
+                            <ArrowUpRight size={14} className="text-emerald-400" />
+                            <div>
+                              <p className="text-sm font-bold">{formatTokens(pos.staked)}</p>
+                              <p className="text-xs text-muted-foreground">Staked</p>
+                            </div>
+                          </div>
+                        )}
+                        {pos.locked > 0n && (
+                          <div className="flex items-center gap-2">
+                            <Lock size={14} className="text-cyan-400" />
+                            <div>
+                              <p className="text-sm font-bold">{formatTokens(pos.locked)}</p>
+                              <p className="text-xs text-muted-foreground">Locked</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
                   ))}
                 </div>
               )}
             </div>
+
+            {/* Recent Transaction History */}
+            {userEvents && userEvents.length > 0 && (
+              <div>
+                <h2 className="text-xl font-bold mb-4">Transaction History</h2>
+                <div className="rounded-2xl border border-border bg-card/30 divide-y divide-border/50 overflow-hidden">
+                  {userEvents.slice(0, 10).map((ev, i) => (
+                    <motion.div
+                      key={ev._id || i}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: i * 0.03 }}
+                      className="px-5 py-3 flex items-center justify-between gap-4"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className={`text-sm font-semibold shrink-0 ${getEventTypeColor(ev.eventType)}`}>
+                          {getEventTypeLabel(ev.eventType)}
+                        </span>
+                        <span className="text-xs text-muted-foreground font-mono truncate">
+                          {formatAddress(ev.contractAddress)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className="text-xs text-muted-foreground">{timeAgo(new Date(ev.timestamp).getTime())}</span>
+                        <a
+                          href={`${getExplorerUrl(ev.network)}/tx/${ev.transactionHash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-xs text-primary/60 hover:text-primary transition-colors"
+                        >
+                          <ArrowDownRight size={12} />
+                          {ev.transactionHash.slice(0, 8)}…
+                        </a>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </main>

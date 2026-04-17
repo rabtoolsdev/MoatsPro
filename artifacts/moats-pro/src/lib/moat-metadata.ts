@@ -83,3 +83,20 @@ export function getEventTypeColor(eventType: string): string {
   };
   return colors[eventType] || "text-muted-foreground";
 }
+
+const EXPLORER_URLS: Record<string, string> = {
+  avalanche: "https://snowtrace.io",
+  avax: "https://snowtrace.io",
+  ethereum: "https://etherscan.io",
+  mainnet: "https://etherscan.io",
+  arbitrum: "https://arbiscan.io",
+  base: "https://basescan.org",
+  optimism: "https://optimistic.etherscan.io",
+  polygon: "https://polygonscan.com",
+  bsc: "https://bscscan.com",
+};
+
+export function getExplorerUrl(network: string): string {
+  const key = network.toLowerCase();
+  return EXPLORER_URLS[key] || `https://snowtrace.io`;
+}

@@ -11,7 +11,7 @@ import { formatUnits } from "viem";
 import { useMoatConfig, useMoatPointsV2, useEvents } from "@/hooks/use-moats-api";
 import {
   useMoatStats, useUserMoatInfo, useTokenBalance,
-  useTokenAllowance, useStakeMoat, useLockMoat, useClaimRewards, useApproveToken,
+  useTokenAllowance, useStakeMoat, useLockMoat, useClaimRewards, useApproveToken, useUnstakeMoat,
 } from "@/hooks/use-moat-contract";
 import type { MoatContractAddress } from "@/hooks/use-moat-contract";
 import { Navbar } from "@/components/navbar";
@@ -19,7 +19,7 @@ import { Footer } from "@/components/footer";
 import { ActivityFeed } from "@/components/activity-feed";
 import { formatAddress, formatPoints, timeAgo } from "@/lib/moat-metadata";
 
-type ActionTab = "stake" | "lock" | "claim";
+type ActionTab = "stake" | "lock" | "claim" | "withdraw";
 
 const networkExplorerTx: Record<string, string> = {
   avalanche: "https://snowtrace.io/tx/",
@@ -59,10 +59,13 @@ export default function MoatDetail() {
     contractAddress as MoatContractAddress | undefined
   );
 
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+
   const stakeAction = useStakeMoat(contractAddress as MoatContractAddress | undefined);
   const lockAction = useLockMoat(contractAddress as MoatContractAddress | undefined);
   const claimAction = useClaimRewards(contractAddress as MoatContractAddress | undefined);
   const approveAction = useApproveToken(stats.stakingToken as MoatContractAddress | undefined);
+  const unstakeAction = useUnstakeMoat(contractAddress as MoatContractAddress | undefined);
 
   const decimals = tokenBalance.decimals ?? 18;
   const hasAllowanceForStake = allowance.data !== undefined && stakeAmount
@@ -119,6 +122,11 @@ export default function MoatDetail() {
     } else {
       lockAction.lock(lockAmount, lockDays, decimals);
     }
+  };
+
+  const handleWithdraw = () => {
+    if (!withdrawAmount || !isConnected) return;
+    unstakeAction.unstake(withdrawAmount, decimals);
   };
 
   const TxStatus = ({
@@ -450,7 +458,7 @@ export default function MoatDetail() {
             <div className="rounded-2xl border border-border bg-card/30 overflow-hidden sticky top-24">
               {/* Tabs */}
               <div className="flex border-b border-border">
-                {(["stake", "lock", "claim"] as ActionTab[]).map((t) => (
+                {(["stake", "withdraw", "lock", "claim"] as ActionTab[]).map((t) => (
                   <button
                     key={t}
                     onClick={() => setActiveTab(t)}
@@ -462,6 +470,7 @@ export default function MoatDetail() {
                     }`}
                   >
                     {t === "stake" && <TrendingUp size={14} className="inline mr-1.5" />}
+                    {t === "withdraw" && <ArrowLeft size={14} className="inline mr-1.5" />}
                     {t === "lock" && <Lock size={14} className="inline mr-1.5" />}
                     {t === "claim" && <Gift size={14} className="inline mr-1.5" />}
                     {t}
@@ -640,6 +649,68 @@ export default function MoatDetail() {
                           isConfirming={lockAction.isConfirming || approveAction.isConfirming}
                           isSuccess={lockAction.isSuccess || approveAction.isSuccess}
                           error={lockAction.error || approveAction.error}
+                        />
+                      </div>
+                    )}
+
+                    {/* Withdraw (Unstake) */}
+                    {activeTab === "withdraw" && (
+                      <div className="space-y-4">
+                        {userInfo.userInfo !== undefined && (
+                          <div className="p-3 rounded-xl bg-muted/20 border border-border/50 flex items-center justify-between">
+                            <span className="text-xs text-muted-foreground">Staked Balance</span>
+                            <span className="text-sm font-bold tabular-nums text-primary">
+                              {userStakedFormatted} {tokenBalance.symbol}
+                            </span>
+                          </div>
+                        )}
+                        <div>
+                          <label className="text-xs text-muted-foreground mb-1.5 block">
+                            Amount to Withdraw
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              value={withdrawAmount}
+                              onChange={(e) => setWithdrawAmount(e.target.value)}
+                              placeholder="0.00"
+                              data-testid="input-withdraw-amount"
+                              className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary text-sm pr-16"
+                            />
+                            <button
+                              onClick={() => setWithdrawAmount(userStakedFormatted)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-primary font-medium hover:text-primary/80"
+                            >
+                              MAX
+                            </button>
+                          </div>
+                        </div>
+                        <div className="text-xs text-muted-foreground p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 space-y-1">
+                          <p className="flex justify-between">
+                            <span className="text-amber-400 font-medium">Unstake fee</span>
+                            <span className="font-medium text-amber-400">
+                              {stats.unstakeFee !== undefined ? `${Number(stats.unstakeFee) / 100}%` : "5%"}
+                            </span>
+                          </p>
+                          <p className="text-amber-400/70">A fee is applied to unstaked tokens.</p>
+                        </div>
+                        <button
+                          onClick={handleWithdraw}
+                          disabled={!withdrawAmount || unstakeAction.isPending || unstakeAction.isConfirming}
+                          data-testid="btn-withdraw"
+                          className="w-full py-3.5 rounded-xl bg-amber-500 text-white font-semibold text-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                        >
+                          {unstakeAction.isPending || unstakeAction.isConfirming ? (
+                            <><Loader2 size={14} className="animate-spin" />Withdrawing...</>
+                          ) : (
+                            <><ArrowLeft size={14} />Withdraw Tokens</>
+                          )}
+                        </button>
+                        <TxStatus
+                          isPending={unstakeAction.isPending}
+                          isConfirming={unstakeAction.isConfirming}
+                          isSuccess={unstakeAction.isSuccess}
+                          error={unstakeAction.error}
                         />
                       </div>
                     )}
