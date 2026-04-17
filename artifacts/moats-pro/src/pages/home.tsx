@@ -1,7 +1,9 @@
 import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { useReadContracts } from "wagmi";
+import { useReadContracts, useAccount } from "wagmi";
+import { useAppKit } from "@reown/appkit/react";
+import { Wallet } from "lucide-react";
 import { formatUnits } from "viem";
 import { useAllMoatConfigs, useMapsLeaderboard, useEvents } from "@/hooks/use-moats-api";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
@@ -15,6 +17,9 @@ import { ActivityFeed } from "@/components/activity-feed";
 
 export default function Home() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const { isConnected, address } = useAccount();
+  const { open } = useAppKit();
+  const shortAddress = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "";
   const { data: configs, isLoading: configsLoading } = useAllMoatConfigs();
   const { data: leaderboard } = useMapsLeaderboard();
   const { data: eventsData } = useEvents();
@@ -200,7 +205,23 @@ export default function Home() {
             transition={{ duration: 0.6, delay: 0.3 }}
             className="flex flex-col sm:flex-row gap-4 justify-center"
           >
-            <w3m-connect-button />
+            {isConnected && address ? (
+              <button
+                onClick={() => open({ view: "Account" })}
+                className="flex items-center gap-2 px-6 py-3 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/10 hover:border-primary/50 transition-all text-sm font-medium"
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                <Wallet size={14} className="text-primary shrink-0" />
+                <span className="font-mono text-foreground">{shortAddress}</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => open({ view: "Connect" })}
+                className="px-8 py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-all"
+              >
+                Connect Wallet
+              </button>
+            )}
             <Link
               href="/leaderboard"
               data-testid="btn-leaderboard"
