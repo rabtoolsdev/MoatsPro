@@ -170,26 +170,17 @@ export default function MoatDetail() {
   const totalTimeWeightedPoints = 0; // not available in v2 leaderboard response
   const participantCount = leaderboard.length;
 
-  const totalStakedFormatted =
-    stats.totalStaked !== undefined
-      ? parseFloat(formatUnits(stats.totalStaked, decimals)).toLocaleString(undefined, {
-          maximumFractionDigits: 2,
-        })
-      : "—";
+  const compactToken = (raw: bigint): string => {
+    const n = parseFloat(formatUnits(raw, decimals));
+    if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(2)}B`;
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+    return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  };
 
-  const totalLockedFormatted =
-    stats.totalLocked !== undefined
-      ? parseFloat(formatUnits(stats.totalLocked, decimals)).toLocaleString(undefined, {
-          maximumFractionDigits: 2,
-        })
-      : "—";
-
-  const totalBurnedFormatted =
-    stats.totalBurned !== undefined
-      ? parseFloat(formatUnits(stats.totalBurned, decimals)).toLocaleString(undefined, {
-          maximumFractionDigits: 0,
-        })
-      : "—";
+  const totalStakedFormatted = stats.totalStaked !== undefined ? compactToken(stats.totalStaked) : "—";
+  const totalLockedFormatted = stats.totalLocked !== undefined ? compactToken(stats.totalLocked) : "—";
+  const totalBurnedFormatted = stats.totalBurned !== undefined ? compactToken(stats.totalBurned) : "—";
 
   const userStakedFormatted =
     userInfo.userInfo !== undefined
@@ -392,13 +383,13 @@ export default function MoatDetail() {
                 <div
                   key={s.label}
                   data-testid={s.testId}
-                  className="rounded-xl border border-border bg-card/30 p-4"
+                  className="rounded-xl border border-border bg-card/30 p-4 min-w-0 overflow-hidden"
                 >
                   <div className="flex items-center gap-1.5 mb-2">
                     <s.icon size={13} className={s.color} />
-                    <span className="text-xs text-muted-foreground">{s.label}</span>
+                    <span className="text-xs text-muted-foreground truncate">{s.label}</span>
                   </div>
-                  <p className="font-bold text-lg tabular-nums">{s.value}</p>
+                  <p className="font-bold text-base tabular-nums truncate">{s.value}</p>
                 </div>
               ))}
             </div>
