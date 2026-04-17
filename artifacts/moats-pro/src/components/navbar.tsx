@@ -1,14 +1,16 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, TrendingUp, LayoutDashboard, Trophy } from "lucide-react";
+import { Menu, X, TrendingUp, LayoutDashboard, Trophy, Wallet } from "lucide-react";
 import { useAccount } from "wagmi";
+import { useAppKit } from "@reown/appkit/react";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [location] = useLocation();
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
+  const { open } = useAppKit();
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 20);
@@ -21,6 +23,10 @@ export function Navbar() {
     { href: "/portfolio", label: "Portfolio", icon: LayoutDashboard },
     { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
   ];
+
+  const shortAddress = address
+    ? `${address.slice(0, 6)}...${address.slice(-4)}`
+    : "";
 
   return (
     <header
@@ -78,12 +84,26 @@ export function Navbar() {
           ))}
         </nav>
 
-        {/* Wallet Connect */}
+        {/* Wallet Button */}
         <div className="flex items-center gap-3">
-          {isConnected ? (
-            <w3m-account-button balance="hide" />
+          {isConnected && address ? (
+            <button
+              data-testid="btn-wallet-connected"
+              onClick={() => open({ view: "Account" })}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/10 hover:border-primary/50 transition-all text-sm font-medium"
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+              <Wallet size={13} className="text-primary shrink-0" />
+              <span className="font-mono text-foreground">{shortAddress}</span>
+            </button>
           ) : (
-            <w3m-connect-button size="sm" />
+            <button
+              data-testid="btn-wallet-connect"
+              onClick={() => open({ view: "Connect" })}
+              className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-all"
+            >
+              Connect Wallet
+            </button>
           )}
           <button
             className="md:hidden p-2 rounded-lg border border-border hover:border-primary/50 transition-all"
