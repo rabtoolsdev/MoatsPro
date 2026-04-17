@@ -17,7 +17,7 @@ import type { MoatContractAddress } from "@/hooks/use-moat-contract";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { ActivityFeed } from "@/components/activity-feed";
-import { formatAddress, formatPoints, timeAgo } from "@/lib/moat-metadata";
+import { formatAddress, formatPoints, timeAgo, getMoatMeta } from "@/lib/moat-metadata";
 
 type ActionTab = "stake" | "lock" | "claim" | "withdraw";
 
@@ -200,12 +200,12 @@ export default function MoatDetail() {
           ) : (
             <div className="flex items-start gap-4">
               <div className="w-14 h-14 rounded-xl bg-primary/20 flex items-center justify-center text-primary font-bold text-xl border border-primary/20 shrink-0">
-                M
+                {getMoatMeta(contractAddress).tokenSymbol.slice(0, 2)}
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <h1 className="text-3xl font-bold font-mono">
-                    {formatAddress(contractAddress)}
+                  <h1 className="text-3xl font-bold">
+                    {getMoatMeta(contractAddress).name}
                   </h1>
                   {moatConfig?.status && (
                     <span
@@ -224,6 +224,7 @@ export default function MoatDetail() {
                     </span>
                   )}
                 </div>
+                <p className="text-xs text-muted-foreground mb-0.5">{getMoatMeta(contractAddress).protocol}</p>
                 <p className="font-mono text-xs text-muted-foreground/60 mb-2">{contractAddress}</p>
                 {moatConfig?.rewardStrategy && (
                   <p className="text-muted-foreground text-sm max-w-2xl">

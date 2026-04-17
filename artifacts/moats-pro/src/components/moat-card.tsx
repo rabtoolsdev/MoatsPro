@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { ArrowRight, Coins, CheckCircle, Users } from "lucide-react";
-import { formatAddress } from "@/lib/moat-metadata";
+import { ArrowRight, Coins, CheckCircle } from "lucide-react";
+import { formatAddress, getMoatMeta } from "@/lib/moat-metadata";
 import type { MoatConfig } from "@/lib/moats-api";
 
 interface MoatCardProps {
@@ -47,6 +47,7 @@ function NetworkBadge({ network }: { network?: string }) {
 export function MoatCard({ moat }: MoatCardProps) {
   const statusStyle = statusColors[moat.status] || statusColors.Community;
   const activeRewardTokens = moat.rewardTokens.filter((t) => t.enabled);
+  const meta = getMoatMeta(moat.contractAddress);
 
   return (
     <Link href={`/moat/${moat.contractAddress}`}>
@@ -64,10 +65,24 @@ export function MoatCard({ moat }: MoatCardProps) {
         <div className="relative p-6 flex flex-col flex-1">
           {/* Header */}
           <div className="flex items-start justify-between mb-4">
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-primary/15 border border-primary/20 flex items-center justify-center text-primary font-bold text-sm shrink-0">
+                {meta.tokenSymbol.slice(0, 2)}
+              </div>
+              <div className="min-w-0">
+                <p
+                  data-testid={`text-moat-name-${moat.contractAddress}`}
+                  className="font-bold text-foreground leading-tight text-sm truncate"
+                >
+                  {meta.name}
+                </p>
+                <p className="text-xs text-muted-foreground">{meta.protocol}</p>
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
+              <div className="flex items-center gap-1.5">
                 {moat.status === "Verified" && (
-                  <CheckCircle size={14} className="text-emerald-400 shrink-0" />
+                  <CheckCircle size={12} className="text-emerald-400" />
                 )}
                 <span
                   data-testid={`text-moat-status-${moat.contractAddress}`}
@@ -75,19 +90,9 @@ export function MoatCard({ moat }: MoatCardProps) {
                 >
                   {moat.status}
                 </span>
-                <NetworkBadge network={moat.network} />
               </div>
-              <p
-                data-testid={`text-moat-name-${moat.contractAddress}`}
-                className="font-semibold text-foreground leading-tight font-mono text-sm"
-              >
-                {formatAddress(moat.contractAddress)}
-              </p>
+              <NetworkBadge network={moat.network} />
             </div>
-            <ArrowRight
-              size={16}
-              className="text-muted-foreground group-hover:text-primary transition-colors mt-1 shrink-0"
-            />
           </div>
 
           {/* Reward Strategy snippet */}

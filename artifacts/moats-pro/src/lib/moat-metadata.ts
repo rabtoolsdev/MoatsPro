@@ -11,16 +11,100 @@ export interface MoatMeta {
   twitterHandle?: string;
 }
 
-export const MOAT_METADATA: Record<string, MoatMeta> = {};
+export const MOAT_METADATA: Record<string, MoatMeta> = {
+  "0xd4280e25a7969da08b7093e8b54068d693def66e": {
+    name: "Gator Moat",
+    protocol: "GatorOS",
+    tokenSymbol: "GATOR",
+    chain: "avalanche",
+    description: "Earn GATOR rewards — 10% of supply distributed daily over 1 year. Built on GatorOS and SwampSwap.",
+    website: "https://gatorswap.com",
+  },
+  "0xec7a708c9a9ac691d5e8be056bbd5c8251f003ea": {
+    name: "Blaze Social Moat",
+    protocol: "Blaze.stream",
+    tokenSymbol: "BLAZE",
+    chain: "avalanche",
+    description: "Earn BLAZE and USDC from Blaze.stream earnings and Arena.Social tips.",
+    website: "https://blaze.stream",
+  },
+  "0xe5a12711f9fe7e5263ec43a2a18eaec0a6b4c7cb": {
+    name: "Blaze USDC Moat",
+    protocol: "Blaze.stream",
+    tokenSymbol: "USDC",
+    chain: "avalanche",
+    description: "Earn USDC and BLAZE rewards from the Blaze social platform.",
+    website: "https://blaze.stream",
+  },
+  "0x7a4d20261a765bd9ba67d49fbf8189843eec3393": {
+    name: "WAVAX Rewards Moat",
+    protocol: "FortiFi",
+    tokenSymbol: "WAVAX",
+    chain: "avalanche",
+    description: "Earn Wrapped AVAX rewards through the FortiFi protocol.",
+  },
+  "0x940b7f7d73a504ec566157eebb0566b81d57e8f8": {
+    name: "Arena Social Moat",
+    protocol: "Arena.Social",
+    tokenSymbol: "ARENA",
+    chain: "avalanche",
+    description: "Rewards generated from Blaze.stream earnings and Arena.Social tips. 50% to stakers.",
+    website: "https://arena.social",
+  },
+  "0x9c5f177cdc0332e61e423ee9ad9e4f2333f62685": {
+    name: "Wheremalek Moat",
+    protocol: "Where Is Malek",
+    tokenSymbol: "WHEREMALEK",
+    chain: "avalanche",
+    description: "3M $WHEREMALEK + 100 $ARENA distributed daily. Community-powered Moat.",
+  },
+  "0x501f6e7bec3db63d8dacbc9fa0ce42d5d2329d53": {
+    name: "hCASH-WAVAX LP Moat",
+    protocol: "Pharaoh Exchange",
+    tokenSymbol: "hCASH/WAVAX",
+    chain: "avalanche",
+    description: "Stake hCASH/WAVAX LP tokens from Pharaoh Exchange v2 to earn rewards.",
+    website: "https://pharaoh.exchange",
+  },
+  "0xcf65744c955a292d11de2a4184e9fabedbfc7b40": {
+    name: "HEFE Moat",
+    protocol: "HEFE",
+    tokenSymbol: "HEFE",
+    chain: "avalanche",
+    description: "Earn HEFE, WAVAX, USDC, and BTC.b rewards from the HEFE protocol.",
+  },
+  "0x464b2817f16f6117602ad05bae446c2fc5ba6fb7": {
+    name: "Backstage Pass Moat",
+    protocol: "Blaze.stream",
+    tokenSymbol: "BLAZE",
+    chain: "avalanche",
+    description: "Rewards from 700+ Backstage Passes on the Blaze platform.",
+    website: "https://blaze.stream",
+  },
+  "0x3399d03566bb6db0cb4f1e13047589a1499cebbc": {
+    name: "Bensi Box Moat",
+    protocol: "Bensi Box",
+    tokenSymbol: "WAVAX",
+    chain: "avalanche",
+    description: "Bensi Box is a fine art tokenization and fractionalization DAO on Avalanche.",
+  },
+  "0x020c73b55d139d5e259bad89b126f2a446c22ac6": {
+    name: "FREAK USDC Moat",
+    protocol: "FREAK",
+    tokenSymbol: "USDC",
+    chain: "avalanche",
+    description: "Earn USDC and FREAK token rewards.",
+  },
+};
 
 export function getMoatMeta(contractAddress: string): MoatMeta {
   const lower = contractAddress.toLowerCase();
   return (
     MOAT_METADATA[lower] || {
-      name: `Moat ${contractAddress.slice(0, 6)}...${contractAddress.slice(-4)}`,
-      protocol: "Unknown Protocol",
+      name: `Moat ${contractAddress.slice(0, 6)}…${contractAddress.slice(-4)}`,
+      protocol: "Moats Protocol",
       tokenSymbol: "TOKEN",
-      description: "A Moats liquidity staking position",
+      description: "A Moats liquidity staking position on Avalanche.",
     }
   );
 }
@@ -98,5 +182,5 @@ const EXPLORER_URLS: Record<string, string> = {
 
 export function getExplorerUrl(network: string): string {
   const key = network.toLowerCase();
-  return EXPLORER_URLS[key] || `https://snowtrace.io`;
+  return EXPLORER_URLS[key] || "https://snowtrace.io";
 }
