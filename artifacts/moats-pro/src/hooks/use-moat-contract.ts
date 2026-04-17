@@ -234,6 +234,21 @@ export function useApproveToken(tokenAddress: MoatContractAddress | undefined) {
   return { approve, isPending, isConfirming, isSuccess, error, hash };
 }
 
+export function useNftBoostBalance(
+  nftContractAddress: MoatContractAddress | undefined
+) {
+  const { address } = useAccount();
+  const enabled = !!nftContractAddress && !!address;
+
+  return useReadContract({
+    address: nftContractAddress,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    query: { enabled },
+  });
+}
+
 export function useUnstakeMoat(contractAddress: MoatContractAddress | undefined) {
   const { writeContract, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });

@@ -11,7 +11,7 @@ import { formatUnits } from "viem";
 import { useMoatConfig, useMoatPointsV2, useEvents } from "@/hooks/use-moats-api";
 import {
   useMoatStats, useUserMoatInfo, useTokenBalance,
-  useTokenAllowance, useStakeMoat, useLockMoat, useClaimRewards, useApproveToken, useUnstakeMoat,
+  useTokenAllowance, useStakeMoat, useLockMoat, useClaimRewards, useApproveToken, useUnstakeMoat, useNftBoostBalance,
 } from "@/hooks/use-moat-contract";
 import type { MoatContractAddress } from "@/hooks/use-moat-contract";
 import { Navbar } from "@/components/navbar";
@@ -66,6 +66,7 @@ export default function MoatDetail() {
   const claimAction = useClaimRewards(contractAddress as MoatContractAddress | undefined);
   const approveAction = useApproveToken(stats.stakingToken as MoatContractAddress | undefined);
   const unstakeAction = useUnstakeMoat(contractAddress as MoatContractAddress | undefined);
+  const nftBoostBalance = useNftBoostBalance(moatConfig?.nftBoostContract as MoatContractAddress | undefined);
 
   const decimals = tokenBalance.decimals ?? 18;
   const hasAllowanceForStake = allowance.data !== undefined && stakeAmount
@@ -331,6 +332,48 @@ export default function MoatDetail() {
                   ))}
                 </div>
 
+                {/* Derived yield metrics */}
+                {moatConfig.rewardTokens.filter((t) => t.enabled).length > 0 && (() => {
+                  const token = moatConfig.rewardTokens.filter((t) => t.enabled)[0];
+                  if (!token) return null;
+                  const daysRemaining = token.tokenAmount > 0 && token.totalRewardsDeposited > 0
+                    ? Math.max(0, Math.round((token.totalRewardsDeposited - token.totalRewardsClaimed) / token.tokenAmount))
+                    : null;
+                  const claimedPct = token.totalRewardsDeposited > 0
+                    ? Math.round((token.totalRewardsClaimed / token.totalRewardsDeposited) * 100)
+                    : 0;
+                  const fmtAmt = (n: number) =>
+                    n >= 1_000_000 ? `${(n / 1_000_000).toFixed(2)}M`
+                    : n >= 1_000 ? `${(n / 1_000).toFixed(0)}K`
+                    : String(n);
+                  return (
+                    <div className="grid grid-cols-2 gap-3 p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
+                      <div className="text-xs">
+                        <p className="text-muted-foreground">Daily Emission</p>
+                        <p className="font-bold text-emerald-400 mt-0.5 tabular-nums">
+                          {fmtAmt(token.tokenAmount)} {token.symbol}/day
+                        </p>
+                      </div>
+                      <div className="text-xs">
+                        <p className="text-muted-foreground">Reward Duration</p>
+                        <p className="font-bold text-emerald-400 mt-0.5">
+                          {daysRemaining != null ? `~${daysRemaining} days left` : "Ongoing"}
+                        </p>
+                      </div>
+                      <div className="text-xs">
+                        <p className="text-muted-foreground">Distributed</p>
+                        <p className="font-bold text-foreground mt-0.5 tabular-nums">{claimedPct}% claimed</p>
+                      </div>
+                      <div className="text-xs">
+                        <p className="text-muted-foreground">Total Pool</p>
+                        <p className="font-bold text-foreground mt-0.5 tabular-nums">
+                          {fmtAmt(token.totalRewardsDeposited)} {token.symbol}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Additional moat meta */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
                   {[
@@ -338,7 +381,9 @@ export default function MoatDetail() {
                     { label: "Moat Version", value: `v${moatConfig.moatVersion}` },
                     { label: "Auto Rewards", value: moatConfig.automatedRewards ? "Yes" : "No" },
                     { label: "Time-Weighted", value: moatConfig.timeWeightedPointsEnabled ? `${moatConfig.timeWeightPercentage}%` : "Disabled" },
-                    { label: "Boost Active", value: moatConfig.boostActive ? `${moatConfig.boostValue}x` : "No" },
+                    { label: "Boost Active", value: moatConfig.boostActive ? `${moatConfig.boostValue}x` : "None" },
+                    { label: "Vote Enabled", value: moatConfig.voteEnabled ? "Yes" : "No" },
+                    { label: "NFT Boost", value: moatConfig.nftBoostContract ? "Active" : "None" },
                     { label: "Created", value: new Date(moatConfig.createdAt).toLocaleDateString() },
                   ].map((item) => (
                     <div key={item.label} className="text-xs">
@@ -393,6 +438,15 @@ export default function MoatDetail() {
                         </span>
                       ))}
                     </div>
+                  </div>
+                )}
+                {moatConfig?.nftBoostContract && nftBoostBalance.data !== undefined && (
+                  <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">NFT Boost Balance</span>
+                    <span className={`text-xs font-semibold ${nftBoostBalance.data > 0n ? "text-primary" : "text-muted-foreground"}`}>
+                      {String(nftBoostBalance.data)} NFT{nftBoostBalance.data !== 1n ? "s" : ""}
+                      {nftBoostBalance.data > 0n && moatConfig.boostValue ? ` · ${moatConfig.boostValue}x boost` : ""}
+                    </span>
                   </div>
                 )}
               </div>

@@ -105,6 +105,8 @@ export interface MoatConfig {
   timeWeightPercentage?: number;
   boostValue?: number;
   boostActive?: boolean;
+  nftBoostContract?: string | null;
+  voteEnabled?: boolean;
   createdAt: string;
   updatedAt: string;
 }
