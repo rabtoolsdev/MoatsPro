@@ -177,6 +177,13 @@ export default function MoatDetail() {
         })
       : "—";
 
+  const totalLockedFormatted =
+    stats.totalLocked !== undefined
+      ? parseFloat(formatUnits(stats.totalLocked, decimals)).toLocaleString(undefined, {
+          maximumFractionDigits: 2,
+        })
+      : "—";
+
   const totalBurnedFormatted =
     stats.totalBurned !== undefined
       ? parseFloat(formatUnits(stats.totalBurned, decimals)).toLocaleString(undefined, {
@@ -344,7 +351,7 @@ export default function MoatDetail() {
           {/* Left: Stats */}
           <div className="lg:col-span-2 space-y-6">
             {/* On-chain Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               {[
                 {
                   label: "Total Staked",
@@ -352,6 +359,13 @@ export default function MoatDetail() {
                   icon: TrendingUp,
                   color: "text-primary",
                   testId: "stat-total-staked",
+                },
+                {
+                  label: "Total Locked",
+                  value: totalLockedFormatted,
+                  icon: Lock,
+                  color: "text-violet-400",
+                  testId: "stat-total-locked",
                 },
                 {
                   label: "Total Points",
