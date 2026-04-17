@@ -1,0 +1,41 @@
+import { createAppKit } from "@reown/appkit/react";
+import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
+import { mainnet, arbitrum, base, optimism, polygon } from "@reown/appkit/networks";
+
+export const projectId = "13318bff388bcd13cf50b4a10e9d7671";
+
+export const networks = [mainnet, arbitrum, base, optimism, polygon];
+
+export const wagmiAdapter = new WagmiAdapter({
+  networks,
+  projectId,
+  ssr: false,
+});
+
+createAppKit({
+  adapters: [wagmiAdapter],
+  networks,
+  projectId,
+  metadata: {
+    name: "Moats Pro",
+    description: "Premium DeFi Moats Experience — Stake, Lock, and Earn",
+    url: "https://moats.app",
+    icons: ["https://moats.app/favicon.ico"],
+  },
+  features: {
+    analytics: false,
+    email: false,
+    socials: false,
+    emailShowWallets: true,
+  },
+  themeMode: "dark",
+  themeVariables: {
+    "--w3m-accent": "#00d4ff",
+    "--w3m-color-mix": "#0d1520",
+    "--w3m-color-mix-strength": 40,
+    "--w3m-border-radius-master": "8px",
+    "--w3m-z-index": 9999,
+  },
+});
+
+export const wagmiConfig = wagmiAdapter.wagmiConfig;
