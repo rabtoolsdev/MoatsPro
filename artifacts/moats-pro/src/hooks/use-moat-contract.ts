@@ -266,6 +266,23 @@ export function useUnstakeMoat(contractAddress: MoatContractAddress | undefined)
   return { unstake, isPending, isConfirming, isSuccess, error, hash };
 }
 
+export function useBurnMoat(contractAddress: MoatContractAddress | undefined) {
+  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  const burn = (amount: string, decimals: number = 18) => {
+    if (!contractAddress) return;
+    writeContract({
+      address: contractAddress,
+      abi: MOAT_V3_ABI,
+      functionName: "burn",
+      args: [parseUnits(amount, decimals)],
+    });
+  };
+
+  return { burn, isPending, isConfirming, isSuccess, error, hash };
+}
+
 export function useExitLock(contractAddress: MoatContractAddress | undefined) {
   const { writeContract, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });

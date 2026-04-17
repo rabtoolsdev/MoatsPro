@@ -3,7 +3,7 @@ import { useParams } from "wouter";
 import { useAccount } from "wagmi";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft, Zap, Users, TrendingUp, Lock, Gift,
+  ArrowLeft, Zap, Users, TrendingUp, Lock, Gift, Flame,
   AlertCircle, CheckCircle, Loader2, Coins, ExternalLink,
 } from "lucide-react";
 import { Link } from "wouter";
@@ -11,7 +11,7 @@ import { formatUnits } from "viem";
 import { useMoatConfig, useMoatPointsV2, useEvents } from "@/hooks/use-moats-api";
 import {
   useMoatStats, useUserMoatInfo, useTokenBalance,
-  useTokenAllowance, useStakeMoat, useLockMoat, useClaimRewards, useApproveToken, useUnstakeMoat, useNftBoostBalance,
+  useTokenAllowance, useStakeMoat, useLockMoat, useClaimRewards, useApproveToken, useUnstakeMoat, useNftBoostBalance, useBurnMoat,
 } from "@/hooks/use-moat-contract";
 import type { MoatContractAddress } from "@/hooks/use-moat-contract";
 import { Navbar } from "@/components/navbar";
@@ -19,7 +19,7 @@ import { Footer } from "@/components/footer";
 import { ActivityFeed } from "@/components/activity-feed";
 import { formatAddress, formatPoints, timeAgo, getMoatMeta } from "@/lib/moat-metadata";
 
-type ActionTab = "stake" | "lock" | "claim" | "withdraw";
+type ActionTab = "stake" | "lock" | "claim" | "withdraw" | "burn";
 
 const networkExplorerTx: Record<string, string> = {
   avalanche: "https://snowtrace.io/tx/",
@@ -60,12 +60,14 @@ export default function MoatDetail() {
   );
 
   const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [burnAmount, setBurnAmount] = useState("");
 
   const stakeAction = useStakeMoat(contractAddress as MoatContractAddress | undefined);
   const lockAction = useLockMoat(contractAddress as MoatContractAddress | undefined);
   const claimAction = useClaimRewards(contractAddress as MoatContractAddress | undefined);
   const approveAction = useApproveToken(stats.stakingToken as MoatContractAddress | undefined);
   const unstakeAction = useUnstakeMoat(contractAddress as MoatContractAddress | undefined);
+  const burnAction = useBurnMoat(contractAddress as MoatContractAddress | undefined);
   const nftBoostBalance = useNftBoostBalance(moatConfig?.nftBoostContract as MoatContractAddress | undefined);
 
   const decimals = tokenBalance.decimals ?? 18;
@@ -74,6 +76,9 @@ export default function MoatDetail() {
     : false;
   const hasAllowanceForLock = allowance.data !== undefined && lockAmount
     ? allowance.data >= BigInt(Math.floor(parseFloat(lockAmount || "0") * 10 ** decimals))
+    : false;
+  const hasAllowanceForBurn = allowance.data !== undefined && burnAmount
+    ? allowance.data >= BigInt(Math.floor(parseFloat(burnAmount || "0") * 10 ** decimals))
     : false;
 
   const totalPoints = pointsV2
@@ -128,6 +133,15 @@ export default function MoatDetail() {
   const handleWithdraw = () => {
     if (!withdrawAmount || !isConnected) return;
     unstakeAction.unstake(withdrawAmount, decimals);
+  };
+
+  const handleBurn = () => {
+    if (!burnAmount || !isConnected) return;
+    if (!hasAllowanceForBurn) {
+      approveAction.approve(contractAddress as MoatContractAddress, burnAmount, decimals);
+    } else {
+      burnAction.burn(burnAmount, decimals);
+    }
   };
 
   const TxStatus = ({
@@ -512,21 +526,24 @@ export default function MoatDetail() {
           <div>
             <div className="rounded-2xl border border-border bg-card/30 overflow-hidden sticky top-24">
               {/* Tabs */}
-              <div className="flex border-b border-border">
-                {(["stake", "withdraw", "lock", "claim"] as ActionTab[]).map((t) => (
+              <div className="flex border-b border-border overflow-x-auto">
+                {(["stake", "withdraw", "lock", "burn", "claim"] as ActionTab[]).map((t) => (
                   <button
                     key={t}
                     onClick={() => setActiveTab(t)}
                     data-testid={`tab-action-${t}`}
-                    className={`flex-1 py-3.5 text-sm font-medium capitalize transition-all ${
+                    className={`flex-1 min-w-fit py-3.5 px-2 text-sm font-medium capitalize transition-all ${
                       activeTab === t
-                        ? "text-primary border-b-2 border-primary bg-primary/5"
+                        ? t === "burn"
+                          ? "text-rose-400 border-b-2 border-rose-400 bg-rose-500/5"
+                          : "text-primary border-b-2 border-primary bg-primary/5"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     {t === "stake" && <TrendingUp size={14} className="inline mr-1.5" />}
                     {t === "withdraw" && <ArrowLeft size={14} className="inline mr-1.5" />}
                     {t === "lock" && <Lock size={14} className="inline mr-1.5" />}
+                    {t === "burn" && <Flame size={14} className="inline mr-1.5" />}
                     {t === "claim" && <Gift size={14} className="inline mr-1.5" />}
                     {t}
                   </button>
@@ -766,6 +783,72 @@ export default function MoatDetail() {
                           isConfirming={unstakeAction.isConfirming}
                           isSuccess={unstakeAction.isSuccess}
                           error={unstakeAction.error}
+                        />
+                      </div>
+                    )}
+
+                    {/* Burn */}
+                    {activeTab === "burn" && (
+                      <div className="space-y-4">
+                        <div className="p-4 rounded-xl bg-rose-500/5 border border-rose-500/20">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Flame size={16} className="text-rose-400" />
+                            <span className="text-sm font-medium text-rose-400">Permanent Burn</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Burned tokens are permanently removed from circulation. This action is irreversible and earns bonus burn points toward your Moat score.
+                          </p>
+                        </div>
+                        {userInfo.userInfo !== undefined && (
+                          <div className="p-3 rounded-xl bg-muted/20 border border-border/50 flex items-center justify-between">
+                            <span className="text-xs text-muted-foreground">Your Burn Total</span>
+                            <span className="text-sm font-bold tabular-nums text-rose-400">
+                              {userBurnFormatted} {tokenBalance.symbol}
+                            </span>
+                          </div>
+                        )}
+                        <div>
+                          <label className="text-xs text-muted-foreground mb-1.5 block">
+                            Amount to Burn
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              value={burnAmount}
+                              onChange={(e) => setBurnAmount(e.target.value)}
+                              placeholder="0.00"
+                              data-testid="input-burn-amount"
+                              className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500 text-sm pr-16"
+                            />
+                            <button
+                              onClick={() => setBurnAmount(tokenBalance.formatted || "0")}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-rose-400 font-medium hover:text-rose-300"
+                            >
+                              MAX
+                            </button>
+                          </div>
+                        </div>
+                        <button
+                          onClick={handleBurn}
+                          disabled={!burnAmount || burnAction.isPending || burnAction.isConfirming || approveAction.isPending}
+                          data-testid="btn-burn"
+                          className="w-full py-3.5 rounded-xl bg-rose-500 text-white font-semibold text-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                        >
+                          {approveAction.isPending || approveAction.isConfirming ? (
+                            <><Loader2 size={14} className="animate-spin" />Approving...</>
+                          ) : burnAction.isPending || burnAction.isConfirming ? (
+                            <><Loader2 size={14} className="animate-spin" />Burning...</>
+                          ) : !hasAllowanceForBurn && burnAmount ? (
+                            "Approve First"
+                          ) : (
+                            <><Flame size={14} />Burn Tokens</>
+                          )}
+                        </button>
+                        <TxStatus
+                          isPending={burnAction.isPending || approveAction.isPending}
+                          isConfirming={burnAction.isConfirming || approveAction.isConfirming}
+                          isSuccess={burnAction.isSuccess || approveAction.isSuccess}
+                          error={burnAction.error || approveAction.error}
                         />
                       </div>
                     )}
