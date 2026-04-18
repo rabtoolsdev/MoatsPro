@@ -221,7 +221,7 @@ export default function Portfolio() {
     const price = priceMap[llamaId] ?? 0;
     if (price === 0) return 0;
     const locked = lockedMap[pos.config.contractAddress.toLowerCase()] ?? 0n;
-    return parseFloat(formatUnits(pos.stakedAmount + locked, dec)) * price;
+    return parseFloat(formatUnits(pos.stakedAmount + locked + pos.totalUserBurn, dec)) * price;
   };
 
   const getDailyRewardUSD = (pos: typeof activePositions[0]): number => {
