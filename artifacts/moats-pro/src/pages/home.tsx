@@ -371,7 +371,6 @@ export default function Home() {
               <motion.div key={moat.contractAddress} variants={itemVariants}>
                 <MoatCard
                   moat={moat}
-                  priceMap={priceMap}
                   tvlUSD={tvmMap[moat.contractAddress.toLowerCase()]}
                   supplyPct={supplyPctMap[moat.contractAddress.toLowerCase()]}
                   logoUrl={logoMap[moat.contractAddress.toLowerCase()]}

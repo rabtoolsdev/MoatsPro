@@ -4,12 +4,10 @@ import { motion } from "framer-motion";
 import { ArrowRight, Coins, CheckCircle } from "lucide-react";
 import { formatAddress, getMoatMeta, formatUSD, getTokenLogoUrl } from "@/lib/moat-metadata";
 import type { MoatMeta } from "@/lib/moat-metadata";
-import { getLlamaId } from "@/hooks/use-token-prices";
 import type { MoatConfig } from "@/lib/moats-api";
 
 interface MoatCardProps {
   moat: MoatConfig;
-  priceMap?: Record<string, number>;
   tvlUSD?: number;
   supplyPct?: number;
   logoUrl?: string;
@@ -95,18 +93,11 @@ function MoatLogo({
 
 export { MoatLogo };
 
-export function MoatCard({ moat, priceMap, tvlUSD, supplyPct, logoUrl }: MoatCardProps) {
+export function MoatCard({ moat, tvlUSD, supplyPct, logoUrl }: MoatCardProps) {
   const statusStyle = statusColors[moat.status] || statusColors.Community;
   const activeRewardTokens = moat.rewardTokens.filter((t) => t.enabled);
   const meta = getMoatMeta(moat.contractAddress);
   const primaryTokenAddress = meta.tokenAddress || activeRewardTokens[0]?.tokenAddress;
-
-  const dailyRewardUSD = activeRewardTokens.reduce((sum, token) => {
-    if (!token.tokenAddress || !priceMap) return sum;
-    const id = getLlamaId(moat.network, token.tokenAddress);
-    const price = priceMap[id] ?? 0;
-    return sum + token.tokenAmount * price;
-  }, 0);
 
   return (
     <Link href={`/moat/${moat.contractAddress}`}>
@@ -208,27 +199,6 @@ export function MoatCard({ moat, priceMap, tvlUSD, supplyPct, logoUrl }: MoatCar
                 </span>
               </div>
             )}
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <div>
-                <span className="font-medium text-foreground">FortWeight:</span>{" "}
-                <span data-testid={`text-fortweight-${moat.contractAddress}`} className="text-primary font-bold">
-                  {moat.fortWeight}x
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                {dailyRewardUSD > 0 && (
-                  <span className="text-emerald-400 font-semibold tabular-nums">
-                    {formatUSD(dailyRewardUSD)}/day
-                  </span>
-                )}
-                <span>v{moat.moatVersion}</span>
-                {moat.automatedRewards && (
-                  <span className="px-1.5 py-0.5 rounded bg-violet-500/10 border border-violet-500/20 text-violet-400 text-xs">
-                    Auto
-                  </span>
-                )}
-              </div>
-            </div>
           </div>
         </div>
       </motion.div>
