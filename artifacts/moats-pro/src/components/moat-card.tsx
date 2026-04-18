@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { ArrowRight, Coins, CheckCircle } from "lucide-react";
+import { ArrowRight, Coins, CheckCircle, Droplets } from "lucide-react";
 import { formatAddress, getMoatMeta, formatUSD, getTokenLogoUrl } from "@/lib/moat-metadata";
 import type { MoatMeta } from "@/lib/moat-metadata";
 import type { MoatConfig } from "@/lib/moats-api";
@@ -11,6 +11,10 @@ interface MoatCardProps {
   tvlUSD?: number;
   supplyPct?: number;
   logoUrl?: string;
+  /** Sum of USD liquidity across all DexScreener pools for the staking token */
+  dexLiquidityUSD?: number;
+  /** Number of liquidity pools found on DexScreener */
+  dexPairCount?: number;
 }
 
 const statusColors: Record<string, { border: string; badge: string; text: string; hoverGlow: string }> = {
@@ -96,7 +100,7 @@ function MoatLogo({
 
 export { MoatLogo };
 
-export function MoatCard({ moat, tvlUSD, supplyPct, logoUrl }: MoatCardProps) {
+export function MoatCard({ moat, tvlUSD, supplyPct, logoUrl, dexLiquidityUSD, dexPairCount }: MoatCardProps) {
   const statusStyle = statusColors[moat.status] || statusColors.Community;
   const activeRewardTokens = moat.rewardTokens.filter((t) => t.enabled);
   const meta = getMoatMeta(moat.contractAddress);
@@ -205,6 +209,25 @@ export function MoatCard({ moat, tvlUSD, supplyPct, logoUrl }: MoatCardProps) {
                   className="font-bold text-foreground tabular-nums"
                 >
                   {formatUSD(tvlUSD)}
+                </span>
+              </div>
+            )}
+            {dexLiquidityUSD !== undefined && dexLiquidityUSD > 0 && (
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground inline-flex items-center gap-1">
+                  <Droplets size={11} className="text-cyan-400/80" />
+                  DEX TVL
+                  {dexPairCount !== undefined && dexPairCount > 0 && (
+                    <span className="text-muted-foreground/60">
+                      · {dexPairCount} {dexPairCount === 1 ? "pool" : "pools"}
+                    </span>
+                  )}
+                </span>
+                <span
+                  data-testid={`text-dex-tvl-${moat.contractAddress}`}
+                  className="font-bold text-cyan-300 tabular-nums"
+                >
+                  {formatUSD(dexLiquidityUSD)}
                 </span>
               </div>
             )}

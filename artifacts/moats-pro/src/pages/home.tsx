@@ -7,7 +7,7 @@ import { Wallet, ArrowRight, Zap } from "lucide-react";
 import { formatUnits } from "viem";
 import { useAllMoatConfigs, useMapsLeaderboard, useEvents } from "@/hooks/use-moats-api";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
-import { useDexscreenerPrices } from "@/hooks/use-dexscreener";
+import { useDexscreenerInfo } from "@/hooks/use-dexscreener";
 import { MOAT_V3_ABI, ERC20_ABI, MOAT_LOGO_ABI } from "@/lib/moat-abi";
 import { getMoatMeta } from "@/lib/moat-metadata";
 import { Navbar } from "@/components/navbar";
@@ -151,13 +151,31 @@ export default function Home() {
     return [...addrs];
   }, [configs, stakingTokenAddrs]);
 
-  const { data: dexPriceMap } = useDexscreenerPrices(allTokenAddrs);
+  const { data: dexInfoMap } = useDexscreenerInfo(allTokenAddrs);
 
   const getTokenPrice = (network: string, tokenAddr: string): number => {
-    const dex = dexPriceMap?.[tokenAddr.toLowerCase()];
+    const dex = dexInfoMap?.[tokenAddr.toLowerCase()]?.price;
     if (dex && dex > 0) return dex;
     return priceMap?.[getLlamaId(network, tokenAddr)] ?? 0;
   };
+
+  // Sum of liquidity across all DexScreener pools per moat (keyed by moat addr)
+  const liquidityTvlMap = useMemo((): Record<string, { liquidityUsd: number; pairCount: number }> => {
+    if (!configs || !dexInfoMap) return {};
+    const m: Record<string, { liquidityUsd: number; pairCount: number }> = {};
+    configs.forEach((c, i) => {
+      const tokenAddr = stakingTokenAddrs[i]?.toLowerCase();
+      if (!tokenAddr) return;
+      const info = dexInfoMap[tokenAddr];
+      if (info && info.liquidityUsd > 0) {
+        m[c.contractAddress.toLowerCase()] = {
+          liquidityUsd: info.liquidityUsd,
+          pairCount: info.pairCount,
+        };
+      }
+    });
+    return m;
+  }, [configs, stakingTokenAddrs, dexInfoMap]);
 
   const tvmMap = useMemo((): Record<string, number> => {
     if (!moatOnchainData || !configs) return {};
@@ -181,7 +199,7 @@ export default function Home() {
     });
     return m;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [moatOnchainData, configs, priceMap, dexPriceMap, decimalsMap]);
+  }, [moatOnchainData, configs, priceMap, dexInfoMap, decimalsMap]);
 
   const supplyPctMap = useMemo((): Record<string, number> => {
     if (!moatOnchainData || !configs) return {};
@@ -393,6 +411,8 @@ export default function Home() {
                   tvlUSD={tvmMap[moat.contractAddress.toLowerCase()]}
                   supplyPct={supplyPctMap[moat.contractAddress.toLowerCase()]}
                   logoUrl={logoMap[moat.contractAddress.toLowerCase()]}
+                  dexLiquidityUSD={liquidityTvlMap[moat.contractAddress.toLowerCase()]?.liquidityUsd}
+                  dexPairCount={liquidityTvlMap[moat.contractAddress.toLowerCase()]?.pairCount}
                 />
               </motion.div>
             ))}
