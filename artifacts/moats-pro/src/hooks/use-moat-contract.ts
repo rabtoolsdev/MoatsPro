@@ -106,7 +106,7 @@ export function useUserMoatInfo(
   return {
     userInfo: userInfo.data,
     pendingRewards: pendingRewards.data,
-    isLoading: userInfo.isLoading,
+    isLoading: userInfo.isLoading || pendingRewards.isLoading,
     refetch: userInfo.refetch,
   };
 }

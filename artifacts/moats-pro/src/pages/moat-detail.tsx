@@ -1270,16 +1270,17 @@ export default function MoatDetail() {
                     </p>
                     <w3m-connect-button />
                   </div>
-                ) : userInfo.isLoading || userInfo.pendingRewards === undefined ? (
+                ) : userInfo.isLoading ? (
                   <div className="space-y-2">
                     {[1, 2].map((n) => (
                       <div key={n} className="skeleton-shimmer h-10 rounded-lg" />
                     ))}
                   </div>
                 ) : (() => {
-                  const claimRows = userInfo.pendingRewards[0].map((token, i) => {
+                  const claimRows = (userInfo.pendingRewards?.[0] ?? []).map((token, i) => {
                     const dec = getPendingRewardDecimals(i);
-                    const amt = parseFloat(formatUnits(userInfo.pendingRewards![1][i], dec));
+                    const rawAmt = userInfo.pendingRewards?.[1]?.[i] ?? 0n;
+                    const amt = parseFloat(formatUnits(rawAmt, dec));
                     const cfg = moatConfig?.rewardTokens.find(
                       (t) => t.tokenAddress?.toLowerCase() === token.toLowerCase()
                     );
