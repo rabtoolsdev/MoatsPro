@@ -859,7 +859,7 @@ export default function MoatDetail() {
             <div className="rounded-2xl border border-border bg-card/30 overflow-hidden sticky top-24">
               {/* Tabs */}
               <div className="flex border-b border-border overflow-x-auto">
-                {(["stake", "withdraw", "lock", "burn", "claim"] as ActionTab[]).map((t) => (
+                {(["stake", "withdraw", "lock", "burn"] as ActionTab[]).map((t) => (
                   <button
                     key={t}
                     onClick={() => setActiveTab(t)}
@@ -1189,66 +1189,6 @@ export default function MoatDetail() {
                       </div>
                     )}
 
-                    {/* Claim */}
-                    {activeTab === "claim" && (
-                      <div className="space-y-4">
-                        <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20 text-center">
-                          <Gift size={28} className="mx-auto mb-2 text-emerald-400" />
-                          <p className="text-sm text-muted-foreground">
-                            Claim all pending rewards from this Moat
-                          </p>
-                          {userInfo.pendingRewards && userInfo.pendingRewards[0].length > 0 ? (
-                            <div className="mt-3 space-y-1.5">
-                              {userInfo.pendingRewards[0].map((token, i) => {
-                                const claimDec = getPendingRewardDecimals(i);
-                                const claimAmt = parseFloat(formatUnits(userInfo.pendingRewards![1][i], claimDec));
-                                const claimConfig = moatConfig?.rewardTokens.find(
-                                  (t) => t.tokenAddress?.toLowerCase() === token.toLowerCase()
-                                );
-                                const claimLlamaId = getLlamaId(network, token);
-                                const claimUSD = claimAmt * (priceMap?.[claimLlamaId] ?? 0);
-                                return (
-                                  <div
-                                    key={token}
-                                    className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-background/50 text-xs"
-                                  >
-                                    <span className="font-semibold text-muted-foreground">
-                                      {claimConfig?.symbol ?? formatAddress(token)}
-                                    </span>
-                                    <span className="font-bold text-emerald-400">
-                                      {claimAmt.toFixed(6)}
-                                      {claimUSD > 0 && (
-                                        <span className="ml-1.5 text-emerald-300/60">≈ {formatUSD(claimUSD)}</span>
-                                      )}
-                                    </span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <p className="text-xs text-muted-foreground mt-2">No pending rewards</p>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => claimAction.claim()}
-                          disabled={claimAction.isPending || claimAction.isConfirming}
-                          data-testid="btn-claim"
-                          className="w-full py-3.5 rounded-xl bg-emerald-500 text-white font-semibold text-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
-                        >
-                          {claimAction.isPending || claimAction.isConfirming ? (
-                            <><Loader2 size={14} className="animate-spin" />Claiming...</>
-                          ) : (
-                            <><Gift size={14} />Claim All Rewards</>
-                          )}
-                        </button>
-                        <TxStatus
-                          isPending={claimAction.isPending}
-                          isConfirming={claimAction.isConfirming}
-                          isSuccess={claimAction.isSuccess}
-                          error={claimAction.error}
-                        />
-                      </div>
-                    )}
                   </>
                 )}
               </div>
@@ -1268,6 +1208,78 @@ export default function MoatDetail() {
                   )}
                 </div>
               )}
+            </div>
+
+            {/* Claim Rewards Card */}
+            <div className="mt-4 rounded-2xl border border-emerald-500/30 bg-card/30 overflow-hidden">
+              <div className="flex items-center gap-2 px-5 py-4 border-b border-emerald-500/20">
+                <Gift size={15} className="text-emerald-400" />
+                <span className="text-sm font-semibold text-emerald-400">Claim Rewards</span>
+              </div>
+              <div className="p-5">
+                {!isConnected ? (
+                  <div className="text-center py-4">
+                    <p className="text-muted-foreground text-sm mb-4">
+                      Connect your wallet to claim rewards
+                    </p>
+                    <w3m-connect-button />
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
+                      {userInfo.pendingRewards && userInfo.pendingRewards[0].length > 0 ? (
+                        <div className="space-y-1.5">
+                          {userInfo.pendingRewards[0].map((token, i) => {
+                            const claimDec = getPendingRewardDecimals(i);
+                            const claimAmt = parseFloat(formatUnits(userInfo.pendingRewards![1][i], claimDec));
+                            const claimConfig = moatConfig?.rewardTokens.find(
+                              (t) => t.tokenAddress?.toLowerCase() === token.toLowerCase()
+                            );
+                            const claimLlamaId = getLlamaId(network, token);
+                            const claimUSD = claimAmt * (priceMap?.[claimLlamaId] ?? 0);
+                            return (
+                              <div
+                                key={token}
+                                className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-background/50 text-xs"
+                              >
+                                <span className="font-semibold text-muted-foreground">
+                                  {claimConfig?.symbol ?? formatAddress(token)}
+                                </span>
+                                <span className="font-bold text-emerald-400">
+                                  {claimAmt.toFixed(6)}
+                                  {claimUSD > 0 && (
+                                    <span className="ml-1.5 text-emerald-300/60">≈ {formatUSD(claimUSD)}</span>
+                                  )}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground text-center py-2">No pending rewards</p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => claimAction.claim()}
+                      disabled={claimAction.isPending || claimAction.isConfirming}
+                      data-testid="btn-claim"
+                      className="w-full py-3.5 rounded-xl bg-emerald-500 text-white font-semibold text-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                    >
+                      {claimAction.isPending || claimAction.isConfirming ? (
+                        <><Loader2 size={14} className="animate-spin" />Claiming...</>
+                      ) : (
+                        <><Gift size={14} />Claim All Rewards</>
+                      )}
+                    </button>
+                    <TxStatus
+                      isPending={claimAction.isPending}
+                      isConfirming={claimAction.isConfirming}
+                      isSuccess={claimAction.isSuccess}
+                      error={claimAction.error}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
