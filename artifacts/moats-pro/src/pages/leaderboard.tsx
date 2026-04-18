@@ -1,11 +1,9 @@
-import { useState } from "react";
 import { motion } from "framer-motion";
-import { Trophy, TrendingUp, Zap, Medal } from "lucide-react";
+import { Trophy, Medal, Crown } from "lucide-react";
 import { useMapsLeaderboard, useMapsEpoch } from "@/hooks/use-moats-api";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
-import { formatPoints, formatAddress, timeAgo } from "@/lib/moat-metadata";
-import type { MapsScore } from "@/lib/moats-api";
+import { formatAddress, timeAgo } from "@/lib/moat-metadata";
 
 export default function Leaderboard() {
   const { data: mapsScores, isLoading: mapsLoading } = useMapsLeaderboard();
@@ -14,20 +12,20 @@ export default function Leaderboard() {
   const rankBadge = (rank: number) => {
     if (rank === 0)
       return (
-        <span className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center">
-          <Trophy size={16} className="text-amber-400" />
+        <span className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center shadow-[0_0_10px_rgba(251,191,36,0.2)]">
+          <Crown size={15} className="text-amber-400" />
         </span>
       );
     if (rank === 1)
       return (
-        <span className="w-8 h-8 rounded-full bg-zinc-500/20 flex items-center justify-center">
-          <Medal size={16} className="text-zinc-300" />
+        <span className="w-8 h-8 rounded-full bg-zinc-500/20 border border-zinc-400/30 flex items-center justify-center">
+          <Medal size={15} className="text-zinc-300" />
         </span>
       );
     if (rank === 2)
       return (
-        <span className="w-8 h-8 rounded-full bg-amber-900/20 flex items-center justify-center">
-          <Medal size={16} className="text-amber-700" />
+        <span className="w-8 h-8 rounded-full bg-amber-900/20 border border-amber-700/30 flex items-center justify-center">
+          <Medal size={15} className="text-amber-600" />
         </span>
       );
     return (
@@ -36,6 +34,9 @@ export default function Leaderboard() {
       </span>
     );
   };
+
+  const podiumOrder = [1, 0, 2] as const;
+  const podiumPadding: Record<number, string> = { 0: "pt-8", 1: "pt-0", 2: "pt-12" };
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -53,11 +54,14 @@ export default function Leaderboard() {
               Top MAPS scorers across all Moats
             </p>
             {currentEpoch && (
-              <span className={`text-xs px-2.5 py-1 rounded-full border font-medium ${
+              <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border font-medium ${
                 currentEpoch.isComplete
                   ? "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
                   : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
               }`}>
+                {!currentEpoch.isComplete && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 live-dot" />
+                )}
                 Epoch {currentEpoch.epochNumber} {currentEpoch.isComplete ? "Complete" : "Live"}
               </span>
             )}
@@ -71,40 +75,54 @@ export default function Leaderboard() {
           )}
         </motion.div>
 
-        {/* Top 3 highlight cards */}
+        {/* ── Podium top-3 ─────────────────────────────────────────── */}
         {mapsScores && mapsScores.length >= 3 && (
-          <div className="grid grid-cols-3 gap-4 mb-8">
-            {([1, 0, 2] as const).map((idx) => {
+          <div className="flex items-end justify-center gap-3 mb-10">
+            {podiumOrder.map((idx) => {
               const entry = mapsScores[idx];
               if (!entry) return null;
+              const isGold = idx === 0;
+              const isSilver = idx === 1;
+              const isBronze = idx === 2;
               return (
                 <motion.div
                   key={entry.address}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.1 }}
-                  className={`rounded-2xl border p-4 text-center ${
-                    idx === 0
-                      ? "border-amber-500/30 bg-amber-500/5 ring-1 ring-amber-500/20"
-                      : "border-border bg-card/30"
+                  transition={{ delay: 0.05 * idx + 0.1, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                  className={`flex-1 max-w-[200px] rounded-2xl border p-5 text-center flex flex-col items-center ${podiumPadding[idx]} ${
+                    isGold
+                      ? "border-gold bg-amber-500/5"
+                      : isSilver
+                      ? "border-silver bg-zinc-500/5"
+                      : "border-bronze bg-amber-900/5"
                   }`}
                 >
-                  <div className="flex justify-center mb-2">
-                    {idx === 0 ? (
-                      <Trophy size={24} className="text-amber-400" />
+                  <div className="mb-3">
+                    {isGold ? (
+                      <Crown
+                        size={28}
+                        className="text-amber-400 mx-auto"
+                        style={{ filter: "drop-shadow(0 0 6px rgba(251,191,36,0.5))" }}
+                      />
                     ) : (
-                      <Medal size={20} className={idx === 1 ? "text-zinc-300" : "text-amber-700"} />
+                      <Medal
+                        size={24}
+                        className={`mx-auto ${isSilver ? "text-zinc-300" : "text-amber-600"}`}
+                      />
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground mb-0.5">
-                    #{idx === 0 ? 1 : idx === 1 ? 2 : 3}
+                  <p className="text-xs text-muted-foreground mb-1 font-medium">
+                    #{isGold ? 1 : isSilver ? 2 : 3}
                   </p>
-                  <p className="font-mono text-sm font-bold">
+                  <p className="font-mono text-sm font-bold leading-tight mb-2">
                     {entry.username && !entry.username.startsWith("0x")
                       ? entry.username
                       : formatAddress(entry.address)}
                   </p>
-                  <p className="text-primary font-bold text-lg mt-1 tabular-nums">
+                  <p className={`font-bold text-xl tabular-nums ${
+                    isGold ? "text-amber-400" : isSilver ? "text-zinc-300" : "text-amber-600"
+                  }`}>
                     {(entry.points ?? 0).toLocaleString()}
                   </p>
                   <p className="text-xs text-muted-foreground">MAPS pts</p>
@@ -114,7 +132,7 @@ export default function Leaderboard() {
           </div>
         )}
 
-        {/* Full Table */}
+        {/* ── Full Table ───────────────────────────────────────────── */}
         <div
           data-testid="leaderboard-table"
           className="rounded-2xl border border-border bg-card/30 backdrop-blur-sm overflow-hidden"
@@ -122,7 +140,7 @@ export default function Leaderboard() {
           {mapsLoading ? (
             <div className="p-8 space-y-3">
               {[...Array(10)].map((_, i) => (
-                <div key={i} className="h-14 rounded-xl bg-muted/30 animate-pulse" />
+                <div key={i} className="h-14 rounded-xl skeleton-shimmer" />
               ))}
             </div>
           ) : (
@@ -142,7 +160,13 @@ export default function Leaderboard() {
                   transition={{ delay: Math.min(i * 0.015, 0.4) }}
                   data-testid={`row-leaderboard-${i}`}
                   className={`px-6 py-3.5 grid grid-cols-12 gap-4 items-center hover:bg-muted/20 transition-colors ${
-                    i < 3 ? "bg-primary/5" : ""
+                    i === 0
+                      ? "bg-amber-500/5 border-l-2 border-l-amber-500/50"
+                      : i === 1
+                      ? "bg-zinc-500/5 border-l-2 border-l-zinc-400/40"
+                      : i === 2
+                      ? "bg-amber-900/5 border-l-2 border-l-amber-700/40"
+                      : ""
                   }`}
                 >
                   <div className="col-span-1">{rankBadge(i)}</div>
@@ -158,7 +182,9 @@ export default function Leaderboard() {
                       <span className="font-mono text-sm">{formatAddress(entry.address)}</span>
                     )}
                   </div>
-                  <div className="col-span-3 text-right font-bold text-primary tabular-nums">
+                  <div className={`col-span-3 text-right font-bold tabular-nums ${
+                    i === 0 ? "text-amber-400" : i === 1 ? "text-zinc-300" : i === 2 ? "text-amber-600" : "text-primary"
+                  }`}>
                     {(entry.points ?? 0).toLocaleString()}
                   </div>
                   <div className="col-span-3 text-right text-muted-foreground text-sm tabular-nums">

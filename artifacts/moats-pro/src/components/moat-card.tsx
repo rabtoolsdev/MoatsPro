@@ -13,21 +13,24 @@ interface MoatCardProps {
   logoUrl?: string;
 }
 
-const statusColors: Record<string, { border: string; badge: string; text: string }> = {
+const statusColors: Record<string, { border: string; badge: string; text: string; hoverGlow: string }> = {
   Verified: {
     border: "border-emerald-500/20",
     badge: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
     text: "text-emerald-400",
+    hoverGlow: "0 0 0 1px rgba(52,211,153,0.3), 0 8px 32px rgba(52,211,153,0.08)",
   },
   Community: {
     border: "border-cyan-500/20",
     badge: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
     text: "text-cyan-400",
+    hoverGlow: "0 0 0 1px rgba(0,212,255,0.3), 0 8px 32px rgba(0,212,255,0.08)",
   },
   Deprecated: {
     border: "border-zinc-500/20",
     badge: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
     text: "text-zinc-400",
+    hoverGlow: "",
   },
 };
 
@@ -104,11 +107,21 @@ export function MoatCard({ moat, tvlUSD, supplyPct, logoUrl }: MoatCardProps) {
       <motion.div
         data-testid={`card-moat-${moat.contractAddress}`}
         whileHover={{ y: -4, scale: 1.01 }}
-        transition={{ duration: 0.2 }}
-        className={`relative cursor-pointer rounded-2xl border ${statusStyle.border} bg-card/40 backdrop-blur-sm overflow-hidden group h-full flex flex-col`}
+        transition={{ duration: 0.2, ease: "easeOut" }}
+        className={`relative cursor-pointer rounded-2xl border ${statusStyle.border} bg-card/40 backdrop-blur-sm overflow-hidden group h-full flex flex-col transition-shadow duration-300`}
+        style={{ "--hover-glow": statusStyle.hoverGlow } as React.CSSProperties}
+        onMouseEnter={(e) => {
+          if (statusStyle.hoverGlow) {
+            (e.currentTarget as HTMLElement).style.boxShadow = statusStyle.hoverGlow;
+          }
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLElement).style.boxShadow = "";
+        }}
       >
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent" />
+        {/* Gradient overlay on hover */}
+        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent" />
         </div>
 
         <div className="relative p-6 flex flex-col flex-1">
@@ -118,7 +131,7 @@ export function MoatCard({ moat, tvlUSD, supplyPct, logoUrl }: MoatCardProps) {
               <div className="min-w-0">
                 <p
                   data-testid={`text-moat-name-${moat.contractAddress}`}
-                  className="font-bold text-foreground leading-tight text-sm truncate"
+                  className="font-bold text-foreground leading-tight text-sm truncate group-hover:text-primary transition-colors duration-200"
                 >
                   {meta.name}
                 </p>
@@ -212,6 +225,14 @@ export function MoatCard({ moat, tvlUSD, supplyPct, logoUrl }: MoatCardProps) {
                 </span>
               </div>
             )}
+
+            {/* View arrow on hover */}
+            <div className="flex justify-end -mb-1">
+              <ArrowRight
+                size={14}
+                className="text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all duration-200"
+              />
+            </div>
           </div>
         </div>
       </motion.div>

@@ -68,7 +68,6 @@
 }
 
 /* === MOATS PRO — DARK THEME === */
-/* Deep navy/charcoal background with cyan/blue accents matching moats.app */
 
 :root {
   --button-outline: rgba(255,255,255, .08);
@@ -77,7 +76,12 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  /* Deep navy background */
+  /* Glow intensities */
+  --glow-cyan: rgba(0, 212, 255, 0.25);
+  --glow-cyan-strong: rgba(0, 212, 255, 0.45);
+  --glow-emerald: rgba(52, 211, 153, 0.25);
+  --glow-violet: rgba(167, 139, 250, 0.25);
+
   --background: 216 32% 7%;
   --foreground: 210 40% 96%;
 
@@ -85,12 +89,10 @@
   --input: 217 25% 18%;
   --ring: 195 100% 50%;
 
-  /* Cards: slightly lighter navy */
   --card: 218 28% 10%;
   --card-foreground: 210 40% 96%;
   --card-border: 217 25% 20%;
 
-  /* Sidebar */
   --sidebar: 218 30% 8%;
   --sidebar-foreground: 210 40% 96%;
   --sidebar-border: 217 25% 16%;
@@ -104,7 +106,6 @@
   --popover-foreground: 210 40% 96%;
   --popover-border: 217 25% 20%;
 
-  /* Cyan/teal primary — matches moats.app accent */
   --primary: 195 100% 50%;
   --primary-foreground: 216 32% 5%;
 
@@ -159,7 +160,6 @@
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
-/* Dark is the default — no need for .dark class */
 .dark {
   --background: 216 32% 7%;
   --foreground: 210 40% 96%;
@@ -197,9 +197,55 @@
   --chart-5: 0 84% 60%;
 }
 
+/* ─── Keyframe animations ─────────────────────────────────────── */
+
+@keyframes shimmer-sweep {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes radar-ping {
+  0% { transform: scale(1); opacity: 0.8; }
+  70% { transform: scale(2.4); opacity: 0; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  50% { transform: translateY(-20px) scale(1.03); }
+}
+
+@keyframes float-slow-alt {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  50% { transform: translateY(16px) scale(0.97); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes border-glow {
+  0%, 100% { box-shadow: 0 0 8px rgba(0,212,255,0.2); }
+  50% { box-shadow: 0 0 20px rgba(0,212,255,0.5), 0 0 40px rgba(0,212,255,0.2); }
+}
+
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* ─── Base layer ───────────────────────────────────────────────── */
+
 @layer base {
   html {
     color-scheme: dark;
+    scroll-behavior: smooth;
   }
   * {
     @apply border-border;
@@ -210,8 +256,8 @@
     -moz-osx-font-smoothing: grayscale;
   }
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
   }
   ::-webkit-scrollbar-track {
     background: hsl(var(--background));
@@ -221,9 +267,11 @@
     border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground));
+    background: hsl(195 100% 50% / 0.5);
   }
 }
+
+/* ─── Utilities ────────────────────────────────────────────────── */
 
 @layer utilities {
   input[type="search"]::-webkit-search-cancel-button {
@@ -294,15 +342,21 @@
     inset: -1px;
   }
 
-  /* Glow utilities for the DeFi aesthetic */
+  /* ── Glow utilities ── */
   .glow-primary {
     box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
   }
-
   .glow-cyan {
     box-shadow: 0 0 20px rgba(0, 212, 255, 0.25);
   }
+  .glow-cyan-hover {
+    transition: box-shadow 0.25s ease;
+  }
+  .glow-cyan-hover:hover {
+    box-shadow: 0 0 18px rgba(0, 212, 255, 0.35), 0 0 36px rgba(0, 212, 255, 0.12);
+  }
 
+  /* ── Text gradient ── */
   .text-gradient-primary {
     background: linear-gradient(135deg, hsl(var(--primary)), hsl(210 100% 60%));
     -webkit-background-clip: text;
@@ -310,16 +364,132 @@
     background-clip: text;
   }
 
+  /* ── Animated tech grid background ── */
   .bg-grid {
     background-image:
       linear-gradient(hsl(var(--border) / 0.3) 1px, transparent 1px),
       linear-gradient(90deg, hsl(var(--border) / 0.3) 1px, transparent 1px);
     background-size: 40px 40px;
   }
+  .bg-grid-animated {
+    background-image:
+      linear-gradient(hsl(195 100% 50% / 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(195 100% 50% / 0.06) 1px, transparent 1px);
+    background-size: 60px 60px;
+    animation: float-slow 18s ease-in-out infinite;
+  }
 
+  /* ── Glass / backdrop ── */
   .glass {
     background: hsl(var(--card) / 0.6);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+  }
+  .glass-strong {
+    background: hsl(var(--card) / 0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  /* ── Shimmer skeleton loader ── */
+  .skeleton-shimmer {
+    background: linear-gradient(
+      105deg,
+      hsl(var(--muted) / 0.5) 0%,
+      hsl(var(--muted) / 0.5) 30%,
+      hsl(var(--muted-foreground) / 0.12) 50%,
+      hsl(var(--muted) / 0.5) 70%,
+      hsl(var(--muted) / 0.5) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer-sweep 1.8s ease-in-out infinite;
+  }
+
+  /* ── Floating orb ── */
+  .float-slow {
+    animation: float-slow 14s ease-in-out infinite;
+  }
+  .float-slow-alt {
+    animation: float-slow-alt 18s ease-in-out infinite;
+  }
+
+  /* ── Live pulse dot ── */
+  .live-dot {
+    animation: live-pulse 1.8s ease-in-out infinite;
+  }
+
+  /* ── Radar ping ── */
+  .radar-ping::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    animation: radar-ping 2s ease-out infinite;
+    background: currentColor;
+    opacity: 0;
+  }
+
+  /* ── CTA shimmer button ── */
+  .btn-shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-shimmer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255,255,255,0.18),
+      transparent
+    );
+    animation: shimmer-sweep 3.5s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  /* ── Gradient border card ── */
+  .card-glow {
+    position: relative;
+    transition: box-shadow 0.3s ease;
+  }
+  .card-glow:hover {
+    box-shadow: 0 0 0 1px rgba(0,212,255,0.3), 0 4px 32px rgba(0,212,255,0.08), 0 1px 4px rgba(0,0,0,0.4);
+  }
+
+  /* ── Gold / silver / bronze podium borders ── */
+  .border-gold {
+    border-color: rgba(251, 191, 36, 0.5) !important;
+    box-shadow: 0 0 18px rgba(251, 191, 36, 0.15), inset 0 0 20px rgba(251, 191, 36, 0.04);
+  }
+  .border-silver {
+    border-color: rgba(148, 163, 184, 0.4) !important;
+    box-shadow: 0 0 14px rgba(148, 163, 184, 0.1);
+  }
+  .border-bronze {
+    border-color: rgba(180, 120, 60, 0.4) !important;
+    box-shadow: 0 0 14px rgba(180, 120, 60, 0.1);
+  }
+
+  /* ── Page transition wrapper ── */
+  .page-enter {
+    animation: slide-in-left 0.2s ease forwards;
+  }
+
+  /* ── Float animation utility ── */
+  .animate-float {
+    animation: float-slow 14s ease-in-out infinite;
+  }
+  .animate-float-alt {
+    animation: float-slow-alt 18s ease-in-out infinite;
+  }
+  .animate-pulse-glow {
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
+  .animate-border-glow {
+    animation: border-glow 2.5s ease-in-out infinite;
   }
 }

@@ -6,6 +6,7 @@ import type { MoatEvent, MoatConfig } from "@/lib/moats-api";
 interface ActivityFeedProps {
   events: MoatEvent[];
   moatConfigs?: MoatConfig[];
+  showLiveBadge?: boolean;
 }
 
 function buildTokenMap(moatConfigs?: MoatConfig[]): Record<string, { symbol: string; decimals: number }> {
@@ -76,15 +77,41 @@ const dotColor: Record<string, string> = {
   RewardsDeposited: "bg-teal-400",
 };
 
-export function ActivityFeed({ events, moatConfigs }: ActivityFeedProps) {
+const rowAccent: Record<string, string> = {
+  Staked: "hover:border-l-emerald-400/60",
+  Locked: "hover:border-l-cyan-400/60",
+  Burned: "hover:border-l-rose-400/60",
+  RewardClaimed: "hover:border-l-violet-400/60",
+  Withdrawn: "hover:border-l-amber-400/60",
+  LockExited: "hover:border-l-blue-400/60",
+  EarlyExit: "hover:border-l-orange-400/60",
+  RewardsDeposited: "hover:border-l-teal-400/60",
+};
+
+export function ActivityFeed({ events, moatConfigs, showLiveBadge = false }: ActivityFeedProps) {
   const tokenMap = buildTokenMap(moatConfigs);
 
   return (
     <div className="rounded-2xl border border-border bg-card/30 backdrop-blur-sm overflow-hidden">
+      {/* Header with optional LIVE badge */}
+      {showLiveBadge && (
+        <div className="px-6 py-3.5 border-b border-border/50 flex items-center justify-between">
+          <span className="text-sm font-semibold text-foreground">Recent Activity</span>
+          <div className="flex items-center gap-2">
+            <span className="relative flex items-center justify-center w-2 h-2">
+              <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-60" />
+              <span className="relative w-2 h-2 rounded-full bg-emerald-400 live-dot" />
+            </span>
+            <span className="text-xs font-semibold text-emerald-400 tracking-wide uppercase">Live</span>
+          </div>
+        </div>
+      )}
+
       <div className="divide-y divide-border/50">
         {events.map((event, i) => {
           const amount = formatEventAmount(event, tokenMap);
           const user = event.args.user;
+          const accentClass = rowAccent[event.eventType] || "";
           return (
             <motion.div
               key={event._id || i}
@@ -92,14 +119,21 @@ export function ActivityFeed({ events, moatConfigs }: ActivityFeedProps) {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.3, delay: Math.min(i * 0.04, 0.4) }}
               data-testid={`activity-event-${i}`}
-              className="px-6 py-4 flex items-center justify-between gap-4 hover:bg-muted/20 transition-colors"
+              className={`px-6 py-4 flex items-center justify-between gap-4 hover:bg-muted/20 transition-all border-l-2 border-l-transparent ${accentClass}`}
             >
               <div className="flex items-center gap-3 min-w-0">
-                <div
-                  className={`w-2 h-2 rounded-full shrink-0 ${
-                    dotColor[event.eventType] || "bg-zinc-400"
-                  }`}
-                />
+                {/* Radar-ping dot */}
+                <div className="relative shrink-0 flex items-center justify-center w-3 h-3">
+                  {i === 0 && (
+                    <span
+                      className={`absolute inset-0 rounded-full ${dotColor[event.eventType] || "bg-zinc-400"} opacity-0`}
+                      style={{ animation: "radar-ping 2s ease-out 0.3s" }}
+                    />
+                  )}
+                  <div
+                    className={`w-2 h-2 rounded-full ${dotColor[event.eventType] || "bg-zinc-400"}`}
+                  />
+                </div>
                 <div className="min-w-0">
                   <span
                     className={`text-sm font-semibold ${getEventTypeColor(event.eventType)}`}

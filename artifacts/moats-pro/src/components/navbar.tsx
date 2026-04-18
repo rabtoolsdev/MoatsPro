@@ -31,12 +31,22 @@ export function Navbar() {
   return (
     <header
       data-testid="navbar"
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
         scrolled
-          ? "bg-background/90 backdrop-blur-xl border-b border-border/50 shadow-lg shadow-black/20"
+          ? "bg-background/85 backdrop-blur-2xl shadow-xl shadow-black/30"
           : "bg-transparent"
       }`}
     >
+      {/* Glowing bottom border on scroll */}
+      <div
+        className={`absolute bottom-0 left-0 right-0 h-px transition-opacity duration-500 ${
+          scrolled ? "opacity-100" : "opacity-0"
+        }`}
+        style={{
+          background: "linear-gradient(90deg, transparent, rgba(0,212,255,0.4), transparent)",
+        }}
+      />
+
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link href="/">
@@ -45,7 +55,7 @@ export function Navbar() {
             className="flex items-center gap-2 cursor-pointer group"
           >
             <div className="relative w-8 h-8">
-              <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-primary to-cyan-400 opacity-80 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-primary to-cyan-400 opacity-80 group-hover:opacity-100 transition-opacity duration-300 group-hover:shadow-[0_0_12px_rgba(0,212,255,0.5)]" />
               <div className="absolute inset-0.5 rounded-md bg-background flex items-center justify-center">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                   <path
@@ -66,22 +76,33 @@ export function Navbar() {
         </Link>
 
         {/* Desktop Nav */}
-        <nav className="hidden md:flex items-center gap-1">
-          {links.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              data-testid={`nav-${label.toLowerCase()}`}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                location === href
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-              }`}
-            >
-              <Icon size={15} />
-              {label}
-            </Link>
-          ))}
+        <nav className="hidden md:flex items-center gap-1 relative">
+          {links.map(({ href, label, icon: Icon }) => {
+            const isActive = location === href;
+            return (
+              <Link
+                key={href}
+                href={href}
+                data-testid={`nav-${label.toLowerCase()}`}
+                className={`relative flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  isActive
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                }`}
+              >
+                <Icon size={15} />
+                {label}
+                {isActive && (
+                  <motion.div
+                    layoutId="nav-underline"
+                    className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-primary"
+                    style={{ boxShadow: "0 0 8px rgba(0,212,255,0.6)" }}
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  />
+                )}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Wallet Button */}
@@ -90,9 +111,9 @@ export function Navbar() {
             <button
               data-testid="btn-wallet-connected"
               onClick={() => open({ view: "Account" })}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/10 hover:border-primary/50 transition-all text-sm font-medium"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/10 hover:border-primary/60 transition-all duration-200 text-sm font-medium hover:shadow-[0_0_12px_rgba(0,212,255,0.2)]"
             >
-              <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+              <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0 live-dot" />
               <Wallet size={13} className="text-primary shrink-0" />
               <span className="font-mono text-foreground">{shortAddress}</span>
             </button>
@@ -100,7 +121,7 @@ export function Navbar() {
             <button
               data-testid="btn-wallet-connect"
               onClick={() => open({ view: "Connect" })}
-              className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-all"
+              className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-all duration-200 hover:shadow-[0_0_16px_rgba(0,212,255,0.4)] btn-shimmer"
             >
               Connect Wallet
             </button>
@@ -122,7 +143,8 @@ export function Navbar() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden border-t border-border bg-background/95 backdrop-blur-xl"
+            transition={{ duration: 0.2 }}
+            className="md:hidden border-t border-border/50 glass-strong"
           >
             <nav className="px-4 py-4 flex flex-col gap-1">
               {links.map(({ href, label, icon: Icon }) => (

@@ -415,7 +415,7 @@ export default function MoatDetail() {
                   {moatConfig.rewardTokens.filter((t) => t.enabled).map((token) => (
                     <div
                       key={token._id}
-                      className="p-4 rounded-xl border border-border bg-background/30"
+                      className="p-4 rounded-xl border border-primary/10 bg-card/40 backdrop-blur-sm hover:border-primary/25 transition-all duration-200 hover:shadow-[0_0_12px_rgba(0,212,255,0.06)]"
                     >
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-semibold text-primary">{token.symbol}</span>
@@ -856,30 +856,44 @@ export default function MoatDetail() {
 
           {/* Right: Action Panel */}
           <div className="sticky top-24 self-start">
-            <div className="rounded-2xl border border-border bg-card/30 overflow-hidden">
-              {/* Tabs */}
+            <div className="rounded-2xl border border-border bg-card/30 backdrop-blur-md overflow-hidden"
+              style={{ boxShadow: "0 0 0 1px rgba(0,212,255,0.05), 0 4px 32px rgba(0,0,0,0.3)" }}
+            >
+              {/* Tabs with animated sliding underline */}
               <div className="flex border-b border-border overflow-x-auto">
-                {(["stake", "withdraw", "lock", "burn"] as ActionTab[]).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setActiveTab(t)}
-                    data-testid={`tab-action-${t}`}
-                    className={`flex-1 min-w-fit py-3.5 px-2 text-sm font-medium capitalize transition-all ${
-                      activeTab === t
-                        ? t === "burn"
-                          ? "text-rose-400 border-b-2 border-rose-400 bg-rose-500/5"
-                          : "text-primary border-b-2 border-primary bg-primary/5"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {t === "stake" && <TrendingUp size={14} className="inline mr-1.5" />}
-                    {t === "withdraw" && <ArrowLeft size={14} className="inline mr-1.5" />}
-                    {t === "lock" && <Lock size={14} className="inline mr-1.5" />}
-                    {t === "burn" && <Flame size={14} className="inline mr-1.5" />}
-                    {t === "claim" && <Gift size={14} className="inline mr-1.5" />}
-                    {t}
-                  </button>
-                ))}
+                {(["stake", "withdraw", "lock", "burn"] as ActionTab[]).map((t) => {
+                  const isActive = activeTab === t;
+                  const isBurn = t === "burn";
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => setActiveTab(t)}
+                      data-testid={`tab-action-${t}`}
+                      className={`relative flex-1 min-w-fit py-3.5 px-2 text-sm font-medium capitalize transition-colors ${
+                        isActive
+                          ? isBurn
+                            ? "text-rose-400 bg-rose-500/5"
+                            : "text-primary bg-primary/5"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {t === "stake" && <TrendingUp size={14} className="inline mr-1.5" />}
+                      {t === "withdraw" && <ArrowLeft size={14} className="inline mr-1.5" />}
+                      {t === "lock" && <Lock size={14} className="inline mr-1.5" />}
+                      {t === "burn" && <Flame size={14} className="inline mr-1.5" />}
+                      {t === "claim" && <Gift size={14} className="inline mr-1.5" />}
+                      {t}
+                      {isActive && (
+                        <motion.div
+                          layoutId="action-tab-underline"
+                          className={`absolute bottom-0 left-0 right-0 h-0.5 ${isBurn ? "bg-rose-400" : "bg-primary"}`}
+                          style={!isBurn ? { boxShadow: "0 0 6px rgba(0,212,255,0.5)" } : undefined}
+                          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                        />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
 
               <div className="p-6">
@@ -951,7 +965,7 @@ export default function MoatDetail() {
                           onClick={handleStake}
                           disabled={!stakeAmount || stakeAction.isPending || stakeAction.isConfirming || approveAction.isPending}
                           data-testid="btn-stake"
-                          className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                          className="btn-shimmer w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-95 hover:shadow-[0_0_20px_rgba(0,212,255,0.35)] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                         >
                           {approveAction.isPending || approveAction.isConfirming ? (
                             <><Loader2 size={14} className="animate-spin" />Approving...</>
