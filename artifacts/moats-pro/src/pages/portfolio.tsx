@@ -3,7 +3,7 @@ import { useQueries } from "@tanstack/react-query";
 import { useAccount, useReadContracts } from "wagmi";
 import { formatUnits } from "viem";
 import { motion } from "framer-motion";
-import { Wallet, TrendingUp, Award, AlertCircle, ArrowDownRight, Lock, DollarSign, ArrowUpRight, Flame } from "lucide-react";
+import { Wallet, TrendingUp, Award, AlertCircle, ArrowDownRight, Lock, DollarSign, ArrowUpRight, Flame, Gift } from "lucide-react";
 import { useMapsScore, useAllMoatConfigs, useUserEvents } from "@/hooks/use-moats-api";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
 import { MOAT_V3_ABI, ERC20_ABI, MOAT_LOGO_ABI } from "@/lib/moat-abi";
@@ -233,6 +233,36 @@ export default function Portfolio() {
       }, 0);
   };
 
+  // ── Pending rewards per active position ──────────────────────────────────
+  const pendingRewardsContracts = useMemo(() => {
+    if (!address) return [];
+    return activePositions.map((pos) => ({
+      address: pos.config.contractAddress as `0x${string}`,
+      abi: MOAT_V3_ABI,
+      functionName: "getAllPendingRewards" as const,
+      args: [address as `0x${string}`],
+    }));
+  }, [activePositions, address]);
+
+  const { data: pendingRewardsResults } = useReadContracts({
+    contracts: pendingRewardsContracts,
+    query: { enabled: pendingRewardsContracts.length > 0 },
+  });
+
+  const hasRewardsMap = useMemo((): Record<string, boolean> => {
+    const m: Record<string, boolean> = {};
+    activePositions.forEach((pos, i) => {
+      const r = pendingRewardsResults?.[i];
+      if (r?.status === "success") {
+        const [, amounts] = r.result as [readonly string[], readonly bigint[]];
+        m[pos.config.contractAddress.toLowerCase()] = amounts.some((a) => a > 0n);
+      } else {
+        m[pos.config.contractAddress.toLowerCase()] = false;
+      }
+    });
+    return m;
+  }, [pendingRewardsResults, activePositions]);
+
   const totalPortfolioValueUSD = activePositions.reduce((sum, pos, i) => sum + getPositionValueUSD(pos, i), 0);
   const totalDailyUSD = activePositions.reduce((sum, pos) => sum + getDailyRewardUSD(pos), 0);
   const isPositionsLoading = configsLoading || (userInfoContracts.length > 0 && infoLoading);
@@ -450,6 +480,7 @@ export default function Portfolio() {
                     const dailyUSD = getDailyRewardUSD(pos);
                     const mapsPoints = moatPointsMap[pos.config.contractAddress.toLowerCase()] ?? 0;
                     const logoUrl = logoMap[pos.config.contractAddress.toLowerCase()];
+                    const hasRewards = hasRewardsMap[pos.config.contractAddress.toLowerCase()];
 
                     return (
                       <motion.div
@@ -486,12 +517,25 @@ export default function Portfolio() {
                               </p>
                             </div>
                           </div>
-                          <Link
-                            href={`/moat/${pos.config.contractAddress}`}
-                            className="shrink-0 px-4 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors"
-                          >
-                            Manage
-                          </Link>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {hasRewards && (
+                              <Link
+                                href={`/moat/${pos.config.contractAddress}`}
+                                data-testid={`badge-rewards-pending-${pos.config.contractAddress}`}
+                                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/15 transition-colors"
+                                title="You have unclaimed rewards"
+                              >
+                                <Gift size={12} />
+                                <span className="hidden sm:inline">Rewards Pending</span>
+                              </Link>
+                            )}
+                            <Link
+                              href={`/moat/${pos.config.contractAddress}`}
+                              className="px-4 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors"
+                            >
+                              Manage
+                            </Link>
+                          </div>
                         </div>
 
                         <div className="flex flex-wrap gap-x-6 gap-y-3 mt-4">
