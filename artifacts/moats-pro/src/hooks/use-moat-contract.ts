@@ -106,6 +106,7 @@ export function useUserMoatInfo(
   return {
     userInfo: userInfo.data,
     pendingRewards: pendingRewards.data,
+    pendingRewardsError: pendingRewards.error,
     isLoading: userInfo.isLoading || pendingRewards.isLoading,
     refetch: userInfo.refetch,
   };

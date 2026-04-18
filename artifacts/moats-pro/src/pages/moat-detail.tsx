@@ -1253,14 +1253,18 @@ export default function MoatDetail() {
                   <Gift size={15} className="text-emerald-400" />
                   <span className="text-sm font-semibold text-emerald-400">Claim Rewards</span>
                 </div>
-                {userInfo.pendingRewards && userInfo.pendingRewards[0].some((_, i) => {
-                  const dec = getPendingRewardDecimals(i);
-                  return parseFloat(formatUnits(userInfo.pendingRewards![1][i], dec)) > 0;
-                }) && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-medium animate-pulse">
-                    Rewards Ready
-                  </span>
-                )}
+                {(() => {
+                  const hasKnownRewards = userInfo.pendingRewards && userInfo.pendingRewards[0].some((_, i) => {
+                    const dec = getPendingRewardDecimals(i);
+                    return parseFloat(formatUnits(userInfo.pendingRewards![1][i], dec)) > 0;
+                  });
+                  const couldHaveRewards = !userInfo.pendingRewards && !!userInfo.pendingRewardsError;
+                  return (hasKnownRewards || couldHaveRewards) && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-medium animate-pulse">
+                      Rewards Ready
+                    </span>
+                  );
+                })()}
               </div>
               <div className="p-5">
                 {!isConnected ? (
@@ -1277,6 +1281,69 @@ export default function MoatDetail() {
                     ))}
                   </div>
                 ) : (() => {
+                  const contractReverted = !userInfo.pendingRewards && !!userInfo.pendingRewardsError;
+
+                  if (contractReverted) {
+                    const enabledTokens = (moatConfig?.rewardTokens ?? []).filter((t) => t.enabled);
+                    return (
+                      <div className="space-y-4">
+                        <div className="rounded-xl overflow-hidden border border-emerald-500/20 bg-emerald-500/5">
+                          {enabledTokens.length > 0 ? (
+                            enabledTokens.map((t, idx) => {
+                              const llamaId = getLlamaId(network, t.tokenAddress);
+                              const price = priceMap?.[llamaId] ?? 0;
+                              return (
+                                <div
+                                  key={t.tokenAddress}
+                                  className={`flex items-center justify-between px-4 py-3 ${idx < enabledTokens.length - 1 ? "border-b border-emerald-500/15" : ""}`}
+                                >
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="text-sm font-semibold text-foreground">{t.symbol}</span>
+                                    <span className="text-xs text-muted-foreground">{t.name}</span>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-sm font-bold tabular-nums text-emerald-400">—</p>
+                                    {price > 0 && (
+                                      <p className="text-xs text-muted-foreground/60 tabular-nums">
+                                        ${price.toFixed(2)}/token
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <div className="px-4 py-5 text-center">
+                              <Gift size={20} className="text-muted-foreground mx-auto mb-2 opacity-50" />
+                              <p className="text-sm text-muted-foreground">Rewards may be available</p>
+                            </div>
+                          )}
+                          <div className="px-4 py-2.5 bg-amber-500/10 border-t border-amber-500/20 flex items-center gap-2">
+                            <span className="text-xs text-amber-400/80">Exact amounts calculated on-chain at claim time</span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => claimAction.claim()}
+                          disabled={claimAction.isPending || claimAction.isConfirming}
+                          data-testid="btn-claim"
+                          className="btn-shimmer w-full py-3.5 rounded-xl bg-emerald-500 text-white font-semibold text-sm hover:opacity-95 hover:shadow-[0_0_20px_rgba(52,211,153,0.35)] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                        >
+                          {claimAction.isPending || claimAction.isConfirming ? (
+                            <><Loader2 size={14} className="animate-spin" />Claiming...</>
+                          ) : (
+                            <><Gift size={14} />Claim All Rewards</>
+                          )}
+                        </button>
+                        <TxStatus
+                          isPending={claimAction.isPending}
+                          isConfirming={claimAction.isConfirming}
+                          isSuccess={claimAction.isSuccess}
+                          error={claimAction.error}
+                        />
+                      </div>
+                    );
+                  }
+
                   const claimRows = (userInfo.pendingRewards?.[0] ?? []).map((token, i) => {
                     const dec = getPendingRewardDecimals(i);
                     const rawAmt = userInfo.pendingRewards?.[1]?.[i] ?? 0n;
