@@ -9,10 +9,12 @@ export function Footer() {
       <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-96 h-24 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
 
       <div className="relative max-w-7xl mx-auto px-4 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <span className="font-bold text-sm">
-            Moats <span className="text-primary">Pro</span>
-          </span>
+        <div className="flex items-center gap-3">
+          <img
+            src="/moats-pro-logo.png"
+            alt="The Moats Pro"
+            className="h-10 w-auto object-contain"
+          />
           <span className="text-muted-foreground text-xs">|</span>
           <span className="text-muted-foreground text-xs">
             Premium DeFi Liquidity

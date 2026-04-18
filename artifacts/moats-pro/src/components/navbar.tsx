@@ -52,26 +52,16 @@ export function Navbar() {
         <Link href="/">
           <div
             data-testid="nav-logo"
-            className="flex items-center gap-2 cursor-pointer group"
+            className="flex items-center cursor-pointer group"
           >
-            <div className="relative w-8 h-8">
-              <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-primary to-cyan-400 opacity-80 group-hover:opacity-100 transition-opacity duration-300 group-hover:shadow-[0_0_12px_rgba(0,212,255,0.5)]" />
-              <div className="absolute inset-0.5 rounded-md bg-background flex items-center justify-center">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M12 2L3 7v10l9 5 9-5V7L12 2z"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    className="text-primary"
-                    fill="none"
-                  />
-                  <circle cx="12" cy="12" r="3" fill="currentColor" className="text-primary" />
-                </svg>
-              </div>
+            <div className="relative h-12 w-auto transition-transform duration-300 group-hover:scale-105">
+              <div className="absolute inset-0 -m-2 rounded-full bg-primary/10 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <img
+                src="/moats-pro-logo.png"
+                alt="The Moats Pro"
+                className="relative h-12 w-auto object-contain drop-shadow-[0_0_8px_rgba(0,212,255,0.15)]"
+              />
             </div>
-            <span className="font-bold text-lg tracking-tight">
-              Moats <span className="text-primary">Pro</span>
-            </span>
           </div>
         </Link>
 
