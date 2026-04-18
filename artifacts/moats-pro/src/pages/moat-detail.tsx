@@ -202,7 +202,7 @@ export default function MoatDetail() {
   const totalBurnedFormatted = stats.totalBurned !== undefined ? compactToken(stats.totalBurned) : "—";
 
   const fmtUserAmt = (n: number) =>
-    n.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+    n.toLocaleString("en-US", { maximumFractionDigits: 4 });
   const userStakedFormatted =
     userInfo.userInfo !== undefined
       ? fmtUserAmt(parseFloat(formatUnits(userInfo.userInfo[0], decimals)))
