@@ -33,7 +33,7 @@ export function Footer() {
           <img
             src="/rabtools-logo.png"
             alt="RABtools"
-            className="h-8 w-auto object-contain opacity-80"
+            className="h-12 w-auto object-contain opacity-80"
           />
         </div>
       </div>
