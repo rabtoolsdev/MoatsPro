@@ -14,10 +14,6 @@ export function Footer() {
             alt="The Moats Pro"
             className="h-10 w-auto object-contain"
           />
-          <span className="text-muted-foreground text-xs">|</span>
-          <span className="text-muted-foreground text-xs">
-            Premium DeFi Liquidity
-          </span>
         </div>
         <nav className="flex items-center gap-6 text-sm text-muted-foreground">
           <Link href="/" className="hover:text-foreground hover:text-primary transition-colors">Explore</Link>
