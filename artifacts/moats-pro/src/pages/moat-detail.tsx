@@ -21,6 +21,7 @@ import { ActivityFeed } from "@/components/activity-feed";
 import { MoatLogo } from "@/components/moat-card";
 import { formatAddress, formatPoints, timeAgo, getMoatMeta, formatUSD } from "@/lib/moat-metadata";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
+import { useDexscreenerInfo } from "@/hooks/use-dexscreener";
 import { ERC20_ABI, MOAT_LOGO_ABI } from "@/lib/moat-abi";
 
 type ActionTab = "stake" | "lock" | "claim" | "withdraw" | "burn";
@@ -154,6 +155,12 @@ export default function MoatDetail() {
   const stakingLlamaId = stats.stakingToken ? getLlamaId(network, stats.stakingToken) : "";
   const allLlamaIds = [...new Set([...rewardLlamaIds, ...(stakingLlamaId ? [stakingLlamaId] : [])])];
   const { data: priceMap } = useTokenPrices(allLlamaIds);
+  const { data: dexInfoMap } = useDexscreenerInfo(stats.stakingToken ? [stats.stakingToken] : []);
+  const stakingTokenPrice = (() => {
+    const llamaP = stakingLlamaId ? (priceMap?.[stakingLlamaId] ?? 0) : 0;
+    if (llamaP > 0) return llamaP;
+    return stats.stakingToken ? (dexInfoMap?.[stats.stakingToken.toLowerCase()]?.price ?? 0) : 0;
+  })();
 
   const pendingRewardTokenAddrs = userInfo.pendingRewards?.[0] ?? [];
   const { data: pendingRewardDecimals } = useReadContracts({
@@ -566,9 +573,8 @@ export default function MoatDetail() {
                       value: userStakedFormatted,
                       testId: "user-staked",
                       usd: (() => {
-                        if (!stakingLlamaId || !priceMap || !userInfo.userInfo) return 0;
-                        const price = priceMap[stakingLlamaId] ?? 0;
-                        return parseFloat(formatUnits(userInfo.userInfo[0], decimals)) * price;
+                        if (!userInfo.userInfo || stakingTokenPrice === 0) return 0;
+                        return parseFloat(formatUnits(userInfo.userInfo[0], decimals)) * stakingTokenPrice;
                       })(),
                     },
                     {
@@ -576,9 +582,8 @@ export default function MoatDetail() {
                       value: userLockedFormatted,
                       testId: "user-locked",
                       usd: (() => {
-                        if (!stakingLlamaId || !priceMap) return 0;
-                        const price = priceMap[stakingLlamaId] ?? 0;
-                        return parseFloat(formatUnits(userLockedAmount, decimals)) * price;
+                        if (stakingTokenPrice === 0) return 0;
+                        return parseFloat(formatUnits(userLockedAmount, decimals)) * stakingTokenPrice;
                       })(),
                     },
                     {
@@ -586,9 +591,8 @@ export default function MoatDetail() {
                       value: userBurnFormatted,
                       testId: "user-burned",
                       usd: (() => {
-                        if (!stakingLlamaId || !priceMap || !userInfo.userInfo) return 0;
-                        const price = priceMap[stakingLlamaId] ?? 0;
-                        return parseFloat(formatUnits(userInfo.userInfo[1], decimals)) * price;
+                        if (!userInfo.userInfo || stakingTokenPrice === 0) return 0;
+                        return parseFloat(formatUnits(userInfo.userInfo[1], decimals)) * stakingTokenPrice;
                       })(),
                     },
                     {

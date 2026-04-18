@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Wallet, TrendingUp, Award, AlertCircle, ArrowDownRight, Lock, DollarSign, ArrowUpRight, Flame, Gift } from "lucide-react";
 import { useMapsScore, useAllMoatConfigs, useUserEvents } from "@/hooks/use-moats-api";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
+import { useDexscreenerInfo } from "@/hooks/use-dexscreener";
 import { MOAT_V3_ABI, ERC20_ABI, MOAT_LOGO_ABI } from "@/lib/moat-abi";
 import { moatsApi } from "@/lib/moats-api";
 import { Navbar } from "@/components/navbar";
@@ -212,13 +213,16 @@ export default function Portfolio() {
   }, [configs, positionStakingTokens, activePositions]);
 
   const { data: priceMap } = useTokenPrices(allLlamaIds);
+  const { data: dexInfoMap } = useDexscreenerInfo(uniqueStakingTokens);
 
   const getPositionValueUSD = (pos: typeof activePositions[0], idx: number): number => {
     const tokenAddr = positionStakingTokens[idx];
-    if (!tokenAddr || !priceMap) return 0;
+    if (!tokenAddr) return 0;
     const dec = decimalsMap[tokenAddr.toLowerCase()] ?? 18;
     const llamaId = getLlamaId(pos.config.network, tokenAddr);
-    const price = priceMap[llamaId] ?? 0;
+    const llamaPrice = priceMap?.[llamaId] ?? 0;
+    const dexPrice = dexInfoMap?.[tokenAddr.toLowerCase()]?.price ?? 0;
+    const price = llamaPrice > 0 ? llamaPrice : dexPrice;
     if (price === 0) return 0;
     const locked = lockedMap[pos.config.contractAddress.toLowerCase()] ?? 0n;
     return parseFloat(formatUnits(pos.stakedAmount + locked + pos.totalUserBurn, dec)) * price;
