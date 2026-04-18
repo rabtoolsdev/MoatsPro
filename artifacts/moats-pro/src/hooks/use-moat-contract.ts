@@ -98,7 +98,7 @@ export function useUserMoatInfo(
   const pendingRewards = useReadContract({
     address: contractAddress,
     abi: MOAT_V3_ABI,
-    functionName: "pendingRewards",
+    functionName: "getAllPendingRewards",
     args: address ? [address] : undefined,
     query: { enabled },
   });

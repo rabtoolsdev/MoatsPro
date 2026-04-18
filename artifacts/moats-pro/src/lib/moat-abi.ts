@@ -53,11 +53,21 @@ export const MOAT_V3_ABI = [
   },
   {
     inputs: [{ internalType: "address", name: "_user", type: "address" }],
-    name: "pendingRewards",
+    name: "getAllPendingRewards",
     outputs: [
-      { internalType: "address[]", name: "tokens", type: "address[]" },
-      { internalType: "uint256[]", name: "amounts", type: "uint256[]" },
+      { internalType: "address[]", name: "", type: "address[]" },
+      { internalType: "uint256[]", name: "", type: "uint256[]" },
     ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "_user", type: "address" },
+      { internalType: "address", name: "_rewardToken", type: "address" },
+    ],
+    name: "pendingRewards",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
     stateMutability: "view",
     type: "function",
   },
