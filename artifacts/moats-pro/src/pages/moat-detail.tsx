@@ -201,16 +201,18 @@ export default function MoatDetail() {
   const totalLockedFormatted = stats.totalLocked !== undefined ? compactToken(stats.totalLocked) : "—";
   const totalBurnedFormatted = stats.totalBurned !== undefined ? compactToken(stats.totalBurned) : "—";
 
+  const fmtUserAmt = (n: number) =>
+    n.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
   const userStakedFormatted =
     userInfo.userInfo !== undefined
-      ? parseFloat(formatUnits(userInfo.userInfo[0], decimals)).toFixed(4)
+      ? fmtUserAmt(parseFloat(formatUnits(userInfo.userInfo[0], decimals)))
       : "0";
   const userBurnFormatted =
     userInfo.userInfo !== undefined
-      ? parseFloat(formatUnits(userInfo.userInfo[1], decimals)).toFixed(4)
+      ? fmtUserAmt(parseFloat(formatUnits(userInfo.userInfo[1], decimals)))
       : "0";
   const userLockedAmount = locks.filter((l) => l.active).reduce((sum, l) => sum + l.amount, 0n);
-  const userLockedFormatted = parseFloat(formatUnits(userLockedAmount, decimals)).toFixed(4);
+  const userLockedFormatted = fmtUserAmt(parseFloat(formatUnits(userLockedAmount, decimals)));
   const userMoatPointsValue = userMoatPoints?.points ?? 0;
 
   const handleStake = () => {
