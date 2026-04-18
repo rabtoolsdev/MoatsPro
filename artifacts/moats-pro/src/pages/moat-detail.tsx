@@ -485,7 +485,13 @@ export default function MoatDetail() {
                     : n >= 1_000 ? `${(n / 1_000).toFixed(0)}K`
                     : String(n);
                   return (
-                    <div className="grid grid-cols-2 gap-3 p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
+                    <div
+                      className="grid grid-cols-2 gap-3 p-4 rounded-xl border border-transparent"
+                      style={{
+                        background: "linear-gradient(hsl(var(--card) / 0.5), hsl(var(--card) / 0.5)) padding-box, linear-gradient(135deg, rgba(52,211,153,0.5) 0%, rgba(52,211,153,0.1) 100%) border-box",
+                        boxShadow: "0 0 18px rgba(52,211,153,0.07)",
+                      }}
+                    >
                       <div className="text-xs">
                         <p className="text-muted-foreground">Daily Emission</p>
                         <p className="font-bold text-emerald-400 mt-0.5 tabular-nums">
