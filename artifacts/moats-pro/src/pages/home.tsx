@@ -354,7 +354,11 @@ export default function Home() {
         </div>
       </section>
       {/* Stats Bar */}
-      <StatsBar moatConfigs={configs} leaderboard={leaderboard} />
+      <StatsBar
+        moatConfigs={configs}
+        leaderboard={leaderboard}
+        totalTvmUsd={Object.values(tvmMap).reduce((s, v) => s + v, 0)}
+      />
       {/* Moats Grid */}
       <section className="flex-1 px-4 py-16 max-w-7xl mx-auto w-full">
         <div className="flex items-center justify-between mb-8 flex-wrap gap-4">

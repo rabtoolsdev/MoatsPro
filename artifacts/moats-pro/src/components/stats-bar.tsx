@@ -1,11 +1,46 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, useInView } from "framer-motion";
-import { Activity, TrendingUp, Award, CheckCircle } from "lucide-react";
+import { Activity, TrendingUp, Award, CheckCircle, DollarSign } from "lucide-react";
 import type { MoatConfig, MapsScore } from "@/lib/moats-api";
 
 interface StatsBarProps {
   moatConfigs?: MoatConfig[];
   leaderboard?: MapsScore[];
+  totalTvmUsd?: number;
+}
+
+function formatCompactUsd(n: number): string {
+  if (n >= 1_000_000_000) return `$${(n / 1_000_000_000).toFixed(2)}B`;
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(2)}K`;
+  return `$${n.toFixed(2)}`;
+}
+
+function AnimatedUsd({ value, duration = 0.9 }: { value: number; duration?: number }) {
+  const [displayed, setDisplayed] = useState(0);
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-40px" });
+  const hasAnimated = useRef(false);
+
+  useEffect(() => {
+    if (!inView || value === 0 || hasAnimated.current) return;
+    hasAnimated.current = true;
+    const startTime = performance.now();
+    const animate = (now: number) => {
+      const elapsed = (now - startTime) / 1000;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 4);
+      setDisplayed(eased * value);
+      if (progress < 1) requestAnimationFrame(animate);
+    };
+    requestAnimationFrame(animate);
+  }, [inView, value, duration]);
+
+  useEffect(() => {
+    if (hasAnimated.current) setDisplayed(value);
+  }, [value]);
+
+  return <span ref={ref}>{formatCompactUsd(displayed)}</span>;
 }
 
 function AnimatedNumber({ value, duration = 0.9 }: { value: number; duration?: number }) {
@@ -38,7 +73,7 @@ function AnimatedNumber({ value, duration = 0.9 }: { value: number; duration?: n
   return <span ref={ref}>{displayed.toLocaleString()}</span>;
 }
 
-export function StatsBar({ moatConfigs, leaderboard }: StatsBarProps) {
+export function StatsBar({ moatConfigs, leaderboard, totalTvmUsd = 0 }: StatsBarProps) {
   const totalMoats = moatConfigs?.filter((c) => c.status === "Verified" || c.status === "Community").length || 0;
   const verifiedMoats = moatConfigs?.filter((c) => c.status === "Verified").length || 0;
   const totalRewardTokens = moatConfigs
@@ -47,6 +82,16 @@ export function StatsBar({ moatConfigs, leaderboard }: StatsBarProps) {
   const totalMapsScorers = leaderboard?.length || 0;
 
   const stats = [
+    {
+      label: "Total TVM",
+      value: totalTvmUsd,
+      icon: DollarSign,
+      color: "text-amber-400",
+      bg: "bg-amber-400/10",
+      glow: "group-hover:shadow-[0_0_14px_rgba(251,191,36,0.25)]",
+      testId: "stat-total-tvm",
+      isUsd: true,
+    },
     {
       label: "Active Moats",
       value: totalMoats,
@@ -91,7 +136,7 @@ export function StatsBar({ moatConfigs, leaderboard }: StatsBarProps) {
       <div className="absolute top-0 left-1/4 right-1/4 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
 
       <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
           {stats.map((stat, i) => (
             <motion.div
               key={stat.label}
@@ -107,7 +152,11 @@ export function StatsBar({ moatConfigs, leaderboard }: StatsBarProps) {
               </div>
               <div>
                 <p className="text-2xl font-bold tabular-nums">
-                  <AnimatedNumber value={stat.value} duration={0.9} />
+                  {stat.isUsd ? (
+                    <AnimatedUsd value={stat.value} duration={0.9} />
+                  ) : (
+                    <AnimatedNumber value={stat.value} duration={0.9} />
+                  )}
                 </p>
                 <p className="text-xs text-muted-foreground">{stat.label}</p>
               </div>
