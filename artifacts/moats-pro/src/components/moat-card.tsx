@@ -154,25 +154,38 @@ export function MoatCard({ moat, tvlUSD, supplyPct, logoUrl }: MoatCardProps) {
                 Reward Tokens
               </p>
               <div className="flex flex-wrap gap-1.5">
-                {activeRewardTokens.slice(0, 3).map((token) => (
-                  <span
-                    key={token._id}
-                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 border border-primary/20 text-xs font-medium text-primary"
-                  >
-                    {token.symbol}
-                    <span className="text-muted-foreground text-xs">
-                      {token.tokenAmount >= 1_000_000
-                        ? `${(token.tokenAmount / 1_000_000).toFixed(1)}M`
-                        : token.tokenAmount >= 1_000
-                        ? `${(token.tokenAmount / 1_000).toFixed(0)}K`
-                        : token.tokenAmount}
-                      /day
-                    </span>
-                  </span>
-                ))}
-                {activeRewardTokens.length > 3 && (
+                {activeRewardTokens
+                  .filter((t) => t.tokenAmount > 0 || t.totalRewardsDeposited > 0)
+                  .slice(0, 3)
+                  .map((token) => {
+                    const fmtDeposited = (v: number) => {
+                      if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
+                      if (v >= 1_000) return `${(v / 1_000).toFixed(0)}K`;
+                      if (v >= 1) return v.toLocaleString(undefined, { maximumFractionDigits: 2 });
+                      if (v > 0) return parseFloat(v.toPrecision(4)).toString();
+                      return "0";
+                    };
+                    return (
+                      <span
+                        key={token._id}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 border border-primary/20 text-xs font-medium text-primary"
+                      >
+                        {token.symbol}
+                        <span className="text-muted-foreground text-xs">
+                          {token.tokenAmount > 0
+                            ? `${token.tokenAmount >= 1_000_000
+                                ? `${(token.tokenAmount / 1_000_000).toFixed(1)}M`
+                                : token.tokenAmount >= 1_000
+                                ? `${(token.tokenAmount / 1_000).toFixed(0)}K`
+                                : token.tokenAmount}/day`
+                            : fmtDeposited(token.totalRewardsDeposited)}
+                        </span>
+                      </span>
+                    );
+                  })}
+                {activeRewardTokens.filter((t) => t.tokenAmount > 0 || t.totalRewardsDeposited > 0).length > 3 && (
                   <span className="text-xs text-muted-foreground px-2 py-1">
-                    +{activeRewardTokens.length - 3} more
+                    +{activeRewardTokens.filter((t) => t.tokenAmount > 0 || t.totalRewardsDeposited > 0).length - 3} more
                   </span>
                 )}
               </div>
