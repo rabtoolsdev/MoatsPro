@@ -47,9 +47,9 @@ export function Navbar() {
         }}
       />
 
-      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 h-16 grid grid-cols-3 items-center">
         {/* Logo */}
-        <Link href="/">
+        <Link href="/" className="justify-self-start">
           <div
             data-testid="nav-logo"
             className="flex items-center cursor-pointer group"
@@ -66,7 +66,7 @@ export function Navbar() {
         </Link>
 
         {/* Desktop Nav */}
-        <nav className="hidden md:flex items-center gap-1 relative">
+        <nav className="hidden md:flex items-center justify-center gap-1 relative">
           {links.map(({ href, label, icon: Icon }) => {
             const isActive = location === href;
             return (
@@ -96,7 +96,7 @@ export function Navbar() {
         </nav>
 
         {/* Wallet Button */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-self-end gap-3">
           {isConnected && address ? (
             <button
               data-testid="btn-wallet-connected"
