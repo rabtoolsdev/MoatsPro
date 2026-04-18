@@ -28,7 +28,14 @@ export function Footer() {
             moats.app ↗
           </a>
         </nav>
-        <p className="text-muted-foreground text-xs">Powered by RABTools</p>
+        <div className="flex items-center gap-2">
+          <p className="text-muted-foreground text-xs">Powered by RABTools</p>
+          <img
+            src="/rabtools-logo.png"
+            alt="RABtools"
+            className="h-8 w-auto object-contain opacity-80"
+          />
+        </div>
       </div>
     </footer>
   );
