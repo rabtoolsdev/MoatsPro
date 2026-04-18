@@ -123,6 +123,11 @@ export default function Home() {
           ids.add(getLlamaId(c.network, t.tokenAddress));
         }
       }
+      // include known metadata tokenAddress for faster price resolution
+      const meta = getMoatMeta(c.contractAddress);
+      if (meta.tokenAddress && c.network) {
+        ids.add(getLlamaId(c.network, meta.tokenAddress));
+      }
     }
     stakingTokenAddrs.forEach((addr, i) => {
       if (addr && configs[i]?.network) ids.add(getLlamaId(configs[i].network, addr));
@@ -187,10 +192,15 @@ export default function Home() {
     meta: getMoatMeta(config.contractAddress),
   }));
 
-  const filteredMoats =
+  const filteredMoats = (
     statusFilter === "all"
       ? moatsWithMeta
-      : moatsWithMeta.filter((c) => c.status === statusFilter);
+      : moatsWithMeta.filter((c) => c.status === statusFilter)
+  ).sort((a, b) => {
+    const tvmA = tvmMap[a.contractAddress.toLowerCase()] ?? 0;
+    const tvmB = tvmMap[b.contractAddress.toLowerCase()] ?? 0;
+    return tvmB - tvmA;
+  });
 
   const containerVariants = {
     hidden: { opacity: 0 },
