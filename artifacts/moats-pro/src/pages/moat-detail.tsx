@@ -1264,7 +1264,8 @@ export default function MoatDetail() {
                             return (
                               <div
                                 key={token}
-                                className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-background/50 text-xs"
+                                className="flex items-center justify-between px-3 py-2 rounded-lg bg-background/60 border border-emerald-500/20 text-xs"
+                                style={{ boxShadow: "inset 0 0 0 1px rgba(52,211,153,0.07), 0 0 8px rgba(52,211,153,0.06)" }}
                               >
                                 <span className="font-semibold text-muted-foreground">
                                   {claimConfig?.symbol ?? formatAddress(token)}

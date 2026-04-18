@@ -99,7 +99,7 @@ export function StatsBar({ moatConfigs, leaderboard }: StatsBarProps) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.45, delay: i * 0.09, ease: "easeOut" }}
               data-testid={stat.testId}
-              className="group flex items-center gap-3"
+              className="group relative flex items-center gap-3"
             >
               <div className={`p-2.5 rounded-xl ${stat.bg} shrink-0 transition-all duration-300 ${stat.glow}`}>
                 <stat.icon className={`w-5 h-5 ${stat.color}`} />
@@ -113,7 +113,7 @@ export function StatsBar({ moatConfigs, leaderboard }: StatsBarProps) {
 
               {/* Vertical divider except after last */}
               {i < stats.length - 1 && (
-                <div className="hidden lg:block absolute right-0 top-1/4 bottom-1/4 w-px bg-border/50" style={{ left: `${(i + 1) * 25}%` }} />
+                <div className="hidden lg:block absolute right-0 top-1/4 bottom-1/4 w-px bg-border/50" />
               )}
             </motion.div>
           ))}
