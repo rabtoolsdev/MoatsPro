@@ -855,8 +855,8 @@ export default function MoatDetail() {
           </div>
 
           {/* Right: Action Panel */}
-          <div>
-            <div className="rounded-2xl border border-border bg-card/30 overflow-hidden sticky top-24">
+          <div className="sticky top-24 self-start">
+            <div className="rounded-2xl border border-border bg-card/30 overflow-hidden">
               {/* Tabs */}
               <div className="flex border-b border-border overflow-x-auto">
                 {(["stake", "withdraw", "lock", "burn"] as ActionTab[]).map((t) => (
