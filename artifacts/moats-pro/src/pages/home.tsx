@@ -374,7 +374,7 @@ export default function Home() {
               {eventsData.total.toLocaleString()} total events
             </span>
           </div>
-          <ActivityFeed events={eventsData.results.slice(0, 12)} />
+          <ActivityFeed events={eventsData.results.slice(0, 12)} moatConfigs={configs} />
         </section>
       )}
       <Footer />

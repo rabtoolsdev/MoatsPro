@@ -1,18 +1,65 @@
 import { motion } from "framer-motion";
-import { formatAddress, timeAgo, getEventTypeLabel, getEventTypeColor, getExplorerUrl } from "@/lib/moat-metadata";
+import { formatAddress, timeAgo, getEventTypeLabel, getEventTypeColor, getExplorerUrl, getMoatMeta, MOAT_METADATA } from "@/lib/moat-metadata";
 import { formatUnits } from "viem";
-import type { MoatEvent } from "@/lib/moats-api";
+import type { MoatEvent, MoatConfig } from "@/lib/moats-api";
 
 interface ActivityFeedProps {
   events: MoatEvent[];
+  moatConfigs?: MoatConfig[];
 }
 
-function formatEventAmount(args: MoatEvent["args"]): string | null {
+function buildTokenMap(moatConfigs?: MoatConfig[]): Record<string, { symbol: string; decimals: number }> {
+  const map: Record<string, { symbol: string; decimals: number }> = {};
+  for (const meta of Object.values(MOAT_METADATA)) {
+    if (meta.tokenAddress) {
+      map[meta.tokenAddress.toLowerCase()] = { symbol: meta.tokenSymbol, decimals: 18 };
+    }
+  }
+  if (moatConfigs) {
+    for (const config of moatConfigs) {
+      for (const rt of config.rewardTokens) {
+        if (rt.tokenAddress) {
+          map[rt.tokenAddress.toLowerCase()] = { symbol: rt.symbol, decimals: rt.decimals ?? 18 };
+        }
+      }
+    }
+  }
+  return map;
+}
+
+function formatEventAmount(
+  event: MoatEvent,
+  tokenMap: Record<string, { symbol: string; decimals: number }>
+): string | null {
+  const { args, contractAddress, eventType } = event;
   if (!args.amount) return null;
+
+  let symbol: string;
+  let decimals = 18;
+
+  if (args.token) {
+    const found = tokenMap[args.token.toLowerCase()];
+    symbol = found?.symbol ?? formatAddress(args.token);
+    decimals = found?.decimals ?? 18;
+  } else {
+    const meta = getMoatMeta(contractAddress);
+    symbol = meta.tokenSymbol;
+    const stakingEntry = tokenMap[meta.tokenAddress?.toLowerCase() ?? ""];
+    if (stakingEntry) decimals = stakingEntry.decimals;
+  }
+
   try {
     const bigAmt = BigInt(args.amount);
-    const formatted = parseFloat(formatUnits(bigAmt, 18)).toFixed(2);
-    return `${Number(formatted).toLocaleString()} tokens`;
+    const num = parseFloat(formatUnits(bigAmt, decimals));
+    const formatted =
+      num >= 1_000_000
+        ? `${(num / 1_000_000).toFixed(2)}M`
+        : num >= 1_000
+        ? `${(num / 1_000).toFixed(0)}K`
+        : num >= 0.01
+        ? num.toLocaleString(undefined, { maximumFractionDigits: 2 })
+        : parseFloat(num.toPrecision(4)).toString();
+    return `${formatted} ${symbol}`;
   } catch {
     return null;
   }
@@ -26,14 +73,17 @@ const dotColor: Record<string, string> = {
   RewardClaimed: "bg-violet-400",
   LockExited: "bg-blue-400",
   EarlyExit: "bg-orange-400",
+  RewardsDeposited: "bg-teal-400",
 };
 
-export function ActivityFeed({ events }: ActivityFeedProps) {
+export function ActivityFeed({ events, moatConfigs }: ActivityFeedProps) {
+  const tokenMap = buildTokenMap(moatConfigs);
+
   return (
     <div className="rounded-2xl border border-border bg-card/30 backdrop-blur-sm overflow-hidden">
       <div className="divide-y divide-border/50">
         {events.map((event, i) => {
-          const amount = formatEventAmount(event.args);
+          const amount = formatEventAmount(event, tokenMap);
           const user = event.args.user;
           return (
             <motion.div

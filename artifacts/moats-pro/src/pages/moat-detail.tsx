@@ -849,7 +849,7 @@ export default function MoatDetail() {
                     {eventsData.total.toLocaleString()} total events
                   </span>
                 </h3>
-                <ActivityFeed events={eventsData.results.slice(0, 8)} />
+                <ActivityFeed events={eventsData.results.slice(0, 8)} moatConfigs={moatConfig ? [moatConfig] : undefined} />
               </div>
             )}
           </div>

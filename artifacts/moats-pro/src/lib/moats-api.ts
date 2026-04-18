@@ -22,6 +22,7 @@ export interface MoatEvent {
     user?: string;
     amount?: string;
     duration?: string;
+    token?: string;
     [key: string]: unknown;
   };
 }
