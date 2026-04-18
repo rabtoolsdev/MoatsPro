@@ -1272,8 +1272,8 @@ export default function MoatDetail() {
                                 key={token}
                                 className="flex items-center justify-between px-3 py-2 rounded-lg border border-transparent text-xs"
                                 style={{
-                                  background: "linear-gradient(hsl(var(--background) / 0.7), hsl(var(--background) / 0.7)) padding-box, linear-gradient(135deg, rgba(52,211,153,0.5) 0%, rgba(52,211,153,0.08) 100%) border-box",
-                                  boxShadow: "0 0 10px rgba(52,211,153,0.07)",
+                                  background: "linear-gradient(hsl(var(--background) / 0.8), hsl(var(--background) / 0.8)) padding-box, linear-gradient(135deg, rgba(52,211,153,0.7) 0%, rgba(52,211,153,0.15) 100%) border-box",
+                                  boxShadow: "0 0 14px rgba(52,211,153,0.1)",
                                 }}
                               >
                                 <span className="font-semibold text-muted-foreground">
