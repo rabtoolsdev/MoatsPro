@@ -241,7 +241,6 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <Navbar />
-
       {/* Hero */}
       <section className="relative pt-32 pb-20 px-4 overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
@@ -275,10 +274,7 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
             className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10"
-          >
-            Stake, lock, and earn real yield from the most powerful DeFi liquidity
-            positions. Premium analytics. On-chain forever.
-          </motion.p>
+          >Stake, lock, burn and earn real yield from the most powerful DeFi liquidity positions. Premium analytics. On-chain forever.</motion.p>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -312,10 +308,8 @@ export default function Home() {
           </motion.div>
         </div>
       </section>
-
       {/* Stats Bar */}
       <StatsBar moatConfigs={configs} leaderboard={leaderboard} />
-
       {/* Moats Grid */}
       <section className="flex-1 px-4 py-16 max-w-7xl mx-auto w-full">
         <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
@@ -380,7 +374,6 @@ export default function Home() {
           </motion.div>
         )}
       </section>
-
       {/* Activity Feed */}
       {eventsData && eventsData.results.length > 0 && (
         <section className="px-4 py-12 max-w-7xl mx-auto w-full">
@@ -393,7 +386,6 @@ export default function Home() {
           <ActivityFeed events={eventsData.results.slice(0, 12)} />
         </section>
       )}
-
       <Footer />
     </div>
   );
