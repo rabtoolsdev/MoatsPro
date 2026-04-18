@@ -115,6 +115,15 @@ export default function MoatDetail() {
     display.replace(/,/g, "").replace(/[^0-9.]/g, "");
   const [earlyExitConfirm, setEarlyExitConfirm] = useState<number | null>(null);
 
+  const fmtTokenAmt = (n: number): string => {
+    if (n === 0) return "0";
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+    if (n >= 1_000) return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+    if (n >= 1) return n.toFixed(4);
+    if (n >= 0.000001) return n.toFixed(6);
+    return "< 0.000001";
+  };
+
   const stakeAction = useStakeMoat(contractAddress as MoatContractAddress | undefined);
   const lockAction = useLockMoat(contractAddress as MoatContractAddress | undefined);
   const claimAction = useClaimRewards(contractAddress as MoatContractAddress | undefined);
@@ -618,7 +627,7 @@ export default function MoatDetail() {
                             className="px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400"
                           >
                             <span className="font-bold">
-                              {amount.toFixed(6)} {rewardConfig?.symbol ?? formatAddress(token)}
+                              {fmtTokenAmt(amount)} {rewardConfig?.symbol ?? formatAddress(token)}
                             </span>
                             {usdVal > 0 && (
                               <span className="ml-1.5 text-emerald-300/70">≈ {formatUSD(usdVal)}</span>
@@ -1244,9 +1253,12 @@ export default function MoatDetail() {
                   <Gift size={15} className="text-emerald-400" />
                   <span className="text-sm font-semibold text-emerald-400">Claim Rewards</span>
                 </div>
-                {userInfo.pendingRewards && userInfo.pendingRewards[0].length > 0 && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-medium">
-                    {userInfo.pendingRewards[0].length} pending
+                {userInfo.pendingRewards && userInfo.pendingRewards[0].some((_, i) => {
+                  const dec = getPendingRewardDecimals(i);
+                  return parseFloat(formatUnits(userInfo.pendingRewards![1][i], dec)) > 0;
+                }) && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-medium animate-pulse">
+                    Rewards Ready
                   </span>
                 )}
               </div>
@@ -1254,69 +1266,97 @@ export default function MoatDetail() {
                 {!isConnected ? (
                   <div className="text-center py-4">
                     <p className="text-muted-foreground text-sm mb-4">
-                      Connect your wallet to claim rewards
+                      Connect your wallet to view and claim rewards
                     </p>
                     <w3m-connect-button />
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
-                      {userInfo.pendingRewards && userInfo.pendingRewards[0].length > 0 ? (
-                        <div className="space-y-1.5">
-                          {userInfo.pendingRewards[0].map((token, i) => {
-                            const claimDec = getPendingRewardDecimals(i);
-                            const claimAmt = parseFloat(formatUnits(userInfo.pendingRewards![1][i], claimDec));
-                            const claimConfig = moatConfig?.rewardTokens.find(
-                              (t) => t.tokenAddress?.toLowerCase() === token.toLowerCase()
-                            );
-                            const claimLlamaId = getLlamaId(network, token);
-                            const claimUSD = claimAmt * (priceMap?.[claimLlamaId] ?? 0);
-                            return (
-                              <div
-                                key={token}
-                                className="flex items-center justify-between px-3 py-2 rounded-lg border border-transparent text-xs"
-                                style={{
-                                  background: "linear-gradient(hsl(var(--background) / 0.8), hsl(var(--background) / 0.8)) padding-box, linear-gradient(135deg, rgba(52,211,153,0.7) 0%, rgba(52,211,153,0.15) 100%) border-box",
-                                  boxShadow: "0 0 14px rgba(52,211,153,0.1)",
-                                }}
-                              >
-                                <span className="font-semibold text-muted-foreground">
-                                  {claimConfig?.symbol ?? formatAddress(token)}
-                                </span>
-                                <span className="font-bold text-emerald-400">
-                                  {claimAmt.toFixed(6)}
-                                  {claimUSD > 0 && (
-                                    <span className="ml-1.5 text-emerald-300/60">≈ {formatUSD(claimUSD)}</span>
-                                  )}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-muted-foreground text-center py-2">No pending rewards</p>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => claimAction.claim()}
-                      disabled={claimAction.isPending || claimAction.isConfirming}
-                      data-testid="btn-claim"
-                      className="btn-shimmer w-full py-3.5 rounded-xl bg-emerald-500 text-white font-semibold text-sm hover:opacity-95 hover:shadow-[0_0_20px_rgba(52,211,153,0.35)] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
-                    >
-                      {claimAction.isPending || claimAction.isConfirming ? (
-                        <><Loader2 size={14} className="animate-spin" />Claiming...</>
-                      ) : (
-                        <><Gift size={14} />Claim All Rewards</>
-                      )}
-                    </button>
-                    <TxStatus
-                      isPending={claimAction.isPending}
-                      isConfirming={claimAction.isConfirming}
-                      isSuccess={claimAction.isSuccess}
-                      error={claimAction.error}
-                    />
+                ) : userInfo.isLoading || userInfo.pendingRewards === undefined ? (
+                  <div className="space-y-2">
+                    {[1, 2].map((n) => (
+                      <div key={n} className="skeleton-shimmer h-10 rounded-lg" />
+                    ))}
                   </div>
-                )}
+                ) : (() => {
+                  const claimRows = userInfo.pendingRewards[0].map((token, i) => {
+                    const dec = getPendingRewardDecimals(i);
+                    const amt = parseFloat(formatUnits(userInfo.pendingRewards![1][i], dec));
+                    const cfg = moatConfig?.rewardTokens.find(
+                      (t) => t.tokenAddress?.toLowerCase() === token.toLowerCase()
+                    );
+                    const llamaId = getLlamaId(network, token);
+                    const usd = amt * (priceMap?.[llamaId] ?? 0);
+                    return { token, amt, cfg, usd };
+                  }).filter((r) => r.amt > 0);
+
+                  const totalUSD = claimRows.reduce((s, r) => s + r.usd, 0);
+                  const hasRewards = claimRows.length > 0;
+
+                  return (
+                    <div className="space-y-4">
+                      <div className="rounded-xl overflow-hidden border border-emerald-500/20 bg-emerald-500/5">
+                        {hasRewards ? (
+                          <>
+                            {claimRows.map((r, idx) => (
+                              <div
+                                key={r.token}
+                                className={`flex items-center justify-between px-4 py-3 ${idx < claimRows.length - 1 ? "border-b border-emerald-500/15" : ""}`}
+                              >
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="text-sm font-semibold text-foreground">
+                                    {r.cfg?.symbol ?? formatAddress(r.token)}
+                                  </span>
+                                  {r.cfg?.name && (
+                                    <span className="text-xs text-muted-foreground">{r.cfg.name}</span>
+                                  )}
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-sm font-bold tabular-nums text-emerald-400">
+                                    {fmtTokenAmt(r.amt)}
+                                  </p>
+                                  {r.usd > 0 && (
+                                    <p className="text-xs text-emerald-300/70 tabular-nums">
+                                      {formatUSD(r.usd)}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                            {totalUSD > 0 && (
+                              <div className="flex items-center justify-between px-4 py-2.5 bg-emerald-500/10 border-t border-emerald-500/20">
+                                <span className="text-xs font-medium text-muted-foreground">Total value</span>
+                                <span className="text-sm font-bold text-emerald-400">{formatUSD(totalUSD)}</span>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="px-4 py-5 text-center">
+                            <Gift size={20} className="text-muted-foreground mx-auto mb-2 opacity-50" />
+                            <p className="text-sm text-muted-foreground">No pending rewards</p>
+                            <p className="text-xs text-muted-foreground/70 mt-1">Rewards accrue as you stake</p>
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => claimAction.claim()}
+                        disabled={!hasRewards || claimAction.isPending || claimAction.isConfirming}
+                        data-testid="btn-claim"
+                        className="btn-shimmer w-full py-3.5 rounded-xl bg-emerald-500 text-white font-semibold text-sm hover:opacity-95 hover:shadow-[0_0_20px_rgba(52,211,153,0.35)] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                      >
+                        {claimAction.isPending || claimAction.isConfirming ? (
+                          <><Loader2 size={14} className="animate-spin" />Claiming...</>
+                        ) : (
+                          <><Gift size={14} />{hasRewards ? `Claim All Rewards${totalUSD > 0 ? ` · ${formatUSD(totalUSD)}` : ""}` : "No Rewards to Claim"}</>
+                        )}
+                      </button>
+                      <TxStatus
+                        isPending={claimAction.isPending}
+                        isConfirming={claimAction.isConfirming}
+                        isSuccess={claimAction.isSuccess}
+                        error={claimAction.error}
+                      />
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </div>
