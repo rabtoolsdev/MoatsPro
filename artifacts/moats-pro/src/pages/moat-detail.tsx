@@ -1285,6 +1285,8 @@ export default function MoatDetail() {
 
                   if (contractReverted) {
                     const enabledTokens = (moatConfig?.rewardTokens ?? []).filter((t) => t.enabled);
+                    const ui = userInfo.userInfo;
+                    const hasAnyPosition = !!ui && (ui[0] > 0n || ui[1] > 0n || ui[4] > 0n);
                     return (
                       <div className="space-y-4">
                         <div className="rounded-xl overflow-hidden border border-emerald-500/20 bg-emerald-500/5">
@@ -1315,14 +1317,14 @@ export default function MoatDetail() {
                         </div>
                         <button
                           onClick={() => claimAction.claim()}
-                          disabled={claimAction.isPending || claimAction.isConfirming}
+                          disabled={!hasAnyPosition || claimAction.isPending || claimAction.isConfirming}
                           data-testid="btn-claim"
                           className="btn-shimmer w-full py-3.5 rounded-xl bg-emerald-500 text-white font-semibold text-sm hover:opacity-95 hover:shadow-[0_0_20px_rgba(52,211,153,0.35)] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                         >
                           {claimAction.isPending || claimAction.isConfirming ? (
                             <><Loader2 size={14} className="animate-spin" />Claiming...</>
                           ) : (
-                            <><Gift size={14} />Claim All Rewards</>
+                            <><Gift size={14} />{hasAnyPosition ? "Claim All Rewards" : "No Rewards to Claim"}</>
                           )}
                         </button>
                         <TxStatus
