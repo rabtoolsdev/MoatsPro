@@ -737,16 +737,10 @@ export default function MoatDetail() {
                               </p>
                             </div>
                           </div>
-                          <div className="grid grid-cols-2 gap-4 text-xs">
+                          <div className="grid grid-cols-1 gap-4 text-xs">
                             <div>
                               <p className="text-muted-foreground mb-0.5">Duration</p>
                               <p className="font-semibold">{durationLabel}</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground mb-0.5">Locked Points</p>
-                              <p className="font-semibold text-primary">
-                                {formatPoints(Number(lock.points))}
-                              </p>
                             </div>
                           </div>
                           {isMatured ? (
