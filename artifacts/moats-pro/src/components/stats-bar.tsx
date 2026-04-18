@@ -8,7 +8,7 @@ interface StatsBarProps {
 }
 
 export function StatsBar({ moatConfigs, leaderboard }: StatsBarProps) {
-  const totalMoats = moatConfigs?.length || 0;
+  const totalMoats = moatConfigs?.filter((c) => c.status === "Verified" || c.status === "Community").length || 0;
   const verifiedMoats = moatConfigs?.filter((c) => c.status === "Verified").length || 0;
   const totalRewardTokens = moatConfigs
     ? moatConfigs.reduce((sum, m) => sum + m.rewardTokens.filter((t) => t.enabled).length, 0)
