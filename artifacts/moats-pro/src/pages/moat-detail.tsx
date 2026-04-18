@@ -974,12 +974,6 @@ export default function MoatDetail() {
                                 : "5%"}
                             </span>
                           </p>
-                          {moatConfig?.fortWeight && (
-                            <p className="flex justify-between">
-                              <span>FortWeight boost</span>
-                              <span className="font-medium text-primary">{moatConfig.fortWeight}x</span>
-                            </p>
-                          )}
                         </div>
                         <button
                           onClick={handleStake}
