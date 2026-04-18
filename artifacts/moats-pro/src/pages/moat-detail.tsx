@@ -1289,29 +1289,20 @@ export default function MoatDetail() {
                       <div className="space-y-4">
                         <div className="rounded-xl overflow-hidden border border-emerald-500/20 bg-emerald-500/5">
                           {enabledTokens.length > 0 ? (
-                            enabledTokens.map((t, idx) => {
-                              const llamaId = getLlamaId(network, t.tokenAddress);
-                              const price = priceMap?.[llamaId] ?? 0;
-                              return (
-                                <div
-                                  key={t.tokenAddress}
-                                  className={`flex items-center justify-between px-4 py-3 ${idx < enabledTokens.length - 1 ? "border-b border-emerald-500/15" : ""}`}
-                                >
-                                  <div className="flex flex-col gap-0.5">
-                                    <span className="text-sm font-semibold text-foreground">{t.symbol}</span>
-                                    <span className="text-xs text-muted-foreground">{t.name}</span>
-                                  </div>
-                                  <div className="text-right">
-                                    <p className="text-sm font-bold tabular-nums text-emerald-400">—</p>
-                                    {price > 0 && (
-                                      <p className="text-xs text-muted-foreground/60 tabular-nums">
-                                        ${price.toFixed(2)}/token
-                                      </p>
-                                    )}
-                                  </div>
+                            enabledTokens.map((t, idx) => (
+                              <div
+                                key={t.tokenAddress}
+                                className={`flex items-center justify-between px-4 py-3 ${idx < enabledTokens.length - 1 ? "border-b border-emerald-500/15" : ""}`}
+                              >
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="text-sm font-semibold text-foreground">{t.symbol}</span>
+                                  <span className="text-xs text-muted-foreground">{t.name}</span>
                                 </div>
-                              );
-                            })
+                                <div className="text-right">
+                                  <p className="text-sm font-bold tabular-nums text-emerald-400">—</p>
+                                </div>
+                              </div>
+                            ))
                           ) : (
                             <div className="px-4 py-5 text-center">
                               <Gift size={20} className="text-muted-foreground mx-auto mb-2 opacity-50" />
