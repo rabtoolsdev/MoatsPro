@@ -415,7 +415,11 @@ export default function MoatDetail() {
                   {moatConfig.rewardTokens.filter((t) => t.enabled).map((token) => (
                     <div
                       key={token._id}
-                      className="p-4 rounded-xl border border-primary/10 bg-card/40 backdrop-blur-sm hover:border-primary/25 transition-all duration-200 hover:shadow-[0_0_12px_rgba(0,212,255,0.06)]"
+                      className="p-4 rounded-xl border border-transparent bg-card/40 backdrop-blur-sm transition-all duration-200"
+                      style={{
+                        background: "linear-gradient(hsl(var(--card) / 0.5), hsl(var(--card) / 0.5)) padding-box, linear-gradient(135deg, rgba(52,211,153,0.55) 0%, rgba(0,212,255,0.1) 100%) border-box",
+                        boxShadow: "0 0 16px rgba(52,211,153,0.06)",
+                      }}
                     >
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-semibold text-primary">{token.symbol}</span>
