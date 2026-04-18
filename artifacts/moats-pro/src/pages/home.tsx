@@ -246,7 +246,7 @@ export default function Home() {
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <Navbar />
 
-      {/* ── Hero ─────────────────────────────────────────────────── */}
+      {/* Hero */}
       <section className="relative pt-32 pb-24 px-4 overflow-hidden">
         {/* Animated grid background */}
         <div className="absolute inset-0 bg-grid-animated opacity-60 pointer-events-none" />
@@ -259,7 +259,7 @@ export default function Home() {
         {/* Floating orbs */}
         <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[900px] h-[380px] bg-primary/8 rounded-full blur-[140px] pointer-events-none float-slow" />
         <div className="absolute top-32 left-1/4 w-[280px] h-[280px] bg-cyan-500/6 rounded-full blur-[90px] pointer-events-none float-slow-alt" />
-        <div className="absolute top-20 right-1/5 w-[200px] h-[200px] bg-violet-500/5 rounded-full blur-[80px] pointer-events-none animate-float-alt" />
+        <div className="absolute top-20 right-1/5 w-[200px] h-[200px] bg-violet-500/5 rounded-full blur-[80px] pointer-events-none float-slow-alt" />
 
         <div className="max-w-5xl mx-auto text-center relative z-10">
           {/* Badge */}
@@ -332,10 +332,10 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Stats Bar ─────────────────────────────────────────────── */}
+      {/* Stats Bar */}
       <StatsBar moatConfigs={configs} leaderboard={leaderboard} />
 
-      {/* ── Moats Grid ────────────────────────────────────────────── */}
+      {/* Moats Grid */}
       <section className="flex-1 px-4 py-16 max-w-7xl mx-auto w-full">
         <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
           <div>
@@ -400,7 +400,7 @@ export default function Home() {
         )}
       </section>
 
-      {/* ── Activity Feed ─────────────────────────────────────────── */}
+      {/* Activity Feed */}
       {eventsData && eventsData.results.length > 0 && (
         <section className="px-4 py-12 max-w-7xl mx-auto w-full">
           <div className="flex items-center justify-between mb-6">

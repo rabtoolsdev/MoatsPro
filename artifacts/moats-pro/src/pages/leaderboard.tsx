@@ -75,7 +75,7 @@ export default function Leaderboard() {
           )}
         </motion.div>
 
-        {/* ── Podium top-3 ─────────────────────────────────────────── */}
+        {/* Podium top-3 */}
         {mapsScores && mapsScores.length >= 3 && (
           <div className="flex items-end justify-center gap-3 mb-10">
             {podiumOrder.map((idx) => {
@@ -142,7 +142,7 @@ export default function Leaderboard() {
           </div>
         )}
 
-        {/* ── Full Table ───────────────────────────────────────────── */}
+        {/* Full Table */}
         <div
           data-testid="leaderboard-table"
           className="rounded-2xl border border-border bg-card/30 backdrop-blur-sm overflow-hidden"
