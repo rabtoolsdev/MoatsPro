@@ -103,6 +103,16 @@ export default function MoatDetail() {
 
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [burnAmount, setBurnAmount] = useState("");
+
+  const fmtAmt = (raw: string): string => {
+    if (!raw) return "";
+    const [int, dec] = raw.split(".");
+    const n = parseInt(int || "0", 10);
+    const formatted = isNaN(n) ? (int || "") : n.toLocaleString("en-US");
+    return dec !== undefined ? `${formatted}.${dec}` : formatted;
+  };
+  const parseAmt = (display: string): string =>
+    display.replace(/,/g, "").replace(/[^0-9.]/g, "");
   const [earlyExitConfirm, setEarlyExitConfirm] = useState<number | null>(null);
 
   const stakeAction = useStakeMoat(contractAddress as MoatContractAddress | undefined);
@@ -897,15 +907,16 @@ export default function MoatDetail() {
                           </label>
                           <div className="relative">
                             <input
-                              type="number"
-                              value={stakeAmount}
-                              onChange={(e) => setStakeAmount(e.target.value)}
+                              type="text"
+                              inputMode="decimal"
+                              value={fmtAmt(stakeAmount)}
+                              onChange={(e) => setStakeAmount(parseAmt(e.target.value))}
                               placeholder="0.00"
                               data-testid="input-stake-amount"
                               className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary text-sm pr-16"
                             />
                             <button
-                              onClick={() => setStakeAmount(tokenBalance.formatted || "0")}
+                              onClick={() => setStakeAmount(parseAmt(tokenBalance.formatted || "0"))}
                               className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-primary font-medium hover:text-primary/80"
                             >
                               MAX
@@ -966,15 +977,16 @@ export default function MoatDetail() {
                           </label>
                           <div className="relative">
                             <input
-                              type="number"
-                              value={lockAmount}
-                              onChange={(e) => setLockAmount(e.target.value)}
+                              type="text"
+                              inputMode="decimal"
+                              value={fmtAmt(lockAmount)}
+                              onChange={(e) => setLockAmount(parseAmt(e.target.value))}
                               placeholder="0.00"
                               data-testid="input-lock-amount"
                               className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary text-sm pr-16"
                             />
                             <button
-                              onClick={() => setLockAmount(tokenBalance.formatted || "0")}
+                              onClick={() => setLockAmount(parseAmt(tokenBalance.formatted || "0"))}
                               className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-primary font-medium"
                             >
                               MAX
@@ -1060,9 +1072,10 @@ export default function MoatDetail() {
                           </label>
                           <div className="relative">
                             <input
-                              type="number"
-                              value={withdrawAmount}
-                              onChange={(e) => setWithdrawAmount(e.target.value)}
+                              type="text"
+                              inputMode="decimal"
+                              value={fmtAmt(withdrawAmount)}
+                              onChange={(e) => setWithdrawAmount(parseAmt(e.target.value))}
                               placeholder="0.00"
                               data-testid="input-withdraw-amount"
                               className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary text-sm pr-16"
@@ -1131,15 +1144,16 @@ export default function MoatDetail() {
                           </label>
                           <div className="relative">
                             <input
-                              type="number"
-                              value={burnAmount}
-                              onChange={(e) => setBurnAmount(e.target.value)}
+                              type="text"
+                              inputMode="decimal"
+                              value={fmtAmt(burnAmount)}
+                              onChange={(e) => setBurnAmount(parseAmt(e.target.value))}
                               placeholder="0.00"
                               data-testid="input-burn-amount"
                               className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500 text-sm pr-16"
                             />
                             <button
-                              onClick={() => setBurnAmount(tokenBalance.formatted || "0")}
+                              onClick={() => setBurnAmount(parseAmt(tokenBalance.formatted || "0"))}
                               className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-rose-400 font-medium hover:text-rose-300"
                             >
                               MAX
