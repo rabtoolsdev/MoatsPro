@@ -8,16 +8,16 @@ interface StatsBarProps {
   leaderboard?: MapsScore[];
 }
 
-function AnimatedNumber({ value, duration = 0.8 }: { value: number; duration?: number }) {
+function AnimatedNumber({ value, duration = 0.9 }: { value: number; duration?: number }) {
   const [displayed, setDisplayed] = useState(0);
   const ref = useRef<HTMLSpanElement>(null);
   const inView = useInView(ref, { once: true, margin: "-40px" });
+  const hasAnimated = useRef(false);
 
   useEffect(() => {
-    if (!inView || value === 0) {
-      setDisplayed(value);
-      return;
-    }
+    // Only start animating once the element enters the viewport AND data is available
+    if (!inView || value === 0 || hasAnimated.current) return;
+    hasAnimated.current = true;
     const startTime = performance.now();
     const animate = (now: number) => {
       const elapsed = (now - startTime) / 1000;
@@ -29,6 +29,11 @@ function AnimatedNumber({ value, duration = 0.8 }: { value: number; duration?: n
     };
     requestAnimationFrame(animate);
   }, [inView, value, duration]);
+
+  // Once animated, if value changes (e.g. fresh fetch), jump to new value
+  useEffect(() => {
+    if (hasAnimated.current) setDisplayed(value);
+  }, [value]);
 
   return <span ref={ref}>{displayed.toLocaleString()}</span>;
 }

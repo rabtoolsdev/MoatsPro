@@ -302,7 +302,7 @@ export default function MoatDetail() {
           className="mb-8"
         >
           {configLoading ? (
-            <div className="h-20 w-full rounded-xl bg-muted/30 animate-pulse" />
+            <div className="h-20 w-full rounded-xl skeleton-shimmer" />
           ) : (
             <div className="flex items-start gap-4">
               <MoatLogo

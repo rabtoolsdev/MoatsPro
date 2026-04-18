@@ -424,7 +424,7 @@ export default function Portfolio() {
               {isPositionsLoading ? (
                 <div className="space-y-3">
                   {[...Array(3)].map((_, i) => (
-                    <div key={i} className="h-24 rounded-2xl bg-card/50 animate-pulse border border-border" />
+                    <div key={i} className="h-24 rounded-2xl skeleton-shimmer border border-border" />
                   ))}
                 </div>
               ) : activePositions.length === 0 ? (
