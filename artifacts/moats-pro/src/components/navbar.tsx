@@ -54,12 +54,12 @@ export function Navbar() {
             data-testid="nav-logo"
             className="flex items-center cursor-pointer group"
           >
-            <div className="relative h-12 w-auto transition-transform duration-300 group-hover:scale-105">
+            <div className="relative h-24 w-auto transition-transform duration-300 group-hover:scale-105">
               <div className="absolute inset-0 -m-2 rounded-full bg-primary/10 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <img
                 src="/moats-pro-logo.png"
                 alt="The Moats Pro"
-                className="relative h-12 w-auto object-contain drop-shadow-[0_0_8px_rgba(0,212,255,0.15)]"
+                className="relative h-24 w-auto object-contain drop-shadow-[0_0_8px_rgba(0,212,255,0.15)]"
               />
             </div>
           </div>
