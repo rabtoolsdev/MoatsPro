@@ -251,7 +251,10 @@ export default function Home() {
         {/* Animated grid background */}
         <div className="absolute inset-0 bg-grid-animated opacity-60 pointer-events-none" />
         {/* Radial vignette over grid */}
-        <div className="absolute inset-0 bg-gradient-radial from-transparent via-transparent to-background pointer-events-none" />
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: "radial-gradient(ellipse 80% 60% at 50% 50%, transparent 40%, hsl(var(--background)) 100%)" }}
+        />
 
         {/* Floating orbs */}
         <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[900px] h-[380px] bg-primary/8 rounded-full blur-[140px] pointer-events-none float-slow" />
