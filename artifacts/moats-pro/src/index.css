@@ -418,17 +418,6 @@
     animation: live-pulse 1.8s ease-in-out infinite;
   }
 
-  /* ── Radar ping ── */
-  .radar-ping::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    animation: radar-ping 2s ease-out infinite;
-    background: currentColor;
-    opacity: 0;
-  }
-
   /* ── CTA shimmer button ── */
   .btn-shimmer {
     position: relative;

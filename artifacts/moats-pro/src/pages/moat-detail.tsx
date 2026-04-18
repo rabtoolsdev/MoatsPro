@@ -1225,10 +1225,20 @@ export default function MoatDetail() {
             </div>
 
             {/* Claim Rewards Card */}
-            <div className="mt-4 rounded-2xl border border-emerald-500/30 bg-card/30 overflow-hidden">
-              <div className="flex items-center gap-2 px-5 py-4 border-b border-emerald-500/20">
-                <Gift size={15} className="text-emerald-400" />
-                <span className="text-sm font-semibold text-emerald-400">Claim Rewards</span>
+            <div
+              className="mt-4 rounded-2xl border border-emerald-500/30 bg-card/40 backdrop-blur-md overflow-hidden"
+              style={{ boxShadow: "0 0 0 1px rgba(52,211,153,0.08), 0 4px 24px rgba(52,211,153,0.06)" }}
+            >
+              <div className="flex items-center justify-between px-5 py-4 border-b border-emerald-500/20 bg-emerald-500/5">
+                <div className="flex items-center gap-2">
+                  <Gift size={15} className="text-emerald-400" />
+                  <span className="text-sm font-semibold text-emerald-400">Claim Rewards</span>
+                </div>
+                {userInfo.pendingRewards && userInfo.pendingRewards[0].length > 0 && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-medium">
+                    {userInfo.pendingRewards[0].length} pending
+                  </span>
+                )}
               </div>
               <div className="p-5">
                 {!isConnected ? (
@@ -1277,7 +1287,7 @@ export default function MoatDetail() {
                       onClick={() => claimAction.claim()}
                       disabled={claimAction.isPending || claimAction.isConfirming}
                       data-testid="btn-claim"
-                      className="w-full py-3.5 rounded-xl bg-emerald-500 text-white font-semibold text-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                      className="btn-shimmer w-full py-3.5 rounded-xl bg-emerald-500 text-white font-semibold text-sm hover:opacity-95 hover:shadow-[0_0_20px_rgba(52,211,153,0.35)] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                     >
                       {claimAction.isPending || claimAction.isConfirming ? (
                         <><Loader2 size={14} className="animate-spin" />Claiming...</>

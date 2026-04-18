@@ -109,7 +109,6 @@ export function MoatCard({ moat, tvlUSD, supplyPct, logoUrl }: MoatCardProps) {
         whileHover={{ y: -4, scale: 1.01 }}
         transition={{ duration: 0.2, ease: "easeOut" }}
         className={`relative cursor-pointer rounded-2xl border ${statusStyle.border} bg-card/40 backdrop-blur-sm overflow-hidden group h-full flex flex-col transition-shadow duration-300`}
-        style={{ "--hover-glow": statusStyle.hoverGlow } as React.CSSProperties}
         onMouseEnter={(e) => {
           if (statusStyle.hoverGlow) {
             (e.currentTarget as HTMLElement).style.boxShadow = statusStyle.hoverGlow;
