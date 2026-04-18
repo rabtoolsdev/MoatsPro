@@ -434,7 +434,14 @@ export default function Portfolio() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {activePositions.map((pos, i) => {
+                  {[...activePositions.keys()]
+                    .sort((a, b) => {
+                      const ptsA = moatPointsMap[activePositions[a].config.contractAddress.toLowerCase()] ?? 0;
+                      const ptsB = moatPointsMap[activePositions[b].config.contractAddress.toLowerCase()] ?? 0;
+                      return ptsB - ptsA;
+                    })
+                    .map((i) => {
+                    const pos = activePositions[i];
                     const meta = getMoatMeta(pos.config.contractAddress);
                     const tokenAddr = positionStakingTokens[i];
                     const dec = decimalsMap[tokenAddr?.toLowerCase()] ?? 18;
