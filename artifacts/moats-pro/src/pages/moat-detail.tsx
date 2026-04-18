@@ -446,7 +446,12 @@ export default function MoatDetail() {
                         <div className="flex justify-between">
                           <span>Total Deposited</span>
                           <span className="font-medium text-foreground">
-                            {(token.totalRewardsDeposited / 1_000_000).toFixed(2)}M
+                            {token.totalRewardsDeposited >= 1_000_000
+                              ? `${(token.totalRewardsDeposited / 1_000_000).toFixed(2)}M`
+                              : token.totalRewardsDeposited >= 1_000
+                              ? `${(token.totalRewardsDeposited / 1_000).toFixed(0)}K`
+                              : token.totalRewardsDeposited.toLocaleString(undefined, { maximumFractionDigits: 2 })}{" "}
+                            {token.symbol}
                           </span>
                         </div>
                         {token.lastProcessed && (
