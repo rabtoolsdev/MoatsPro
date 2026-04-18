@@ -7,7 +7,6 @@ export function Footer() {
       <div className="absolute top-0 left-1/4 right-1/4 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
       {/* Ambient glow orb */}
       <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-96 h-24 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-
       <div className="relative max-w-7xl mx-auto px-4 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <img
@@ -33,9 +32,7 @@ export function Footer() {
             moats.app ↗
           </a>
         </nav>
-        <p className="text-muted-foreground text-xs">
-          Powered by FortiFi Protocol. All on-chain.
-        </p>
+        <p className="text-muted-foreground text-xs">Powered by RABTools</p>
       </div>
     </footer>
   );
