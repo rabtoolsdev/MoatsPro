@@ -96,7 +96,8 @@ export function StatsBar({ moatConfigs, leaderboard }: StatsBarProps) {
             <motion.div
               key={stat.label}
               initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
               transition={{ duration: 0.45, delay: i * 0.09, ease: "easeOut" }}
               data-testid={stat.testId}
               className="group relative flex items-center gap-3"

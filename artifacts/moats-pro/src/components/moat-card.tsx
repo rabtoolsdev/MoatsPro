@@ -106,17 +106,9 @@ export function MoatCard({ moat, tvlUSD, supplyPct, logoUrl }: MoatCardProps) {
     <Link href={`/moat/${moat.contractAddress}`}>
       <motion.div
         data-testid={`card-moat-${moat.contractAddress}`}
-        whileHover={{ y: -4, scale: 1.01 }}
+        whileHover={{ y: -4, scale: 1.01, boxShadow: statusStyle.hoverGlow || "none" }}
         transition={{ duration: 0.2, ease: "easeOut" }}
-        className={`relative cursor-pointer rounded-2xl border ${statusStyle.border} bg-card/40 backdrop-blur-sm overflow-hidden group h-full flex flex-col transition-shadow duration-300`}
-        onMouseEnter={(e) => {
-          if (statusStyle.hoverGlow) {
-            (e.currentTarget as HTMLElement).style.boxShadow = statusStyle.hoverGlow;
-          }
-        }}
-        onMouseLeave={(e) => {
-          (e.currentTarget as HTMLElement).style.boxShadow = "";
-        }}
+        className={`relative cursor-pointer rounded-2xl border ${statusStyle.border} bg-card/40 backdrop-blur-sm overflow-hidden group h-full flex flex-col`}
       >
         {/* Gradient overlay on hover */}
         <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">

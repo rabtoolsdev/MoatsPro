@@ -36,7 +36,7 @@ export default function Leaderboard() {
   };
 
   const podiumOrder = [1, 0, 2] as const;
-  const podiumPadding: Record<number, string> = { 0: "pt-8", 1: "pt-0", 2: "pt-12" };
+  const podiumPadding: Record<number, string> = { 0: "pt-0", 1: "pt-10", 2: "pt-14" };
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
