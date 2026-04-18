@@ -317,7 +317,7 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.55 }}
             className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10"
-          >Stake, lock, burn and earn real yield from the most powerful DeFi liquidity positions. Premium analytics. On chain forever.</motion.p>
+          >Earn real yield from the most powerful DeFi liquidity positions. Premium analytics. On chain forever.</motion.p>
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
