@@ -190,6 +190,24 @@ export default function Home() {
       const totalLocked = lockedResult?.status === "success" ? (lockedResult.result as bigint) : 0n;
       const totalBurned = burnedResult?.status === "success" ? (burnedResult.result as bigint) : 0n;
       const tokenAddr = (tokenResult.result as string).toLowerCase();
+      const dexInfo = dexInfoMap?.[tokenAddr];
+      // LP staking tokens (e.g. Pharaoh hCASH/WAVAX): the moat holds a share
+      // of the LP supply, not bare ERC-20 units, so DexScreener's per-pair
+      // priceUsd (which is the BASE token price, not per-LP-unit) gives the
+      // wrong TVM. Compute moat's share × pool TVL instead.
+      if (dexInfo?.isLpToken) {
+        // Use the LP's OWN pool TVL (not the aggregated underlying-token
+        // liquidity), since the LP token only represents a share of that
+        // single pool. Falls back to aggregated liquidity if the per-pool
+        // value is unavailable.
+        const poolTvl = dexInfo.lpPoolLiquidityUsd ?? dexInfo.liquidityUsd;
+        const supply = totalSupplyMap[tokenAddr];
+        if (poolTvl > 0 && supply && supply > 0n) {
+          const moatShareBp = Number(((totalStaked + totalLocked + totalBurned) * 1_000_000n) / supply);
+          m[c.contractAddress.toLowerCase()] = (moatShareBp / 1_000_000) * poolTvl;
+        }
+        return;
+      }
       const dec = decimalsMap[tokenAddr] ?? 18;
       const price = getTokenPrice(c.network, tokenAddr);
       if (price > 0) {
@@ -199,7 +217,7 @@ export default function Home() {
     });
     return m;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [moatOnchainData, configs, priceMap, dexInfoMap, decimalsMap]);
+  }, [moatOnchainData, configs, priceMap, dexInfoMap, decimalsMap, totalSupplyMap]);
 
   const supplyPctMap = useMemo((): Record<string, number> => {
     if (!moatOnchainData || !configs) return {};

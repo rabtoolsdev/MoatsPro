@@ -11,12 +11,29 @@ const DEFAULT_PAIR_CHAIN = "avalanche";
 const BATCH_SIZE = 8;
 
 export interface DexTokenInfo {
-  /** Volume-weighted (by liquidity) price across all pairs */
+  /**
+   * For ERC-20 tokens: liquidity-weighted average USD price across all pairs.
+   * For LP tokens (`isLpToken=true`): the **base token's** USD price (NOT the
+   * per-LP-unit price). The per-LP-unit price must be derived by the caller
+   * as `liquidityUsd / lpTotalSupply` (or equivalently via the moat's
+   * supply-percentage share of the pool TVL).
+   */
   price: number;
-  /** Sum of USD liquidity across ALL pools for this token */
+  /** Sum of USD liquidity across ALL pools for this token (or the underlying base token for LP tokens) */
   liquidityUsd: number;
   /** Number of liquidity pools found on DexScreener */
   pairCount: number;
+  /**
+   * True if this address is itself a Uniswap-V2-style LP pair contract (i.e.
+   * a staking token that represents a share of a liquidity pool).
+   */
+  isLpToken?: boolean;
+  /**
+   * For LP tokens only: the USD TVL of the SPECIFIC pool this LP represents
+   * (NOT the aggregated underlying-token liquidity in `liquidityUsd`). Use
+   * this for per-LP-unit value math: `pricePerLp = lpPoolLiquidityUsd / lpTotalSupply`.
+   */
+  lpPoolLiquidityUsd?: number;
 }
 
 async function fetchBatch(
@@ -59,7 +76,7 @@ async function fetchDexInfo(addresses: string[]): Promise<Record<string, DexToke
   // themselves. Their per-LP-unit price comes from /pairs, but for the DEX TVL
   // display we want ALL pools of the underlying base token (e.g. all hCASH
   // pools across Pharaoh + TraderJoe), not just the single LP's own pool.
-  const lpOverride: Record<string, { price: number; baseAddr: string }> = {};
+  const lpOverride: Record<string, { price: number; baseAddr: string; lpPoolLiquidityUsd: number }> = {};
 
   for (let i = 0; i < addresses.length; i += BATCH_SIZE) {
     const batch = addresses.slice(i, i + BATCH_SIZE);
@@ -98,10 +115,11 @@ async function fetchDexInfo(addresses: string[]): Promise<Record<string, DexToke
       if (!pair) continue;
       const price = parseFloat(pair.priceUsd ?? "0");
       const baseAddr = pair.baseToken?.address?.toLowerCase();
+      const lpPoolLiquidityUsd = pair.liquidity?.usd ?? 0;
       if (price > 0 && baseAddr) {
-        // Record the LP-unit price; liquidity will be aggregated from the
-        // base token's full pool list below.
-        lpOverride[addr] = { price, baseAddr };
+        // Record the base token's price + the LP's specific pool TVL. The
+        // base token's full pool list is fetched below for the DEX TVL row.
+        lpOverride[addr] = { price, baseAddr, lpPoolLiquidityUsd };
         if (!acc[baseAddr]) lpBaseAddrs.push(baseAddr);
       }
     } catch {
@@ -112,22 +130,32 @@ async function fetchDexInfo(addresses: string[]): Promise<Record<string, DexToke
   // Fetch all pools for each LP's underlying base token so the DEX TVL row
   // reflects the underlying token's full liquidity (e.g. hCASH appears in 4
   // pools across Pharaoh + TraderJoe, not just the single LP staking pool).
-  console.log("[dex] LP base addrs to fetch:", lpBaseAddrs);
   for (const baseAddr of lpBaseAddrs) {
     await fetchBatch([baseAddr], acc);
   }
-  console.log("[dex] done. addrs:", addresses.length, "missing:", missing.length, "lpOverride:", Object.keys(lpOverride).length, "acc keys:", Object.keys(acc).length);
 
   const out: Record<string, DexTokenInfo> = {};
   const allAddrs = new Set([...Object.keys(acc), ...Object.keys(lpOverride)]);
   for (const addr of allAddrs) {
     const lp = lpOverride[addr];
     if (lp) {
-      // LP staking token: keep per-LP-unit price for TVM math, but report
-      // the underlying base token's aggregated liquidity for the DEX TVL row.
+      // LP staking token: report the underlying base token's full liquidity
+      // (the pool TVL the LP represents a share of). The `price` field is the
+      // base token's USD price — callers must derive per-LP-unit price from
+      // `liquidityUsd` and the LP's on-chain totalSupply (e.g. moat TVM =
+      // moatSupplyShare × liquidityUsd).
       const basePairs = acc[lp.baseAddr] ?? [];
       const totalLiq = basePairs.reduce((s, p) => s + p.liq, 0);
-      out[addr] = { price: lp.price, liquidityUsd: totalLiq, pairCount: basePairs.length };
+      const basePrice = totalLiq > 0
+        ? basePairs.reduce((s, p) => s + p.price * p.liq, 0) / totalLiq
+        : lp.price;
+      out[addr] = {
+        price: basePrice,
+        liquidityUsd: totalLiq,
+        pairCount: basePairs.length,
+        isLpToken: true,
+        lpPoolLiquidityUsd: lp.lpPoolLiquidityUsd,
+      };
     } else {
       const pairs = acc[addr] ?? [];
       const totalLiq = pairs.reduce((s, p) => s + p.liq, 0);
