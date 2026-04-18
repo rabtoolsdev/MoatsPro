@@ -36,7 +36,6 @@ export default function Leaderboard() {
   };
 
   const podiumOrder = [1, 0, 2] as const;
-  const podiumPadding: Record<number, string> = { 0: "pt-0", 1: "pt-10", 2: "pt-14" };
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -77,7 +76,7 @@ export default function Leaderboard() {
 
         {/* Podium top-3 */}
         {mapsScores && mapsScores.length >= 3 && (
-          <div className="flex items-end justify-center gap-3 mb-10">
+          <div className="grid grid-cols-3 gap-3 mb-10 max-w-2xl mx-auto">
             {podiumOrder.map((idx) => {
               const entry = mapsScores[idx];
               if (!entry) return null;
@@ -94,7 +93,7 @@ export default function Leaderboard() {
                     duration: isGold ? 0.6 : 0.45,
                     ease: [0.22, 1, 0.36, 1],
                   }}
-                  className={`flex-1 max-w-[200px] rounded-2xl border border-transparent p-5 text-center flex flex-col items-center ${podiumPadding[idx]}`}
+                  className="w-full rounded-2xl border border-transparent p-5 text-center flex flex-col items-center"
                   style={{
                     background: isGold
                       ? "linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box, linear-gradient(135deg, rgba(251,191,36,0.7) 0%, rgba(251,191,36,0.15) 60%, transparent 100%) border-box"
