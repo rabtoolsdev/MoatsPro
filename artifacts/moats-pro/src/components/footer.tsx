@@ -12,7 +12,7 @@ export function Footer() {
           <img
             src="/moats-pro-logo.png"
             alt="The Moats Pro"
-            className="h-10 w-auto object-contain"
+            className="h-[60px] w-auto object-contain"
           />
         </div>
         <nav className="flex items-center gap-6 text-sm text-muted-foreground">
