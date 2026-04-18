@@ -536,7 +536,6 @@ export default function MoatDetail() {
                 {/* Additional moat meta */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
                   {[
-                    { label: "Fort Weight", value: `${moatConfig.fortWeight}x` },
                     { label: "Moat Version", value: `v${moatConfig.moatVersion}` },
                     { label: "Auto Rewards", value: moatConfig.automatedRewards ? "Yes" : "No" },
                     { label: "Time-Weighted", value: moatConfig.timeWeightedPointsEnabled ? `${moatConfig.timeWeightPercentage}%` : "Disabled" },
