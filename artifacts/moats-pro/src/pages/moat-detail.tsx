@@ -747,7 +747,7 @@ export default function MoatDetail() {
                             <div>
                               <p className="text-muted-foreground mb-0.5">Lock Points</p>
                               <p className="font-semibold text-primary">
-                                {formatPoints(parseFloat(formatUnits(lock.points, decimals)))}
+                                {formatPoints(Number(lock.points))}
                               </p>
                             </div>
                           </div>
