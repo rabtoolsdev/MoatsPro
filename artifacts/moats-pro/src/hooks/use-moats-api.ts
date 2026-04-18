@@ -14,6 +14,9 @@ export function useAllMoatConfigs() {
   return useQuery({
     queryKey: ["moats", "config", "all"],
     queryFn: () => moatsApi.getAllMoatConfigs(),
+    // Deprecated moats are excluded everywhere — we don't want to waste
+    // on-chain calls or DexScreener requests on them.
+    select: (data) => data.filter((m) => m.status !== "Deprecated"),
     staleTime: 300_000,
     refetchInterval: 300_000,
   });
