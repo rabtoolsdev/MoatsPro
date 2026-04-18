@@ -55,6 +55,11 @@ async function fetchDexInfo(addresses: string[]): Promise<Record<string, DexToke
   if (addresses.length === 0) return {};
   const acc: Record<string, { price: number; liq: number }[]> = {};
   const missing: string[] = [];
+  // LP staking tokens (e.g. Pharaoh's hCASH/WAVAX pair) are pair contracts
+  // themselves. Their per-LP-unit price comes from /pairs, but for the DEX TVL
+  // display we want ALL pools of the underlying base token (e.g. all hCASH
+  // pools across Pharaoh + TraderJoe), not just the single LP's own pool.
+  const lpOverride: Record<string, { price: number; baseAddr: string }> = {};
 
   for (let i = 0; i < addresses.length; i += BATCH_SIZE) {
     const batch = addresses.slice(i, i + BATCH_SIZE);
@@ -70,6 +75,7 @@ async function fetchDexInfo(addresses: string[]): Promise<Record<string, DexToke
   // If still missing after that, try the /pairs endpoint — some staking tokens
   // (e.g. LP positions like hCASH/WAVAX on Pharaoh) ARE pair contracts, not
   // ERC-20s with their own pair listing, so they only resolve via /pairs/{addr}.
+  const lpBaseAddrs: string[] = [];
   for (const addr of missing) {
     const seen = await fetchBatch([addr], acc);
     if (seen.has(addr)) continue;
@@ -77,31 +83,60 @@ async function fetchDexInfo(addresses: string[]): Promise<Record<string, DexToke
       const res = await fetch(`${DEXSCREENER_PAIRS_API}/${DEFAULT_PAIR_CHAIN}/${addr}`);
       if (!res.ok) continue;
       const data = (await res.json()) as {
-        pairs?: Array<{ priceUsd?: string; liquidity?: { usd?: number } }>;
-        pair?: { priceUsd?: string; liquidity?: { usd?: number } };
+        pairs?: Array<{
+          baseToken?: { address?: string };
+          priceUsd?: string;
+          liquidity?: { usd?: number };
+        }>;
+        pair?: {
+          baseToken?: { address?: string };
+          priceUsd?: string;
+          liquidity?: { usd?: number };
+        };
       };
       const pair = data.pair ?? data.pairs?.[0];
       if (!pair) continue;
       const price = parseFloat(pair.priceUsd ?? "0");
-      const liq = pair.liquidity?.usd ?? 0;
-      // For LP tokens, priceUsd is the per-LP-unit price and liquidity.usd is
-      // the entire pool TVL — exactly what we need for downstream TVM math.
-      if (price > 0 && liq > 0) {
-        (acc[addr] ||= []).push({ price, liq });
+      const baseAddr = pair.baseToken?.address?.toLowerCase();
+      if (price > 0 && baseAddr) {
+        // Record the LP-unit price; liquidity will be aggregated from the
+        // base token's full pool list below.
+        lpOverride[addr] = { price, baseAddr };
+        if (!acc[baseAddr]) lpBaseAddrs.push(baseAddr);
       }
     } catch {
       // silently skip
     }
   }
 
+  // Fetch all pools for each LP's underlying base token so the DEX TVL row
+  // reflects the underlying token's full liquidity (e.g. hCASH appears in 4
+  // pools across Pharaoh + TraderJoe, not just the single LP staking pool).
+  console.log("[dex] LP base addrs to fetch:", lpBaseAddrs);
+  for (const baseAddr of lpBaseAddrs) {
+    await fetchBatch([baseAddr], acc);
+  }
+  console.log("[dex] done. addrs:", addresses.length, "missing:", missing.length, "lpOverride:", Object.keys(lpOverride).length, "acc keys:", Object.keys(acc).length);
+
   const out: Record<string, DexTokenInfo> = {};
-  for (const [addr, pairs] of Object.entries(acc)) {
-    const totalLiq = pairs.reduce((s, p) => s + p.liq, 0);
-    // Liquidity-weighted average price (more robust than picking the deepest pool)
-    const price = totalLiq > 0
-      ? pairs.reduce((s, p) => s + p.price * p.liq, 0) / totalLiq
-      : 0;
-    out[addr] = { price, liquidityUsd: totalLiq, pairCount: pairs.length };
+  const allAddrs = new Set([...Object.keys(acc), ...Object.keys(lpOverride)]);
+  for (const addr of allAddrs) {
+    const lp = lpOverride[addr];
+    if (lp) {
+      // LP staking token: keep per-LP-unit price for TVM math, but report
+      // the underlying base token's aggregated liquidity for the DEX TVL row.
+      const basePairs = acc[lp.baseAddr] ?? [];
+      const totalLiq = basePairs.reduce((s, p) => s + p.liq, 0);
+      out[addr] = { price: lp.price, liquidityUsd: totalLiq, pairCount: basePairs.length };
+    } else {
+      const pairs = acc[addr] ?? [];
+      const totalLiq = pairs.reduce((s, p) => s + p.liq, 0);
+      // Liquidity-weighted average price (more robust than picking the deepest pool)
+      const price = totalLiq > 0
+        ? pairs.reduce((s, p) => s + p.price * p.liq, 0) / totalLiq
+        : 0;
+      out[addr] = { price, liquidityUsd: totalLiq, pairCount: pairs.length };
+    }
   }
   return out;
 }
