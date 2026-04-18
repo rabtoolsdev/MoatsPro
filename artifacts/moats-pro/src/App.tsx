@@ -31,41 +31,26 @@ const pageTransition: Transition = {
   ease: "easeOut",
 };
 
-function AnimatedRoute({ component: Component }: { component: React.ComponentType }) {
-  return (
-    <motion.div
-      variants={pageVariants}
-      initial="initial"
-      animate="animate"
-      exit="exit"
-      transition={pageTransition}
-    >
-      <Component />
-    </motion.div>
-  );
-}
-
 function Router() {
   const [location] = useLocation();
   return (
     <AnimatePresence mode="wait" initial={false}>
-      <Switch key={location}>
-        <Route path="/">
-          {() => <AnimatedRoute component={Home} />}
-        </Route>
-        <Route path="/portfolio">
-          {() => <AnimatedRoute component={Portfolio} />}
-        </Route>
-        <Route path="/moat/:address">
-          {() => <AnimatedRoute component={MoatDetail} />}
-        </Route>
-        <Route path="/leaderboard">
-          {() => <AnimatedRoute component={Leaderboard} />}
-        </Route>
-        <Route>
-          {() => <AnimatedRoute component={NotFound} />}
-        </Route>
-      </Switch>
+      <motion.div
+        key={location}
+        variants={pageVariants}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        transition={pageTransition}
+      >
+        <Switch>
+          <Route path="/" component={Home} />
+          <Route path="/portfolio" component={Portfolio} />
+          <Route path="/moat/:address" component={MoatDetail} />
+          <Route path="/leaderboard" component={Leaderboard} />
+          <Route component={NotFound} />
+        </Switch>
+      </motion.div>
     </AnimatePresence>
   );
 }
