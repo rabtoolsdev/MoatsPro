@@ -233,8 +233,13 @@ export default function Home() {
   };
 
   const itemVariants = {
-    hidden: { opacity: 0, y: 24 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.35 } },
+    hidden: { opacity: 0, y: 24, scale: 0.93 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: { type: "spring" as const, stiffness: 260, damping: 18, mass: 0.8 },
+    },
   };
 
   return (
