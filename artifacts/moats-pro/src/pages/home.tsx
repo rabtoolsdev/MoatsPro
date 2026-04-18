@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { useReadContracts, useAccount } from "wagmi";
 import { useAppKit } from "@reown/appkit/react";
-import { Wallet, ArrowRight, Zap } from "lucide-react";
+import { Wallet, ArrowRight } from "lucide-react";
 import { formatUnits } from "viem";
 import { useAllMoatConfigs, useMapsLeaderboard, useEvents } from "@/hooks/use-moats-api";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
@@ -281,7 +281,6 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <Navbar />
-
       {/* Hero */}
       <section className="relative pt-32 pb-24 px-4 overflow-hidden">
         {/* Animated grid background */}
@@ -298,17 +297,6 @@ export default function Home() {
         <div className="absolute top-20 right-1/5 w-[200px] h-[200px] bg-violet-500/5 rounded-full blur-[80px] pointer-events-none float-slow-alt" />
 
         <div className="max-w-5xl mx-auto text-center relative z-10">
-          {/* Badge */}
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 mb-6 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-xs font-medium text-primary"
-          >
-            <Zap size={12} />
-            Premium DeFi Liquidity — Powered by FortiFi
-          </motion.div>
-
           {/* Staggered headline words */}
           <div className="text-5xl md:text-7xl font-bold tracking-tight mb-4 flex flex-wrap justify-center gap-x-4">
             {heroWords.map((word, i) => (
@@ -329,9 +317,7 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.55 }}
             className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10"
-          >
-            Stake, lock, burn and earn real yield from the most powerful DeFi liquidity positions. Premium analytics. On-chain forever.
-          </motion.p>
+          >Stake, lock, burn and earn real yield from the most powerful DeFi liquidity positions. Premium analytics. On chain forever.</motion.p>
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -367,10 +353,8 @@ export default function Home() {
           </motion.div>
         </div>
       </section>
-
       {/* Stats Bar */}
       <StatsBar moatConfigs={configs} leaderboard={leaderboard} />
-
       {/* Moats Grid */}
       <section className="flex-1 px-4 py-16 max-w-7xl mx-auto w-full">
         <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
@@ -437,7 +421,6 @@ export default function Home() {
           </motion.div>
         )}
       </section>
-
       {/* Activity Feed */}
       {eventsData && eventsData.results.length > 0 && (
         <section className="px-4 py-12 max-w-7xl mx-auto w-full">
@@ -454,7 +437,6 @@ export default function Home() {
           />
         </section>
       )}
-
       <Footer />
     </div>
   );
