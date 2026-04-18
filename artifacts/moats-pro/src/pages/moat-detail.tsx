@@ -1054,7 +1054,7 @@ export default function MoatDetail() {
                           onClick={handleLock}
                           disabled={!lockAmount || lockAction.isPending || lockAction.isConfirming || approveAction.isPending}
                           data-testid="btn-lock"
-                          className="w-full py-3.5 rounded-xl bg-cyan-500 text-white font-semibold text-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                          className="btn-shimmer w-full py-3.5 rounded-xl bg-cyan-500 text-white font-semibold text-sm hover:opacity-95 hover:shadow-[0_0_20px_rgba(34,211,238,0.35)] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                         >
                           {lockAction.isPending || lockAction.isConfirming ? (
                             <><Loader2 size={14} className="animate-spin" />Locking...</>
@@ -1119,7 +1119,7 @@ export default function MoatDetail() {
                           onClick={handleWithdraw}
                           disabled={!withdrawAmount || unstakeAction.isPending || unstakeAction.isConfirming}
                           data-testid="btn-withdraw"
-                          className="w-full py-3.5 rounded-xl bg-amber-500 text-white font-semibold text-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                          className="btn-shimmer w-full py-3.5 rounded-xl bg-amber-500 text-white font-semibold text-sm hover:opacity-95 hover:shadow-[0_0_20px_rgba(245,158,11,0.3)] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                         >
                           {unstakeAction.isPending || unstakeAction.isConfirming ? (
                             <><Loader2 size={14} className="animate-spin" />Withdrawing...</>
@@ -1182,7 +1182,7 @@ export default function MoatDetail() {
                           onClick={handleBurn}
                           disabled={!burnAmount || burnAction.isPending || burnAction.isConfirming || approveAction.isPending}
                           data-testid="btn-burn"
-                          className="w-full py-3.5 rounded-xl bg-rose-500 text-white font-semibold text-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                          className="btn-shimmer w-full py-3.5 rounded-xl bg-rose-500 text-white font-semibold text-sm hover:opacity-95 hover:shadow-[0_0_20px_rgba(239,68,68,0.3)] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                         >
                           {approveAction.isPending || approveAction.isConfirming ? (
                             <><Loader2 size={14} className="animate-spin" />Approving...</>

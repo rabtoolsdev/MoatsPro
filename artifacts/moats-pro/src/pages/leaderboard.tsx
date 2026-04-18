@@ -87,9 +87,13 @@ export default function Leaderboard() {
               return (
                 <motion.div
                   key={entry.address}
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.05 * idx + 0.1, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                  initial={{ opacity: 0, y: 30, scale: isGold ? 0.88 : 0.94 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{
+                    delay: isGold ? 0.45 : isSilver ? 0.1 : 0.25,
+                    duration: isGold ? 0.6 : 0.45,
+                    ease: [0.22, 1, 0.36, 1],
+                  }}
                   className={`flex-1 max-w-[200px] rounded-2xl border p-5 text-center flex flex-col items-center ${podiumPadding[idx]} ${
                     isGold
                       ? "border-gold bg-amber-500/5"
