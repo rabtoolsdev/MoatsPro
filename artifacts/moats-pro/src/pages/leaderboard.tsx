@@ -94,13 +94,19 @@ export default function Leaderboard() {
                     duration: isGold ? 0.6 : 0.45,
                     ease: [0.22, 1, 0.36, 1],
                   }}
-                  className={`flex-1 max-w-[200px] rounded-2xl border p-5 text-center flex flex-col items-center ${podiumPadding[idx]} ${
-                    isGold
-                      ? "border-gold bg-amber-500/5"
+                  className={`flex-1 max-w-[200px] rounded-2xl border border-transparent p-5 text-center flex flex-col items-center ${podiumPadding[idx]}`}
+                  style={{
+                    background: isGold
+                      ? "linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box, linear-gradient(135deg, rgba(251,191,36,0.7) 0%, rgba(251,191,36,0.15) 60%, transparent 100%) border-box"
                       : isSilver
-                      ? "border-silver bg-zinc-500/5"
-                      : "border-bronze bg-amber-900/5"
-                  }`}
+                      ? "linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box, linear-gradient(135deg, rgba(212,212,216,0.6) 0%, rgba(212,212,216,0.12) 60%, transparent 100%) border-box"
+                      : "linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box, linear-gradient(135deg, rgba(180,83,9,0.55) 0%, rgba(180,83,9,0.1) 60%, transparent 100%) border-box",
+                    boxShadow: isGold
+                      ? "0 0 28px rgba(251,191,36,0.12)"
+                      : isSilver
+                      ? "0 0 18px rgba(212,212,216,0.08)"
+                      : "0 0 16px rgba(180,83,9,0.08)",
+                  }}
                 >
                   <div className="mb-3">
                     {isGold ? (
