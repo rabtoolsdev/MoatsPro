@@ -566,11 +566,7 @@ export default function MoatDetail() {
                     },
                     {
                       label: "Moat Points",
-                      value: userMoatPointsValue >= 1_000_000
-                        ? `${(userMoatPointsValue / 1_000_000).toFixed(2)}M`
-                        : userMoatPointsValue >= 1_000
-                        ? `${(userMoatPointsValue / 1_000).toFixed(1)}K`
-                        : userMoatPointsValue.toLocaleString(),
+                      value: formatPoints(userMoatPointsValue),
                       testId: "user-moat-points",
                       usd: 0,
                     },
