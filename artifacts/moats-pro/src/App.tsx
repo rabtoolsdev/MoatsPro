@@ -1,7 +1,7 @@
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WagmiProvider } from "wagmi";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, type Transition } from "framer-motion";
 import { wagmiConfig } from "@/lib/wagmi-config";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -26,7 +26,7 @@ const pageVariants = {
   exit: { opacity: 0, y: -8 },
 };
 
-const pageTransition = {
+const pageTransition: Transition = {
   duration: 0.2,
   ease: "easeOut",
 };
