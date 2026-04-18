@@ -17,7 +17,7 @@ import { StatsBar } from "@/components/stats-bar";
 import { ActivityFeed } from "@/components/activity-feed";
 
 export default function Home() {
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("Verified");
   const { isConnected, address } = useAccount();
   const { open } = useAppKit();
   const shortAddress = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "";
