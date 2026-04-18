@@ -7,6 +7,7 @@ import { Wallet } from "lucide-react";
 import { formatUnits } from "viem";
 import { useAllMoatConfigs, useMapsLeaderboard, useEvents } from "@/hooks/use-moats-api";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
+import { useDexscreenerPrices } from "@/hooks/use-dexscreener";
 import { MOAT_V3_ABI, ERC20_ABI, MOAT_LOGO_ABI } from "@/lib/moat-abi";
 import { getMoatMeta } from "@/lib/moat-metadata";
 import { Navbar } from "@/components/navbar";
@@ -137,8 +138,30 @@ export default function Home() {
 
   const { data: priceMap } = useTokenPrices(allLlamaIds);
 
+  // Collect all unique staking token addresses for DexScreener (from metadata + on-chain)
+  const allTokenAddrs = useMemo(() => {
+    const addrs = new Set<string>();
+    if (configs) {
+      for (const c of configs) {
+        const meta = getMoatMeta(c.contractAddress);
+        if (meta.tokenAddress) addrs.add(meta.tokenAddress.toLowerCase());
+      }
+    }
+    stakingTokenAddrs.forEach((addr) => { if (addr) addrs.add(addr.toLowerCase()); });
+    return [...addrs];
+  }, [configs, stakingTokenAddrs]);
+
+  const { data: dexPriceMap } = useDexscreenerPrices(allTokenAddrs);
+
+  // Merged price lookup: DexScreener first, DefiLlama fallback
+  const getTokenPrice = (network: string, tokenAddr: string): number => {
+    const dex = dexPriceMap?.[tokenAddr.toLowerCase()];
+    if (dex && dex > 0) return dex;
+    return priceMap?.[getLlamaId(network, tokenAddr)] ?? 0;
+  };
+
   const tvmMap = useMemo((): Record<string, number> => {
-    if (!moatOnchainData || !configs || !priceMap) return {};
+    if (!moatOnchainData || !configs) return {};
     const m: Record<string, number> = {};
     configs.forEach((c, i) => {
       const stakedResult = moatOnchainData[i * 4];
@@ -151,15 +174,15 @@ export default function Home() {
       const totalBurned = burnedResult?.status === "success" ? (burnedResult.result as bigint) : 0n;
       const tokenAddr = (tokenResult.result as string).toLowerCase();
       const dec = decimalsMap[tokenAddr] ?? 18;
-      const llamaId = getLlamaId(c.network, tokenAddr);
-      const price = priceMap[llamaId] ?? 0;
+      const price = getTokenPrice(c.network, tokenAddr);
       if (price > 0) {
         m[c.contractAddress.toLowerCase()] =
           parseFloat(formatUnits(totalStaked + totalLocked + totalBurned, dec)) * price;
       }
     });
     return m;
-  }, [moatOnchainData, configs, priceMap, decimalsMap]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [moatOnchainData, configs, priceMap, dexPriceMap, decimalsMap]);
 
   const supplyPctMap = useMemo((): Record<string, number> => {
     if (!moatOnchainData || !configs) return {};
