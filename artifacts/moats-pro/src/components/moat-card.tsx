@@ -11,6 +11,7 @@ interface MoatCardProps {
   moat: MoatConfig;
   priceMap?: Record<string, number>;
   tvlUSD?: number;
+  supplyPct?: number;
   logoUrl?: string;
 }
 
@@ -94,7 +95,7 @@ function MoatLogo({
 
 export { MoatLogo };
 
-export function MoatCard({ moat, priceMap, tvlUSD, logoUrl }: MoatCardProps) {
+export function MoatCard({ moat, priceMap, tvlUSD, supplyPct, logoUrl }: MoatCardProps) {
   const statusStyle = statusColors[moat.status] || statusColors.Community;
   const activeRewardTokens = moat.rewardTokens.filter((t) => t.enabled);
   const meta = getMoatMeta(moat.contractAddress);
@@ -190,12 +191,20 @@ export function MoatCard({ moat, priceMap, tvlUSD, logoUrl }: MoatCardProps) {
           <div className="mt-auto pt-3 border-t border-border/40 space-y-2">
             {tvlUSD !== undefined && tvlUSD > 0 && (
               <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">TVL</span>
+                <span className="text-muted-foreground">TVM</span>
                 <span
                   data-testid={`text-tvl-${moat.contractAddress}`}
                   className="font-bold text-foreground tabular-nums"
                 >
                   {formatUSD(tvlUSD)}
+                </span>
+              </div>
+            )}
+            {supplyPct !== undefined && supplyPct > 0 && (
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">% of Supply</span>
+                <span className="font-bold text-cyan-400 tabular-nums">
+                  {supplyPct >= 0.01 ? `${supplyPct.toFixed(2)}%` : "<0.01%"}
                 </span>
               </div>
             )}

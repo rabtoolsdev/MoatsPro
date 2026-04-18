@@ -29,6 +29,8 @@ export default function Home() {
     return configs.flatMap((c) => [
       { address: c.contractAddress as `0x${string}`, abi: MOAT_V3_ABI, functionName: "totalStaked" as const },
       { address: c.contractAddress as `0x${string}`, abi: MOAT_V3_ABI, functionName: "stakingToken" as const },
+      { address: c.contractAddress as `0x${string}`, abi: MOAT_V3_ABI, functionName: "totalLocked" as const },
+      { address: c.contractAddress as `0x${string}`, abi: MOAT_V3_ABI, functionName: "totalBurned" as const },
     ]);
   }, [configs]);
 
@@ -40,7 +42,7 @@ export default function Home() {
   const stakingTokenAddrs = useMemo(() => {
     if (!moatOnchainData || !configs) return [] as string[];
     return configs.map((_, i) => {
-      const r = moatOnchainData[i * 2 + 1];
+      const r = moatOnchainData[i * 4 + 1];
       return r?.status === "success" ? (r.result as string) : "";
     });
   }, [moatOnchainData, configs]);
@@ -59,6 +61,15 @@ export default function Home() {
     query: { enabled: uniqueStakingTokens.length > 0 },
   });
 
+  const { data: totalSupplyData } = useReadContracts({
+    contracts: uniqueStakingTokens.map((addr) => ({
+      address: addr as `0x${string}`,
+      abi: ERC20_ABI,
+      functionName: "totalSupply" as const,
+    })),
+    query: { enabled: uniqueStakingTokens.length > 0 },
+  });
+
   const decimalsMap = useMemo((): Record<string, number> => {
     const m: Record<string, number> = {};
     uniqueStakingTokens.forEach((addr, i) => {
@@ -67,6 +78,15 @@ export default function Home() {
     });
     return m;
   }, [uniqueStakingTokens, decimalsData]);
+
+  const totalSupplyMap = useMemo((): Record<string, bigint> => {
+    const m: Record<string, bigint> = {};
+    uniqueStakingTokens.forEach((addr, i) => {
+      const r = totalSupplyData?.[i];
+      if (r?.status === "success") m[addr.toLowerCase()] = r.result as unknown as bigint;
+    });
+    return m;
+  }, [uniqueStakingTokens, totalSupplyData]);
 
   const logoContracts = useMemo(() => {
     if (!configs) return [];
@@ -112,24 +132,51 @@ export default function Home() {
 
   const { data: priceMap } = useTokenPrices(allLlamaIds);
 
-  const tvlMap = useMemo((): Record<string, number> => {
+  const tvmMap = useMemo((): Record<string, number> => {
     if (!moatOnchainData || !configs || !priceMap) return {};
     const m: Record<string, number> = {};
     configs.forEach((c, i) => {
-      const stakedResult = moatOnchainData[i * 2];
-      const tokenResult = moatOnchainData[i * 2 + 1];
+      const stakedResult = moatOnchainData[i * 4];
+      const tokenResult = moatOnchainData[i * 4 + 1];
+      const lockedResult = moatOnchainData[i * 4 + 2];
+      const burnedResult = moatOnchainData[i * 4 + 3];
       if (stakedResult?.status !== "success" || tokenResult?.status !== "success") return;
       const totalStaked = stakedResult.result as bigint;
+      const totalLocked = lockedResult?.status === "success" ? (lockedResult.result as bigint) : 0n;
+      const totalBurned = burnedResult?.status === "success" ? (burnedResult.result as bigint) : 0n;
       const tokenAddr = (tokenResult.result as string).toLowerCase();
       const dec = decimalsMap[tokenAddr] ?? 18;
       const llamaId = getLlamaId(c.network, tokenAddr);
       const price = priceMap[llamaId] ?? 0;
       if (price > 0) {
-        m[c.contractAddress.toLowerCase()] = parseFloat(formatUnits(totalStaked, dec)) * price;
+        m[c.contractAddress.toLowerCase()] =
+          parseFloat(formatUnits(totalStaked + totalLocked + totalBurned, dec)) * price;
       }
     });
     return m;
   }, [moatOnchainData, configs, priceMap, decimalsMap]);
+
+  const supplyPctMap = useMemo((): Record<string, number> => {
+    if (!moatOnchainData || !configs) return {};
+    const m: Record<string, number> = {};
+    configs.forEach((c, i) => {
+      const stakedResult = moatOnchainData[i * 4];
+      const tokenResult = moatOnchainData[i * 4 + 1];
+      const lockedResult = moatOnchainData[i * 4 + 2];
+      const burnedResult = moatOnchainData[i * 4 + 3];
+      if (stakedResult?.status !== "success" || tokenResult?.status !== "success") return;
+      const totalStaked = stakedResult.result as bigint;
+      const totalLocked = lockedResult?.status === "success" ? (lockedResult.result as bigint) : 0n;
+      const totalBurned = burnedResult?.status === "success" ? (burnedResult.result as bigint) : 0n;
+      const tokenAddr = (tokenResult.result as string).toLowerCase();
+      const supply = totalSupplyMap[tokenAddr];
+      if (supply && supply > 0n) {
+        const pct = Number(((totalStaked + totalLocked + totalBurned) * 10000n) / supply) / 100;
+        m[c.contractAddress.toLowerCase()] = pct;
+      }
+    });
+    return m;
+  }, [moatOnchainData, configs, totalSupplyMap]);
 
   const statusOptions = configs
     ? ["all", ...new Set(configs.map((c) => c.status))]
@@ -292,7 +339,8 @@ export default function Home() {
                 <MoatCard
                   moat={moat}
                   priceMap={priceMap}
-                  tvlUSD={tvlMap[moat.contractAddress.toLowerCase()]}
+                  tvlUSD={tvmMap[moat.contractAddress.toLowerCase()]}
+                  supplyPct={supplyPctMap[moat.contractAddress.toLowerCase()]}
                   logoUrl={logoMap[moat.contractAddress.toLowerCase()]}
                 />
               </motion.div>
