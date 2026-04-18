@@ -153,10 +153,8 @@ export default function Home() {
 
   const { data: dexInfoMap } = useDexscreenerInfo(allTokenAddrs);
 
-  const getTokenPrice = (network: string, tokenAddr: string): number => {
-    const dex = dexInfoMap?.[tokenAddr.toLowerCase()]?.price;
-    if (dex && dex > 0) return dex;
-    return priceMap?.[getLlamaId(network, tokenAddr)] ?? 0;
+  const getTokenPrice = (_network: string, tokenAddr: string): number => {
+    return dexInfoMap?.[tokenAddr.toLowerCase()]?.price ?? 0;
   };
 
   // Sum of liquidity across all DexScreener pools per moat (keyed by moat addr)

@@ -156,11 +156,9 @@ export default function MoatDetail() {
   const allLlamaIds = [...new Set([...rewardLlamaIds, ...(stakingLlamaId ? [stakingLlamaId] : [])])];
   const { data: priceMap } = useTokenPrices(allLlamaIds);
   const { data: dexInfoMap } = useDexscreenerInfo(stats.stakingToken ? [stats.stakingToken] : []);
-  const stakingTokenPrice = (() => {
-    const llamaP = stakingLlamaId ? (priceMap?.[stakingLlamaId] ?? 0) : 0;
-    if (llamaP > 0) return llamaP;
-    return stats.stakingToken ? (dexInfoMap?.[stats.stakingToken.toLowerCase()]?.price ?? 0) : 0;
-  })();
+  const stakingTokenPrice = stats.stakingToken
+    ? (dexInfoMap?.[stats.stakingToken.toLowerCase()]?.price ?? 0)
+    : 0;
 
   const pendingRewardTokenAddrs = userInfo.pendingRewards?.[0] ?? [];
   const { data: pendingRewardDecimals } = useReadContracts({

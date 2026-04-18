@@ -219,10 +219,7 @@ export default function Portfolio() {
     const tokenAddr = positionStakingTokens[idx];
     if (!tokenAddr) return 0;
     const dec = decimalsMap[tokenAddr.toLowerCase()] ?? 18;
-    const llamaId = getLlamaId(pos.config.network, tokenAddr);
-    const llamaPrice = priceMap?.[llamaId] ?? 0;
-    const dexPrice = dexInfoMap?.[tokenAddr.toLowerCase()]?.price ?? 0;
-    const price = llamaPrice > 0 ? llamaPrice : dexPrice;
+    const price = dexInfoMap?.[tokenAddr.toLowerCase()]?.price ?? 0;
     if (price === 0) return 0;
     const locked = lockedMap[pos.config.contractAddress.toLowerCase()] ?? 0n;
     return parseFloat(formatUnits(pos.stakedAmount + locked + pos.totalUserBurn, dec)) * price;
