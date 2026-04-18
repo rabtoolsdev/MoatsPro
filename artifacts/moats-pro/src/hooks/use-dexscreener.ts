@@ -1,6 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 
 const DEXSCREENER_API = "https://api.dexscreener.com/latest/dex/tokens";
+const DEXSCREENER_PAIRS_API = "https://api.dexscreener.com/latest/dex/pairs";
+// All currently-supported moats are on Avalanche; if we add other chains later
+// the caller can pass per-token network info.
+const DEFAULT_PAIR_CHAIN = "avalanche";
 // DexScreener returns at most ~30 pairs per response regardless of how many
 // tokens are queried, so larger batches silently drop low-liquidity pools.
 // Keep this small to ensure every token's pairs are returned.
@@ -63,8 +67,31 @@ async function fetchDexInfo(addresses: string[]): Promise<Record<string, DexToke
   }
 
   // Retry missed tokens one-by-one (single-token requests can never be truncated).
+  // If still missing after that, try the /pairs endpoint — some staking tokens
+  // (e.g. LP positions like hCASH/WAVAX on Pharaoh) ARE pair contracts, not
+  // ERC-20s with their own pair listing, so they only resolve via /pairs/{addr}.
   for (const addr of missing) {
-    await fetchBatch([addr], acc);
+    const seen = await fetchBatch([addr], acc);
+    if (seen.has(addr)) continue;
+    try {
+      const res = await fetch(`${DEXSCREENER_PAIRS_API}/${DEFAULT_PAIR_CHAIN}/${addr}`);
+      if (!res.ok) continue;
+      const data = (await res.json()) as {
+        pairs?: Array<{ priceUsd?: string; liquidity?: { usd?: number } }>;
+        pair?: { priceUsd?: string; liquidity?: { usd?: number } };
+      };
+      const pair = data.pair ?? data.pairs?.[0];
+      if (!pair) continue;
+      const price = parseFloat(pair.priceUsd ?? "0");
+      const liq = pair.liquidity?.usd ?? 0;
+      // For LP tokens, priceUsd is the per-LP-unit price and liquidity.usd is
+      // the entire pool TVL — exactly what we need for downstream TVM math.
+      if (price > 0 && liq > 0) {
+        (acc[addr] ||= []).push({ price, liq });
+      }
+    } catch {
+      // silently skip
+    }
   }
 
   const out: Record<string, DexTokenInfo> = {};
