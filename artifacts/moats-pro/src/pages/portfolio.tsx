@@ -15,9 +15,10 @@ import { Link } from "wouter";
 
 function formatTokenAmount(raw: bigint, decimals: number = 18): string {
   const val = parseFloat(formatUnits(raw, decimals));
-  if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(2)}M`;
-  if (val >= 1_000) return `${(val / 1_000).toFixed(1)}K`;
-  return val.toFixed(4);
+  if (val >= 1) {
+    return val.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  }
+  return val.toLocaleString("en-US", { maximumFractionDigits: 4 });
 }
 
 
