@@ -10,7 +10,7 @@ import { MOAT_V3_ABI, ERC20_ABI, MOAT_LOGO_ABI } from "@/lib/moat-abi";
 import { moatsApi } from "@/lib/moats-api";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
-import { formatAddress, getEventTypeLabel, getEventTypeColor, getExplorerUrl, timeAgo, formatUSD, getMoatMeta } from "@/lib/moat-metadata";
+import { formatAddress, formatPoints, getEventTypeLabel, getEventTypeColor, getExplorerUrl, timeAgo, formatUSD, getMoatMeta } from "@/lib/moat-metadata";
 import { Link } from "wouter";
 
 function formatTokenAmount(raw: bigint, decimals: number = 18): string {
@@ -536,11 +536,7 @@ export default function Portfolio() {
                               <Award size={14} className="text-violet-400" />
                               <div>
                                 <p className="text-sm font-bold text-violet-400">
-                                  {mapsPoints >= 1_000_000
-                                    ? `${(mapsPoints / 1_000_000).toFixed(2)}M`
-                                    : mapsPoints >= 1_000
-                                    ? `${(mapsPoints / 1_000).toFixed(1)}K`
-                                    : mapsPoints.toLocaleString()}
+                                  {formatPoints(mapsPoints)}
                                 </p>
                                 <p className="text-xs text-muted-foreground">Moat Points</p>
                               </div>

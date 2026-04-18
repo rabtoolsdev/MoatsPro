@@ -169,9 +169,10 @@ export function getTokenLogoUrl(tokenAddress: string): string {
 }
 
 export function formatPoints(points: number): string {
-  if (points >= 1_000_000) return `${(points / 1_000_000).toFixed(2)}M`;
-  if (points >= 1_000) return `${(points / 1_000).toFixed(1)}K`;
-  return points.toFixed(0);
+  return points.toLocaleString("en-US", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
 }
 
 export function formatAddress(address: string): string {
