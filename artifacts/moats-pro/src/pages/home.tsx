@@ -213,6 +213,15 @@ export default function Home() {
       if (price > 0) {
         m[c.contractAddress.toLowerCase()] =
           parseFloat(formatUnits(totalStaked + totalLocked + totalBurned, dec)) * price;
+        return;
+      }
+      // Fallback: token has no price source but DOES have DEX liquidity.
+      // Estimate moat's TVM as its share of total supply × aggregated DEX liquidity.
+      const aggLiq = dexInfo?.liquidityUsd ?? 0;
+      const supply = totalSupplyMap[tokenAddr];
+      if (aggLiq > 0 && supply && supply > 0n) {
+        const moatShareBp = Number(((totalStaked + totalLocked + totalBurned) * 1_000_000n) / supply);
+        m[c.contractAddress.toLowerCase()] = (moatShareBp / 1_000_000) * aggLiq;
       }
     });
     return m;
