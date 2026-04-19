@@ -134,16 +134,42 @@ export const MOAT_METADATA: Record<string, MoatMeta> = {
   },
 };
 
+// Runtime-resolved metadata for Moats not in the hardcoded MOAT_METADATA map.
+// Populated by useResolveMoatMetas() based on the on-chain stakingToken's
+// symbol() and name(), so newly-deployed Moats get a proper name automatically
+// instead of falling back to "Moat 0xabcd…".
+const RESOLVED_OVERRIDES: Record<string, Partial<MoatMeta>> = {};
+
+export function setResolvedMoatMeta(contractAddress: string, override: Partial<MoatMeta>) {
+  RESOLVED_OVERRIDES[contractAddress.toLowerCase()] = {
+    ...RESOLVED_OVERRIDES[contractAddress.toLowerCase()],
+    ...override,
+  };
+}
+
 export function getMoatMeta(contractAddress: string): MoatMeta {
   const lower = contractAddress.toLowerCase();
-  return (
-    MOAT_METADATA[lower] || {
-      name: `Moat ${contractAddress.slice(0, 6)}…${contractAddress.slice(-4)}`,
-      protocol: "Moats Protocol",
-      tokenSymbol: "TOKEN",
-      description: "A Moats liquidity staking position on Avalanche.",
-    }
-  );
+  const hardcoded = MOAT_METADATA[lower];
+  if (hardcoded) return hardcoded;
+  const resolved = RESOLVED_OVERRIDES[lower];
+  if (resolved && resolved.name) {
+    return {
+      name: resolved.name,
+      protocol: resolved.protocol ?? resolved.tokenSymbol ?? "Moats Protocol",
+      tokenSymbol: resolved.tokenSymbol ?? "TOKEN",
+      tokenAddress: resolved.tokenAddress,
+      chain: resolved.chain ?? "avalanche",
+      description: resolved.description ?? "A Moats liquidity staking position.",
+      logoUrl: resolved.logoUrl,
+      website: resolved.website,
+    };
+  }
+  return {
+    name: `Moat ${contractAddress.slice(0, 6)}…${contractAddress.slice(-4)}`,
+    protocol: "Moats Protocol",
+    tokenSymbol: "TOKEN",
+    description: "A Moats liquidity staking position on Avalanche.",
+  };
 }
 
 export function formatUSD(amount: number): string {

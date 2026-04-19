@@ -10,6 +10,7 @@ import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
 import { useDexscreenerInfo } from "@/hooks/use-dexscreener";
 import { MOAT_V3_ABI, ERC20_ABI, MOAT_LOGO_ABI } from "@/lib/moat-abi";
 import { getMoatMeta } from "@/lib/moat-metadata";
+import { useResolveMoatMetas } from "@/hooks/use-resolve-moat-metas";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { MoatCard } from "@/components/moat-card";
@@ -152,6 +153,14 @@ export default function Home() {
   }, [configs, stakingTokenAddrs]);
 
   const { data: dexInfoMap } = useDexscreenerInfo(allTokenAddrs);
+
+  useResolveMoatMetas(
+    (configs ?? []).map((c, i) => ({
+      contractAddress: c.contractAddress,
+      stakingToken: stakingTokenAddrs[i] || undefined,
+      network: c.network,
+    })),
+  );
 
   const getTokenPrice = (_network: string, tokenAddr: string): number => {
     return dexInfoMap?.[tokenAddr.toLowerCase()]?.price ?? 0;

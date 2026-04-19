@@ -22,6 +22,7 @@ import { MoatLogo } from "@/components/moat-card";
 import { formatAddress, formatPoints, timeAgo, getMoatMeta, formatUSD } from "@/lib/moat-metadata";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
 import { useDexscreenerInfo } from "@/hooks/use-dexscreener";
+import { useResolveMoatMetas } from "@/hooks/use-resolve-moat-metas";
 import { ERC20_ABI, MOAT_LOGO_ABI } from "@/lib/moat-abi";
 
 type ActionTab = "stake" | "lock" | "claim" | "withdraw" | "burn";
@@ -156,6 +157,11 @@ export default function MoatDetail() {
   const allLlamaIds = [...new Set([...rewardLlamaIds, ...(stakingLlamaId ? [stakingLlamaId] : [])])];
   const { data: priceMap } = useTokenPrices(allLlamaIds);
   const { data: dexInfoMap } = useDexscreenerInfo(stats.stakingToken ? [stats.stakingToken] : []);
+  useResolveMoatMetas(
+    contractAddress
+      ? [{ contractAddress, stakingToken: stats.stakingToken ?? undefined, network }]
+      : [],
+  );
   const stakingTokenPrice = stats.stakingToken
     ? (dexInfoMap?.[stats.stakingToken.toLowerCase()]?.price ?? 0)
     : 0;
