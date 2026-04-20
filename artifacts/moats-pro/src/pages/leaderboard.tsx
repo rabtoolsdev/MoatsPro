@@ -1,13 +1,22 @@
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Trophy, Medal, Crown } from "lucide-react";
+import { Trophy, Medal, Crown, Search, Share2, Wallet } from "lucide-react";
+import { useAccount } from "wagmi";
+import { useAppKit } from "@reown/appkit/react";
 import { useMapsLeaderboard, useMapsEpoch } from "@/hooks/use-moats-api";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { formatAddress, timeAgo } from "@/lib/moat-metadata";
+import { ShareRankModal } from "@/components/share-rank-modal";
 
 export default function Leaderboard() {
   const { data: mapsScores, isLoading: mapsLoading } = useMapsLeaderboard();
   const { data: currentEpoch } = useMapsEpoch();
+  const { address, isConnected } = useAccount();
+  const { open: openWallet } = useAppKit();
+  const [shareOpen, setShareOpen] = useState(false);
+  const [highlightAddr, setHighlightAddr] = useState<string | null>(null);
+  const userRowRef = useRef<HTMLDivElement | null>(null);
 
   const rankBadge = (rank: number) => {
     if (rank === 0)
@@ -49,6 +58,32 @@ export default function Leaderboard() {
     if (pct >= 0.01) return `${pct.toFixed(2)}%`;
     return `<0.01%`;
   };
+  const weightPctFor = (points: number): number =>
+    totalMapsPoints > 0 ? (points / totalMapsPoints) * 100 : 0;
+
+  const userIndex =
+    address && mapsScores
+      ? mapsScores.findIndex((e) => e.address.toLowerCase() === address.toLowerCase())
+      : -1;
+  const userEntry = userIndex >= 0 ? mapsScores![userIndex] : null;
+
+  const handleFindMyRank = () => {
+    if (!isConnected) {
+      openWallet({ view: "Connect" });
+      return;
+    }
+    if (userIndex < 0 || !address) return;
+    setHighlightAddr(address.toLowerCase());
+    requestAnimationFrame(() => {
+      userRowRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    setTimeout(() => setHighlightAddr(null), 4000);
+  };
+
+  // Clear highlight if scores reload
+  useEffect(() => {
+    if (!userEntry) setHighlightAddr(null);
+  }, [userEntry]);
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -154,6 +189,36 @@ export default function Leaderboard() {
           </div>
         )}
 
+        {/* Find My Rank */}
+        {mapsScores && mapsScores.length > 0 && (
+          <div className="flex justify-center mb-6">
+            <button
+              onClick={handleFindMyRank}
+              data-testid="btn-find-my-rank"
+              className="btn-shimmer inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary/10 border border-primary/40 text-primary text-sm font-semibold hover:bg-primary/20 hover:shadow-[0_0_18px_rgba(0,212,255,0.25)] transition-all"
+            >
+              {isConnected ? (
+                <>
+                  <Search size={15} />
+                  Find My Rank
+                </>
+              ) : (
+                <>
+                  <Wallet size={15} />
+                  Connect Wallet to Find My Rank
+                </>
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* User-not-on-leaderboard hint */}
+        {isConnected && mapsScores && mapsScores.length > 0 && userIndex < 0 && (
+          <p className="text-center text-xs text-muted-foreground mb-6">
+            Your wallet isn't ranked on the current leaderboard yet.
+          </p>
+        )}
+
         {/* Full Table */}
         <div
           data-testid="leaderboard-table"
@@ -174,34 +239,58 @@ export default function Leaderboard() {
                 <span className="col-span-2 sm:col-span-3 text-right">Weight</span>
               </div>
 
-              {(mapsScores || []).map((entry, i) => (
+              {(mapsScores || []).map((entry, i) => {
+                const isUser =
+                  address && entry.address.toLowerCase() === address.toLowerCase();
+                const isHighlighted =
+                  highlightAddr && entry.address.toLowerCase() === highlightAddr;
+                return (
                 <motion.div
                   key={entry.address}
+                  ref={isUser ? userRowRef : undefined}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: Math.min(i * 0.015, 0.4) }}
                   data-testid={`row-leaderboard-${i}`}
-                  className={`px-3 sm:px-6 py-3.5 grid grid-cols-12 gap-2 sm:gap-4 items-center hover:bg-muted/20 transition-colors ${
-                    i === 0
-                      ? "bg-amber-500/5 border-l-2 border-l-amber-500/50"
+                  className={`px-3 sm:px-6 py-3.5 grid grid-cols-12 gap-2 sm:gap-4 items-center transition-colors ${
+                    isHighlighted
+                      ? "bg-primary/15 border-l-2 border-l-primary shadow-[inset_0_0_24px_rgba(0,212,255,0.15)]"
+                      : isUser
+                      ? "bg-primary/5 border-l-2 border-l-primary/40 hover:bg-primary/10"
+                      : i === 0
+                      ? "bg-amber-500/5 border-l-2 border-l-amber-500/50 hover:bg-muted/20"
                       : i === 1
-                      ? "bg-zinc-500/5 border-l-2 border-l-zinc-400/40"
+                      ? "bg-zinc-500/5 border-l-2 border-l-zinc-400/40 hover:bg-muted/20"
                       : i === 2
-                      ? "bg-amber-900/5 border-l-2 border-l-amber-700/40"
-                      : ""
+                      ? "bg-amber-900/5 border-l-2 border-l-amber-700/40 hover:bg-muted/20"
+                      : "hover:bg-muted/20"
                   }`}
                 >
                   <div className="col-span-1">{rankBadge(i)}</div>
-                  <div className="col-span-6 sm:col-span-5 min-w-0">
-                    {entry.username && !entry.username.startsWith("0x") ? (
-                      <div className="min-w-0">
-                        <p className="text-xs sm:text-sm font-medium truncate">{entry.username}</p>
-                        <p className="text-[10px] sm:text-xs font-mono text-muted-foreground/60 truncate">
-                          {formatAddress(entry.address)}
-                        </p>
-                      </div>
-                    ) : (
-                      <span className="font-mono text-xs sm:text-sm truncate block">{formatAddress(entry.address)}</span>
+                  <div className="col-span-6 sm:col-span-5 min-w-0 flex items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                      {entry.username && !entry.username.startsWith("0x") ? (
+                        <>
+                          <p className="text-xs sm:text-sm font-medium truncate">{entry.username}</p>
+                          <p className="text-[10px] sm:text-xs font-mono text-muted-foreground/60 truncate">
+                            {formatAddress(entry.address)}
+                          </p>
+                        </>
+                      ) : (
+                        <span className="font-mono text-xs sm:text-sm truncate block">{formatAddress(entry.address)}</span>
+                      )}
+                    </div>
+                    {isUser && (
+                      <button
+                        onClick={() => setShareOpen(true)}
+                        data-testid="btn-share-my-rank"
+                        title="Share my rank"
+                        className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-md bg-primary/15 border border-primary/40 text-primary text-[10px] sm:text-xs font-semibold hover:bg-primary/25 transition-colors"
+                      >
+                        <Share2 size={11} />
+                        <span className="hidden sm:inline">Share My Rank</span>
+                        <span className="sm:hidden">Share</span>
+                      </button>
                     )}
                   </div>
                   <div className={`col-span-3 text-right font-bold tabular-nums text-xs sm:text-base truncate ${
@@ -213,7 +302,8 @@ export default function Leaderboard() {
                     {formatWeight(entry.points ?? 0)}
                   </div>
                 </motion.div>
-              ))}
+                );
+              })}
 
               {(!mapsScores || mapsScores.length === 0) && (
                 <div className="p-12 text-center text-muted-foreground">
@@ -227,6 +317,19 @@ export default function Leaderboard() {
       </main>
 
       <Footer />
+
+      {userEntry && (
+        <ShareRankModal
+          open={shareOpen}
+          onClose={() => setShareOpen(false)}
+          rank={userIndex + 1}
+          totalUsers={mapsScores?.length ?? 0}
+          username={userEntry.username ?? null}
+          address={userEntry.address}
+          points={userEntry.points ?? 0}
+          weightPct={weightPctFor(userEntry.points ?? 0)}
+        />
+      )}
     </div>
   );
 }
