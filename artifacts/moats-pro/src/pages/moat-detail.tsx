@@ -1132,7 +1132,7 @@ export default function MoatDetail() {
                               className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary text-sm pr-16"
                             />
                             <button
-                              onClick={() => setWithdrawAmount(userStakedFormatted)}
+                              onClick={() => setWithdrawAmount(parseAmt(userStakedFormatted))}
                               className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-primary font-medium hover:text-primary/80"
                             >
                               MAX
