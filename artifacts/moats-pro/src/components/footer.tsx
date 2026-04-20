@@ -27,6 +27,14 @@ export function Footer() {
           >
             moats.app ↗
           </a>
+          <a
+            href="https://moats.app/create"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-primary transition-colors"
+          >
+            Create a Moat ↗
+          </a>
         </nav>
         <div className="flex items-center gap-2">
           <p className="text-muted-foreground text-xs">Powered by RABTools</p>
