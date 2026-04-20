@@ -122,6 +122,9 @@ export interface RewardToken {
   totalRewardsClaimed: number;
   enabled: boolean;
   lastProcessed?: string;
+  percentage?: number;
+  frequencyHours?: number;
+  useCustomFrequency?: boolean;
 }
 
 export interface MoatConfig {

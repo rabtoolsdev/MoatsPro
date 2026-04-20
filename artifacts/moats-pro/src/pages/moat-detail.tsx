@@ -23,6 +23,7 @@ import { formatAddress, formatPoints, timeAgo, getMoatMeta, formatUSD } from "@/
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
 import { useDexscreenerInfo } from "@/hooks/use-dexscreener";
 import { useResolveMoatMetas } from "@/hooks/use-resolve-moat-metas";
+import { useDailyRewardEstimates } from "@/hooks/use-daily-reward-estimates";
 import { ERC20_ABI, MOAT_LOGO_ABI } from "@/lib/moat-abi";
 
 type ActionTab = "stake" | "lock" | "claim" | "withdraw" | "burn";
@@ -162,6 +163,10 @@ export default function MoatDetail() {
       ? [{ contractAddress, stakingToken: stats.stakingToken ?? undefined, network }]
       : [],
   );
+  const dailyEstimates = useDailyRewardEstimates(moatConfig ? [moatConfig] : undefined);
+  const moatLowerKey = (contractAddress ?? "").toLowerCase();
+  const getEstDaily = (tokenAddr: string) =>
+    dailyEstimates[`${moatLowerKey}_${tokenAddr.toLowerCase()}`] ?? 0;
   const stakingTokenPrice = stats.stakingToken
     ? (dexInfoMap?.[stats.stakingToken.toLowerCase()]?.price ?? 0)
     : 0;
@@ -450,21 +455,29 @@ export default function MoatDetail() {
                         <div className="flex justify-between">
                           <span>Daily Reward</span>
                           <span className="font-medium text-foreground">
-                            {token.tokenAmount >= 1_000_000
-                              ? `${(token.tokenAmount / 1_000_000).toFixed(2)}M`
-                              : token.tokenAmount >= 1_000
-                              ? `${(token.tokenAmount / 1_000).toFixed(0)}K`
-                              : token.tokenAmount}{" "}
-                            {token.symbol}
                             {(() => {
+                              const est = getEstDaily(token.tokenAddress);
+                              const amt = token.tokenAmount > 0 ? token.tokenAmount : est;
+                              const prefix = token.tokenAmount > 0 ? "" : est > 0 ? "~" : "";
+                              const fmt =
+                                amt >= 1_000_000 ? `${(amt / 1_000_000).toFixed(2)}M`
+                                : amt >= 1_000 ? `${(amt / 1_000).toFixed(0)}K`
+                                : amt >= 1 ? amt.toLocaleString(undefined, { maximumFractionDigits: 2 })
+                                : amt > 0 ? parseFloat(amt.toPrecision(4)).toString()
+                                : "0";
                               const id = getLlamaId(network, token.tokenAddress);
-                              const usd = priceMap?.[id];
-                              const dailyUSD = usd ? token.tokenAmount * usd : 0;
-                              return dailyUSD > 0 ? (
-                                <span className="text-emerald-400 ml-1">
-                                  ({formatUSD(dailyUSD)})
-                                </span>
-                              ) : null;
+                              const usd = priceMap?.[id] ?? dexInfoMap?.[token.tokenAddress.toLowerCase()]?.price ?? 0;
+                              const dailyUSD = usd && amt > 0 ? amt * usd : 0;
+                              return (
+                                <>
+                                  {prefix}{fmt} {token.symbol}
+                                  {dailyUSD > 0 && (
+                                    <span className="text-emerald-400 ml-1">
+                                      ({formatUSD(dailyUSD)})
+                                    </span>
+                                  )}
+                                </>
+                              );
                             })()}
                           </span>
                         </div>
@@ -499,8 +512,11 @@ export default function MoatDetail() {
                 {moatConfig.rewardTokens.filter((t) => t.enabled).length > 0 && (() => {
                   const token = moatConfig.rewardTokens.filter((t) => t.enabled)[0];
                   if (!token) return null;
-                  const daysRemaining = token.tokenAmount > 0 && token.totalRewardsDeposited > 0
-                    ? Math.max(0, Math.round((token.totalRewardsDeposited - token.totalRewardsClaimed) / token.tokenAmount))
+                  const estDaily = getEstDaily(token.tokenAddress);
+                  const dailyAmt = token.tokenAmount > 0 ? token.tokenAmount : estDaily;
+                  const isEstimated = token.tokenAmount === 0 && estDaily > 0;
+                  const daysRemaining = dailyAmt > 0 && token.totalRewardsDeposited > 0
+                    ? Math.max(0, Math.round((token.totalRewardsDeposited - token.totalRewardsClaimed) / dailyAmt))
                     : null;
                   const claimedPct = token.totalRewardsDeposited > 0
                     ? Math.round((token.totalRewardsClaimed / token.totalRewardsDeposited) * 100)
@@ -508,7 +524,9 @@ export default function MoatDetail() {
                   const fmtAmt = (n: number) =>
                     n >= 1_000_000 ? `${(n / 1_000_000).toFixed(2)}M`
                     : n >= 1_000 ? `${(n / 1_000).toFixed(0)}K`
-                    : String(n);
+                    : n >= 1 ? n.toLocaleString(undefined, { maximumFractionDigits: 2 })
+                    : n > 0 ? parseFloat(n.toPrecision(4)).toString()
+                    : "0";
                   return (
                     <div
                       className="grid grid-cols-2 gap-3 p-4 rounded-xl border border-transparent"
@@ -518,9 +536,11 @@ export default function MoatDetail() {
                       }}
                     >
                       <div className="text-xs">
-                        <p className="text-muted-foreground">Daily Emission</p>
+                        <p className="text-muted-foreground">
+                          Daily Emission{isEstimated && " (est.)"}
+                        </p>
                         <p className="font-bold text-emerald-400 mt-0.5 tabular-nums">
-                          {fmtAmt(token.tokenAmount)} {token.symbol}/day
+                          {isEstimated ? "~" : ""}{fmtAmt(dailyAmt)} {token.symbol}/day
                         </p>
                       </div>
                       <div className="text-xs">

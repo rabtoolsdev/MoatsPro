@@ -7,6 +7,7 @@ import { Wallet, TrendingUp, Award, AlertCircle, ArrowDownRight, Lock, DollarSig
 import { useMapsScore, useAllMoatConfigs, useUserEvents } from "@/hooks/use-moats-api";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
 import { useDexscreenerInfo } from "@/hooks/use-dexscreener";
+import { useDailyRewardEstimates } from "@/hooks/use-daily-reward-estimates";
 import { MOAT_V3_ABI, ERC20_ABI, MOAT_LOGO_ABI } from "@/lib/moat-abi";
 import { moatsApi } from "@/lib/moats-api";
 import { Navbar } from "@/components/navbar";
@@ -214,6 +215,7 @@ export default function Portfolio() {
 
   const { data: priceMap } = useTokenPrices(allLlamaIds);
   const { data: dexInfoMap } = useDexscreenerInfo(uniqueStakingTokens);
+  const dailyEstimates = useDailyRewardEstimates(configs);
 
   const getPositionValueUSD = (pos: typeof activePositions[0], idx: number): number => {
     const tokenAddr = positionStakingTokens[idx];
@@ -226,12 +228,17 @@ export default function Portfolio() {
   };
 
   const getDailyRewardUSD = (pos: typeof activePositions[0]): number => {
-    if (!priceMap) return 0;
+    const moatLower = pos.config.contractAddress.toLowerCase();
     return pos.config.rewardTokens
       .filter((t) => t.enabled && t.tokenAddress && pos.config.network)
       .reduce((sum, t) => {
         const id = getLlamaId(pos.config.network, t.tokenAddress);
-        return sum + t.tokenAmount * (priceMap[id] ?? 0);
+        const price =
+          priceMap?.[id] ?? dexInfoMap?.[t.tokenAddress.toLowerCase()]?.price ?? 0;
+        if (price === 0) return sum;
+        const est = dailyEstimates[`${moatLower}_${t.tokenAddress.toLowerCase()}`] ?? 0;
+        const dailyAmt = t.tokenAmount > 0 ? t.tokenAmount : est;
+        return sum + dailyAmt * price;
       }, 0);
   };
 

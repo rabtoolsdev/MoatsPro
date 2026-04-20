@@ -15,6 +15,8 @@ interface MoatCardProps {
   dexLiquidityUSD?: number;
   /** Number of liquidity pools found on DexScreener */
   dexPairCount?: number;
+  /** Estimated tokens-per-day per `${moatLower}_${tokenLower}` for percentage-based reward Moats */
+  dailyEstimates?: Record<string, number>;
 }
 
 const statusColors: Record<string, { border: string; badge: string; text: string; hoverGlow: string }> = {
@@ -100,7 +102,7 @@ function MoatLogo({
 
 export { MoatLogo };
 
-export function MoatCard({ moat, tvlUSD, supplyPct, logoUrl, dexLiquidityUSD, dexPairCount }: MoatCardProps) {
+export function MoatCard({ moat, tvlUSD, supplyPct, logoUrl, dexLiquidityUSD, dexPairCount, dailyEstimates }: MoatCardProps) {
   const statusStyle = statusColors[moat.status] || statusColors.Community;
   const activeRewardTokens = moat.rewardTokens.filter((t) => t.enabled);
   const meta = getMoatMeta(moat.contractAddress);
@@ -162,40 +164,45 @@ export function MoatCard({ moat, tvlUSD, supplyPct, logoUrl, dexLiquidityUSD, de
                 Reward Tokens
               </p>
               <div className="flex flex-wrap gap-1.5">
-                {activeRewardTokens
-                  .filter((t) => t.tokenAmount > 0 || t.totalRewardsDeposited > 0)
-                  .slice(0, 3)
-                  .map((token) => {
-                    const fmtDeposited = (v: number) => {
-                      if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
-                      if (v >= 1_000) return `${(v / 1_000).toFixed(0)}K`;
-                      if (v >= 1) return v.toLocaleString(undefined, { maximumFractionDigits: 2 });
-                      if (v > 0) return parseFloat(v.toPrecision(4)).toString();
-                      return "0";
-                    };
-                    return (
-                      <span
-                        key={token._id}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 border border-primary/20 text-xs font-medium text-primary"
-                      >
-                        {token.symbol}
-                        <span className="text-muted-foreground text-xs">
-                          {token.tokenAmount > 0
-                            ? `${token.tokenAmount >= 1_000_000
-                                ? `${(token.tokenAmount / 1_000_000).toFixed(1)}M`
-                                : token.tokenAmount >= 1_000
-                                ? `${(token.tokenAmount / 1_000).toFixed(0)}K`
-                                : token.tokenAmount}/day`
-                            : fmtDeposited(token.totalRewardsDeposited)}
+                {(() => {
+                  const fmtAmt = (v: number) => {
+                    if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
+                    if (v >= 1_000) return `${(v / 1_000).toFixed(0)}K`;
+                    if (v >= 1) return v.toLocaleString(undefined, { maximumFractionDigits: 2 });
+                    if (v > 0) return parseFloat(v.toPrecision(4)).toString();
+                    return "0";
+                  };
+                  const moatLower = moat.contractAddress.toLowerCase();
+                  const visible = activeRewardTokens.filter((t) => {
+                    const est = dailyEstimates?.[`${moatLower}_${t.tokenAddress.toLowerCase()}`] ?? 0;
+                    return t.tokenAmount > 0 || t.totalRewardsDeposited > 0 || est > 0;
+                  });
+                  return (
+                    <>
+                      {visible.slice(0, 3).map((token) => {
+                        const est = dailyEstimates?.[`${moatLower}_${token.tokenAddress.toLowerCase()}`] ?? 0;
+                        let label: string;
+                        if (token.tokenAmount > 0) label = `${fmtAmt(token.tokenAmount)}/day`;
+                        else if (est > 0) label = `~${fmtAmt(est)}/day`;
+                        else label = fmtAmt(token.totalRewardsDeposited);
+                        return (
+                          <span
+                            key={token._id}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 border border-primary/20 text-xs font-medium text-primary"
+                          >
+                            {token.symbol}
+                            <span className="text-muted-foreground text-xs">{label}</span>
+                          </span>
+                        );
+                      })}
+                      {visible.length > 3 && (
+                        <span className="text-xs text-muted-foreground px-2 py-1">
+                          +{visible.length - 3} more
                         </span>
-                      </span>
-                    );
-                  })}
-                {activeRewardTokens.filter((t) => t.tokenAmount > 0 || t.totalRewardsDeposited > 0).length > 3 && (
-                  <span className="text-xs text-muted-foreground px-2 py-1">
-                    +{activeRewardTokens.filter((t) => t.tokenAmount > 0 || t.totalRewardsDeposited > 0).length - 3} more
-                  </span>
-                )}
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </div>
           )}
