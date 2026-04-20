@@ -147,10 +147,6 @@ function drawCard(
   ctx.font = "800 56px system-ui, -apple-system, Segoe UI, sans-serif";
   ctx.fillText(fmtWeight(data.weightPct), panelX + 32, panelY + 256);
 
-  ctx.fillStyle = "rgba(255,255,255,0.4)";
-  ctx.font = "500 18px system-ui, -apple-system, Segoe UI, sans-serif";
-  ctx.fillText("of total MAPS supply", panelX + 32, panelY + 286);
-
   // Footer URL
   ctx.fillStyle = "rgba(255,255,255,0.35)";
   ctx.font = "500 18px system-ui, -apple-system, Segoe UI, sans-serif";
