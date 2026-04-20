@@ -47,19 +47,19 @@ export function Navbar() {
         }}
       />
 
-      <div className="max-w-7xl mx-auto px-4 h-16 grid grid-cols-3 items-center">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 h-16 flex md:grid md:grid-cols-3 items-center justify-between md:justify-stretch gap-2">
         {/* Logo */}
-        <Link href="/" className="justify-self-start">
+        <Link href="/" className="md:justify-self-start shrink-0">
           <div
             data-testid="nav-logo"
             className="flex items-center cursor-pointer group"
           >
-            <div className="relative h-24 w-auto transition-transform duration-300 group-hover:scale-105">
+            <div className="relative h-12 sm:h-14 md:h-20 lg:h-24 w-auto transition-transform duration-300 group-hover:scale-105">
               <div className="absolute inset-0 -m-2 rounded-full bg-primary/10 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <img
                 src="/moats-pro-logo.png"
                 alt="The Moats Pro"
-                className="relative h-24 w-auto object-contain drop-shadow-[0_0_8px_rgba(0,212,255,0.15)]"
+                className="relative h-12 sm:h-14 md:h-20 lg:h-24 w-auto object-contain drop-shadow-[0_0_8px_rgba(0,212,255,0.15)]"
               />
             </div>
           </div>
@@ -96,12 +96,12 @@ export function Navbar() {
         </nav>
 
         {/* Wallet Button */}
-        <div className="flex items-center justify-self-end gap-3">
+        <div className="flex items-center md:justify-self-end gap-2 sm:gap-3 shrink-0">
           {isConnected && address ? (
             <button
               data-testid="btn-wallet-connected"
               onClick={() => open({ view: "Account" })}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/10 hover:border-primary/60 transition-all duration-200 text-sm font-medium hover:shadow-[0_0_12px_rgba(0,212,255,0.2)]"
+              className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/10 hover:border-primary/60 transition-all duration-200 text-xs sm:text-sm font-medium hover:shadow-[0_0_12px_rgba(0,212,255,0.2)] whitespace-nowrap"
             >
               <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0 live-dot" />
               <Wallet size={13} className="text-primary shrink-0" />
@@ -111,13 +111,14 @@ export function Navbar() {
             <button
               data-testid="btn-wallet-connect"
               onClick={() => open({ view: "Connect" })}
-              className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-all duration-200 hover:shadow-[0_0_16px_rgba(0,212,255,0.4)] btn-shimmer"
+              className="px-3 sm:px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs sm:text-sm font-medium hover:bg-primary/90 transition-all duration-200 hover:shadow-[0_0_16px_rgba(0,212,255,0.4)] btn-shimmer whitespace-nowrap"
             >
-              Connect Wallet
+              <span className="hidden sm:inline">Connect Wallet</span>
+              <span className="sm:hidden">Connect</span>
             </button>
           )}
           <button
-            className="md:hidden p-2 rounded-lg border border-border hover:border-primary/50 transition-all"
+            className="md:hidden p-2 rounded-lg border border-border hover:border-primary/50 transition-all shrink-0"
             onClick={() => setMobileOpen(!mobileOpen)}
             data-testid="btn-mobile-menu"
           >

@@ -124,12 +124,12 @@ export default function Leaderboard() {
                   <p className="text-xs text-muted-foreground mb-1 font-medium">
                     #{isGold ? 1 : isSilver ? 2 : 3}
                   </p>
-                  <p className="font-mono text-sm font-bold leading-tight mb-2">
+                  <p className="font-mono text-xs sm:text-sm font-bold leading-tight mb-2 truncate px-1">
                     {entry.username && !entry.username.startsWith("0x")
                       ? entry.username
                       : formatAddress(entry.address)}
                   </p>
-                  <p className={`font-bold text-xl tabular-nums ${
+                  <p className={`font-bold text-lg sm:text-xl tabular-nums ${
                     isGold ? "text-amber-400" : isSilver ? "text-zinc-300" : "text-amber-600"
                   }`}>
                     {(entry.points ?? 0).toLocaleString()}
@@ -154,7 +154,7 @@ export default function Leaderboard() {
             </div>
           ) : (
             <div className="divide-y divide-border/50">
-              <div className="px-6 py-3 grid grid-cols-12 gap-4 text-xs text-muted-foreground font-medium">
+              <div className="px-3 sm:px-6 py-3 grid grid-cols-12 gap-2 sm:gap-4 text-xs text-muted-foreground font-medium">
                 <span className="col-span-1">Rank</span>
                 <span className="col-span-5">Wallet / Username</span>
                 <span className="col-span-3 text-right">MAPS Points</span>
@@ -168,7 +168,7 @@ export default function Leaderboard() {
                   animate={{ opacity: 1 }}
                   transition={{ delay: Math.min(i * 0.015, 0.4) }}
                   data-testid={`row-leaderboard-${i}`}
-                  className={`px-6 py-3.5 grid grid-cols-12 gap-4 items-center hover:bg-muted/20 transition-colors ${
+                  className={`px-3 sm:px-6 py-3.5 grid grid-cols-12 gap-2 sm:gap-4 items-center hover:bg-muted/20 transition-colors ${
                     i === 0
                       ? "bg-amber-500/5 border-l-2 border-l-amber-500/50"
                       : i === 1
@@ -179,19 +179,19 @@ export default function Leaderboard() {
                   }`}
                 >
                   <div className="col-span-1">{rankBadge(i)}</div>
-                  <div className="col-span-5">
+                  <div className="col-span-5 min-w-0">
                     {entry.username && !entry.username.startsWith("0x") ? (
-                      <div>
-                        <p className="text-sm font-medium">{entry.username}</p>
-                        <p className="text-xs font-mono text-muted-foreground/60">
+                      <div className="min-w-0">
+                        <p className="text-xs sm:text-sm font-medium truncate">{entry.username}</p>
+                        <p className="text-[10px] sm:text-xs font-mono text-muted-foreground/60 truncate">
                           {formatAddress(entry.address)}
                         </p>
                       </div>
                     ) : (
-                      <span className="font-mono text-sm">{formatAddress(entry.address)}</span>
+                      <span className="font-mono text-xs sm:text-sm truncate block">{formatAddress(entry.address)}</span>
                     )}
                   </div>
-                  <div className={`col-span-3 text-right font-bold tabular-nums ${
+                  <div className={`col-span-3 text-right font-bold tabular-nums text-xs sm:text-base ${
                     i === 0 ? "text-amber-400" : i === 1 ? "text-zinc-300" : i === 2 ? "text-amber-600" : "text-primary"
                   }`}>
                     {(entry.points ?? 0).toLocaleString()}
