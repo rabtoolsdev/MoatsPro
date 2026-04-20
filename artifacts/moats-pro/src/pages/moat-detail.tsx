@@ -570,7 +570,6 @@ export default function MoatDetail() {
                     { label: "Auto Rewards", value: moatConfig.automatedRewards ? "Yes" : "No" },
                     { label: "Time-Weighted", value: moatConfig.timeWeightedPointsEnabled ? `${moatConfig.timeWeightPercentage}%` : "Disabled" },
                     { label: "Boost Active", value: moatConfig.boostActive ? `${moatConfig.boostValue}x` : "None" },
-                    { label: "Vote Enabled", value: moatConfig.voteEnabled ? "Yes" : "No" },
                     { label: "NFT Boost", value: moatConfig.nftBoostContract ? "Active" : "None" },
                     { label: "Created", value: new Date(moatConfig.createdAt).toLocaleDateString() },
                   ].map((item) => (
