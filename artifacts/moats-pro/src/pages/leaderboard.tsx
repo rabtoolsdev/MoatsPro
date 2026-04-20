@@ -37,6 +37,19 @@ export default function Leaderboard() {
 
   const podiumOrder = [1, 0, 2] as const;
 
+  const totalMapsPoints = (mapsScores ?? []).reduce(
+    (sum, e) => sum + (e.points ?? 0),
+    0,
+  );
+  const formatWeight = (points: number): string => {
+    if (totalMapsPoints <= 0 || points <= 0) return "—";
+    const pct = (points / totalMapsPoints) * 100;
+    if (pct >= 10) return `${pct.toFixed(1)}%`;
+    if (pct >= 1) return `${pct.toFixed(2)}%`;
+    if (pct >= 0.01) return `${pct.toFixed(2)}%`;
+    return `<0.01%`;
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <Navbar />
@@ -196,8 +209,8 @@ export default function Leaderboard() {
                   }`}>
                     {(entry.points ?? 0).toLocaleString()}
                   </div>
-                  <div className="col-span-2 sm:col-span-3 text-right text-muted-foreground text-xs sm:text-sm tabular-nums">
-                    —
+                  <div className="col-span-2 sm:col-span-3 text-right text-foreground text-xs sm:text-sm tabular-nums truncate">
+                    {formatWeight(entry.points ?? 0)}
                   </div>
                 </motion.div>
               ))}
