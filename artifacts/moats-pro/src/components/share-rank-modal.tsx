@@ -162,7 +162,7 @@ function drawCard(
   ctx.fillStyle = "rgba(255,255,255,0.35)";
   ctx.font = "500 18px system-ui, -apple-system, Segoe UI, sans-serif";
   ctx.textAlign = "right";
-  ctx.fillText("themoats.pro", W - 80, H - 60);
+  ctx.fillText("pro.moats.app", W - 80, H - 60);
 
   // Bottom accent line
   const accent = ctx.createLinearGradient(80, 0, W - 80, 0);
