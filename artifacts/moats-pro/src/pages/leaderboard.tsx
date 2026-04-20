@@ -76,7 +76,7 @@ export default function Leaderboard() {
 
         {/* Podium top-3 */}
         {mapsScores && mapsScores.length >= 3 && (
-          <div className="grid grid-cols-3 gap-3 mb-10 max-w-2xl mx-auto">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-10 max-w-2xl mx-auto">
             {podiumOrder.map((idx) => {
               const entry = mapsScores[idx];
               if (!entry) return null;
@@ -93,7 +93,7 @@ export default function Leaderboard() {
                     duration: isGold ? 0.6 : 0.45,
                     ease: [0.22, 1, 0.36, 1],
                   }}
-                  className="w-full rounded-2xl border border-transparent p-5 text-center flex flex-col items-center"
+                  className="w-full min-w-0 overflow-hidden rounded-2xl border border-transparent p-3 sm:p-5 text-center flex flex-col items-center"
                   style={{
                     background: isGold
                       ? "linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box, linear-gradient(135deg, rgba(251,191,36,0.7) 0%, rgba(251,191,36,0.15) 60%, transparent 100%) border-box"
@@ -124,17 +124,17 @@ export default function Leaderboard() {
                   <p className="text-xs text-muted-foreground mb-1 font-medium">
                     #{isGold ? 1 : isSilver ? 2 : 3}
                   </p>
-                  <p className="font-mono text-xs sm:text-sm font-bold leading-tight mb-2 truncate px-1">
+                  <p className="w-full font-mono text-[10px] sm:text-sm font-bold leading-tight mb-2 truncate px-0.5 sm:px-1">
                     {entry.username && !entry.username.startsWith("0x")
                       ? entry.username
                       : formatAddress(entry.address)}
                   </p>
-                  <p className={`font-bold text-lg sm:text-xl tabular-nums ${
+                  <p className={`w-full font-bold text-base sm:text-xl tabular-nums truncate ${
                     isGold ? "text-amber-400" : isSilver ? "text-zinc-300" : "text-amber-600"
                   }`}>
                     {(entry.points ?? 0).toLocaleString()}
                   </p>
-                  <p className="text-xs text-muted-foreground">MAPS pts</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">MAPS pts</p>
                 </motion.div>
               );
             })}
@@ -154,11 +154,11 @@ export default function Leaderboard() {
             </div>
           ) : (
             <div className="divide-y divide-border/50">
-              <div className="px-3 sm:px-6 py-3 grid grid-cols-12 gap-2 sm:gap-4 text-xs text-muted-foreground font-medium">
+              <div className="px-3 sm:px-6 py-3 grid grid-cols-12 gap-2 sm:gap-4 text-[10px] sm:text-xs text-muted-foreground font-medium">
                 <span className="col-span-1">Rank</span>
-                <span className="col-span-5">Wallet / Username</span>
-                <span className="col-span-3 text-right">MAPS Points</span>
-                <span className="col-span-3 text-right">Weight</span>
+                <span className="col-span-6 sm:col-span-5 min-w-0">Wallet / Username</span>
+                <span className="col-span-3 text-right">MAPS</span>
+                <span className="col-span-2 sm:col-span-3 text-right">Weight</span>
               </div>
 
               {(mapsScores || []).map((entry, i) => (
@@ -179,7 +179,7 @@ export default function Leaderboard() {
                   }`}
                 >
                   <div className="col-span-1">{rankBadge(i)}</div>
-                  <div className="col-span-5 min-w-0">
+                  <div className="col-span-6 sm:col-span-5 min-w-0">
                     {entry.username && !entry.username.startsWith("0x") ? (
                       <div className="min-w-0">
                         <p className="text-xs sm:text-sm font-medium truncate">{entry.username}</p>
@@ -191,12 +191,12 @@ export default function Leaderboard() {
                       <span className="font-mono text-xs sm:text-sm truncate block">{formatAddress(entry.address)}</span>
                     )}
                   </div>
-                  <div className={`col-span-3 text-right font-bold tabular-nums text-xs sm:text-base ${
+                  <div className={`col-span-3 text-right font-bold tabular-nums text-xs sm:text-base truncate ${
                     i === 0 ? "text-amber-400" : i === 1 ? "text-zinc-300" : i === 2 ? "text-amber-600" : "text-primary"
                   }`}>
                     {(entry.points ?? 0).toLocaleString()}
                   </div>
-                  <div className="col-span-3 text-right text-muted-foreground text-sm tabular-nums">
+                  <div className="col-span-2 sm:col-span-3 text-right text-muted-foreground text-xs sm:text-sm tabular-nums">
                     —
                   </div>
                 </motion.div>
