@@ -228,7 +228,7 @@ export function ShareRankModal({
   const handleTweet = () => {
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
       tweetText,
-    )}&url=${encodeURIComponent("https://themoats.pro")}`;
+    )}&url=${encodeURIComponent("https://pro.moats.app")}`;
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
