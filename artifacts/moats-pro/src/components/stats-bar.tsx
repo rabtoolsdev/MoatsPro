@@ -120,7 +120,7 @@ export function StatsBar({ moatConfigs, leaderboard, totalTvmUsd = 0 }: StatsBar
       testId: "stat-reward-streams",
     },
     {
-      label: "MAPS Scorers",
+      label: "Airdrop Qualifiers",
       value: totalMapsScorers,
       icon: Award,
       color: "text-violet-400",
