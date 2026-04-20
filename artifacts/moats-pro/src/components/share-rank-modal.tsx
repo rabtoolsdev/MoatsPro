@@ -36,6 +36,7 @@ function drawCard(
     sub: string;
     points: number;
     weightPct: number;
+    logo: HTMLImageElement | null;
   },
 ) {
   // Background gradient — dark navy with cyan glow
@@ -64,15 +65,25 @@ function drawCard(
   ctx.lineWidth = 2;
   ctx.strokeRect(40, 40, W - 80, H - 80);
 
-  // Top-left brand
-  ctx.fillStyle = "#00d4ff";
-  ctx.font = "700 28px system-ui, -apple-system, Segoe UI, sans-serif";
-  ctx.textAlign = "left";
-  ctx.fillText("THE MOATS PRO", 80, 100);
+  // Top-left brand logo
+  let brandBottom = 110;
+  if (data.logo && data.logo.complete && data.logo.naturalWidth > 0) {
+    const logoH = 96;
+    const logoW = (data.logo.naturalWidth / data.logo.naturalHeight) * logoH;
+    ctx.drawImage(data.logo, 80, 60, logoW, logoH);
+    brandBottom = 60 + logoH;
+  } else {
+    ctx.fillStyle = "#00d4ff";
+    ctx.font = "700 28px system-ui, -apple-system, Segoe UI, sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText("THE MOATS PRO", 80, 100);
+    brandBottom = 110;
+  }
 
   ctx.fillStyle = "rgba(255,255,255,0.55)";
   ctx.font = "500 18px system-ui, -apple-system, Segoe UI, sans-serif";
-  ctx.fillText("MAPS Leaderboard", 80, 128);
+  ctx.textAlign = "left";
+  ctx.fillText("MAPS Leaderboard", 80, brandBottom + 22);
 
   // Big rank number
   ctx.fillStyle = "#ffffff";
@@ -175,9 +186,18 @@ export function ShareRankModal({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [dataUrl, setDataUrl] = useState<string>("");
   const [copied, setCopied] = useState(false);
+  const [logo, setLogo] = useState<HTMLImageElement | null>(null);
 
   const handle = username && !username.startsWith("0x") ? username : shortAddr(address);
   const sub = username && !username.startsWith("0x") ? shortAddr(address) : "";
+
+  useEffect(() => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => setLogo(img);
+    img.onerror = () => setLogo(null);
+    img.src = `${import.meta.env.BASE_URL}moats-pro-logo.png`;
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -185,9 +205,13 @@ export function ShareRankModal({
     if (!c) return;
     const ctx = c.getContext("2d");
     if (!ctx) return;
-    drawCard(ctx, { rank, totalUsers, handle, sub, points, weightPct });
-    setDataUrl(c.toDataURL("image/png"));
-  }, [open, rank, totalUsers, handle, sub, points, weightPct]);
+    drawCard(ctx, { rank, totalUsers, handle, sub, points, weightPct, logo });
+    try {
+      setDataUrl(c.toDataURL("image/png"));
+    } catch {
+      setDataUrl("");
+    }
+  }, [open, rank, totalUsers, handle, sub, points, weightPct, logo]);
 
   const handleDownload = () => {
     if (!dataUrl) return;
