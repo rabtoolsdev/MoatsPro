@@ -235,13 +235,6 @@ export default function MoatDetail() {
     ? allowance.data >= toBaseUnits(burnAmount, decimals)
     : false;
 
-  // True if the user has any pending reward balance that would be auto-claimed
-  // by a stake/lock/burn call. We force the user to claim first so rewards
-  // are not bundled into the same transaction.
-  const hasPendingRewards =
-    !!userInfo.pendingRewards &&
-    userInfo.pendingRewards[1].some((amt) => amt > 0n);
-
   const leaderboard = pointsV2?.leaderboard ?? [];
   const totalPoints = leaderboard.reduce((sum, p) => sum + p.points, 0);
   const totalTimeWeightedPoints = 0; // not available in v2 leaderboard response
@@ -275,10 +268,6 @@ export default function MoatDetail() {
 
   const handleStake = () => {
     if (!stakeAmount || !isConnected) return;
-    if (hasPendingRewards) {
-      claimAction.claim();
-      return;
-    }
     if (!hasAllowanceForStake) {
       approveAction.approve(contractAddress as MoatContractAddress, stakeAmount, decimals);
     } else {
@@ -288,10 +277,6 @@ export default function MoatDetail() {
 
   const handleLock = () => {
     if (!lockAmount || !isConnected) return;
-    if (hasPendingRewards) {
-      claimAction.claim();
-      return;
-    }
     if (!hasAllowanceForLock) {
       approveAction.approve(contractAddress as MoatContractAddress, lockAmount, decimals);
     } else {
@@ -306,10 +291,6 @@ export default function MoatDetail() {
 
   const handleBurn = () => {
     if (!burnAmount || !isConnected) return;
-    if (hasPendingRewards) {
-      claimAction.claim();
-      return;
-    }
     if (!hasAllowanceForBurn) {
       approveAction.approve(contractAddress as MoatContractAddress, burnAmount, decimals);
     } else {
@@ -1049,18 +1030,14 @@ export default function MoatDetail() {
                         </div>
                         <button
                           onClick={handleStake}
-                          disabled={!stakeAmount || stakeAction.isPending || stakeAction.isConfirming || approveAction.isPending || claimAction.isPending || claimAction.isConfirming}
+                          disabled={!stakeAmount || stakeAction.isPending || stakeAction.isConfirming || approveAction.isPending}
                           data-testid="btn-stake"
                           className="btn-shimmer w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-95 hover:shadow-[0_0_20px_rgba(0,212,255,0.35)] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                         >
-                          {claimAction.isPending || claimAction.isConfirming ? (
-                            <><Loader2 size={14} className="animate-spin" />Claiming...</>
-                          ) : approveAction.isPending || approveAction.isConfirming ? (
+                          {approveAction.isPending || approveAction.isConfirming ? (
                             <><Loader2 size={14} className="animate-spin" />Approving...</>
                           ) : stakeAction.isPending || stakeAction.isConfirming ? (
                             <><Loader2 size={14} className="animate-spin" />Staking...</>
-                          ) : hasPendingRewards ? (
-                            <><Gift size={14} />Claim Rewards First</>
                           ) : !hasAllowanceForStake && stakeAmount ? (
                             "Approve First"
                           ) : (
@@ -1142,18 +1119,14 @@ export default function MoatDetail() {
                         </div>
                         <button
                           onClick={handleLock}
-                          disabled={!lockAmount || lockAction.isPending || lockAction.isConfirming || approveAction.isPending || claimAction.isPending || claimAction.isConfirming}
+                          disabled={!lockAmount || lockAction.isPending || lockAction.isConfirming || approveAction.isPending}
                           data-testid="btn-lock"
                           className="btn-shimmer w-full py-3.5 rounded-xl bg-cyan-500 text-white font-semibold text-sm hover:opacity-95 hover:shadow-[0_0_20px_rgba(34,211,238,0.35)] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                         >
-                          {claimAction.isPending || claimAction.isConfirming ? (
-                            <><Loader2 size={14} className="animate-spin" />Claiming...</>
-                          ) : approveAction.isPending || approveAction.isConfirming ? (
+                          {approveAction.isPending || approveAction.isConfirming ? (
                             <><Loader2 size={14} className="animate-spin" />Approving...</>
                           ) : lockAction.isPending || lockAction.isConfirming ? (
                             <><Loader2 size={14} className="animate-spin" />Locking...</>
-                          ) : hasPendingRewards ? (
-                            <><Gift size={14} />Claim Rewards First</>
                           ) : !hasAllowanceForLock && lockAmount ? (
                             "Approve First"
                           ) : (
@@ -1276,18 +1249,14 @@ export default function MoatDetail() {
                         </div>
                         <button
                           onClick={handleBurn}
-                          disabled={!burnAmount || burnAction.isPending || burnAction.isConfirming || approveAction.isPending || claimAction.isPending || claimAction.isConfirming}
+                          disabled={!burnAmount || burnAction.isPending || burnAction.isConfirming || approveAction.isPending}
                           data-testid="btn-burn"
                           className="btn-shimmer w-full py-3.5 rounded-xl bg-rose-500 text-white font-semibold text-sm hover:opacity-95 hover:shadow-[0_0_20px_rgba(239,68,68,0.3)] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                         >
-                          {claimAction.isPending || claimAction.isConfirming ? (
-                            <><Loader2 size={14} className="animate-spin" />Claiming...</>
-                          ) : approveAction.isPending || approveAction.isConfirming ? (
+                          {approveAction.isPending || approveAction.isConfirming ? (
                             <><Loader2 size={14} className="animate-spin" />Approving...</>
                           ) : burnAction.isPending || burnAction.isConfirming ? (
                             <><Loader2 size={14} className="animate-spin" />Burning...</>
-                          ) : hasPendingRewards ? (
-                            <><Gift size={14} />Claim Rewards First</>
                           ) : !hasAllowanceForBurn && burnAmount ? (
                             "Approve First"
                           ) : (
