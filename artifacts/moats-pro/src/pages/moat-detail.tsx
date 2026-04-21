@@ -150,6 +150,14 @@ export default function MoatDetail() {
     }
   }, [exitAction.isSuccess]);
 
+  // Refetch allowance immediately after an approval confirms so the
+  // action button flips from "Approve First" to the real action (Stake/Lock/Burn).
+  useEffect(() => {
+    if (approveAction.isSuccess) {
+      allowance.refetch();
+    }
+  }, [approveAction.isSuccess]);
+
   const network = moatConfig?.network ?? "avalanche";
   const rewardLlamaIds = (moatConfig?.rewardTokens ?? [])
     .filter((t) => t.enabled && t.tokenAddress)
