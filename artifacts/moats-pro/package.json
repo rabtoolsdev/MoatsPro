@@ -78,6 +78,6 @@
     "@reown/appkit": "^1.8.19",
     "@reown/appkit-adapter-wagmi": "^1.8.19",
     "viem": "^2.48.0",
-    "wagmi": "^3.6.2"
+    "wagmi": "^2.19.5"
   }
 }
