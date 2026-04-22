@@ -1,0 +1,63 @@
+# =============================================================================
+# Moats Pro — Caddy reverse proxy + static frontend
+# =============================================================================
+# Place this file at /etc/caddy/Caddyfile on your Hetzner server, then run:
+#   sudo systemctl reload caddy
+#
+# Replace `pro.moats.app` below with your real domain.
+# Caddy will auto-provision a TLS certificate via Let's Encrypt the first time.
+# =============================================================================
+
+pro.moats.app {
+	# ---- Logging ----
+	log {
+		output file /var/log/caddy/moats-pro.log {
+			roll_size 100MiB
+			roll_keep 7
+		}
+		format json
+	}
+
+	# ---- API: reverse-proxy /api/* to the Node API server on localhost:3001 ----
+	handle_path /api/* {
+		reverse_proxy 127.0.0.1:3001 {
+			# Pass real client info upstream
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+
+			# Sensible timeouts for a JSON/RPC proxy
+			transport http {
+				dial_timeout 10s
+				response_header_timeout 30s
+			}
+		}
+	}
+
+	# ---- Static frontend: serve the built Vite bundle ----
+	handle {
+		root * /var/www/moats-pro/artifacts/moats-pro/dist
+		encode zstd gzip
+
+		# Long-cache hashed assets (Vite outputs files with content hashes)
+		@hashed path_regexp ^/assets/.+\.[a-f0-9]{8,}\.(js|css|woff2?|png|jpg|jpeg|svg|webp|ico)$
+		header @hashed Cache-Control "public, max-age=31536000, immutable"
+
+		# Don't cache the entry HTML — it must always reflect the latest deploy
+		@html path /index.html /
+		header @html Cache-Control "no-cache, must-revalidate"
+
+		# Basic security headers
+		header {
+			X-Content-Type-Options "nosniff"
+			X-Frame-Options "DENY"
+			Referrer-Policy "strict-origin-when-cross-origin"
+			Permissions-Policy "geolocation=(), microphone=(), camera=()"
+			-Server
+		}
+
+		# SPA fallback — serve index.html for any unknown route so React Router works
+		try_files {path} /index.html
+		file_server
+	}
+}
