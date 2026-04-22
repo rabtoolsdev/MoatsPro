@@ -47,3 +47,22 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+.agents/
+
+# Environment files (never commit secrets)
+.env
+.env.local
+.env.*.local
+*.env
+
+# Build artifacts that occasionally slip in
+artifacts/*/dist/
+artifacts/*/build/
+
+# OS / editor leftovers
+.idea/
+*.swp
+*.swo
+
+# User uploads / scratch (uncomment to exclude)
+# attached_assets/
