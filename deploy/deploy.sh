@@ -50,7 +50,7 @@ pnpm --filter @workspace/moats-pro run build
 # Sanity checks — fail loudly if a build silently produced nothing
 [[ -f "$APP_DIR/artifacts/api-server/dist/index.mjs" ]] \
   || die "API server build output missing — aborting deploy"
-[[ -f "$APP_DIR/artifacts/moats-pro/dist/index.html" ]] \
+[[ -f "$APP_DIR/artifacts/moats-pro/dist/public/index.html" ]] \
   || die "Frontend build output missing — aborting deploy"
 
 # -----------------------------------------------------------------------------
