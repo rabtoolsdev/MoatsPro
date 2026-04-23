@@ -90,13 +90,10 @@ createAppKit({
 export const wagmiConfig = wagmiAdapter.wagmiConfig;
 
 // Display metadata for the nav chain selector
-export const CHAIN_DISPLAY: Record<
-  number,
-  { label: string; short: string; color: string; bg: string }
-> = {
-  [avalanche.id]: { label: "Avalanche", short: "AVAX", color: "#ffffff", bg: "#e84142" },
-  [mainnet.id]: { label: "Ethereum", short: "ETH", color: "#ffffff", bg: "#627eea" },
-  [base.id]: { label: "Base", short: "BASE", color: "#ffffff", bg: "#0052ff" },
-  [grotto.id]: { label: "The Grotto", short: "GRT", color: "#ffffff", bg: "#7c3aed" },
-  [blaze.id]: { label: "Blaze", short: "BLZ", color: "#ffffff", bg: "#f97316" },
+export const CHAIN_DISPLAY: Record<number, { label: string; logo: string }> = {
+  [avalanche.id]: { label: "Avalanche", logo: "/chains/avalanche.png" },
+  [mainnet.id]: { label: "Ethereum", logo: "/chains/ethereum.png" },
+  [base.id]: { label: "Base", logo: "/chains/base.png" },
+  [grotto.id]: { label: "The Grotto", logo: "/chains/grotto.png" },
+  [blaze.id]: { label: "Blaze", logo: "/chains/blaze.png" },
 };
