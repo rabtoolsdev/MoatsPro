@@ -2,7 +2,8 @@ import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { useReadContracts, useAccount } from "wagmi";
-import { useAppKit } from "@reown/appkit/react";
+import { useAppKit, useAppKitNetwork } from "@reown/appkit/react";
+import { CHAIN_DISPLAY } from "@/lib/wagmi-config";
 import { Wallet, ArrowRight } from "lucide-react";
 import { formatUnits } from "viem";
 import { useAllMoatConfigs, useMapsLeaderboard, useEvents } from "@/hooks/use-moats-api";
@@ -24,6 +25,11 @@ export default function Home() {
   const [statusFilter, setStatusFilter] = useState<string>("Verified");
   const { isConnected, address } = useAccount();
   const { open } = useAppKit();
+  const { chainId } = useAppKitNetwork();
+  const activeNetwork =
+    typeof chainId === "number" ? CHAIN_DISPLAY[chainId]?.network : undefined;
+  const activeChainLabel =
+    typeof chainId === "number" ? CHAIN_DISPLAY[chainId]?.label : undefined;
   const shortAddress = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "";
   const { data: configs, isLoading: configsLoading } = useAllMoatConfigs();
   const { data: leaderboard } = useMapsLeaderboard();
@@ -269,10 +275,16 @@ export default function Home() {
     meta: getMoatMeta(config.contractAddress),
   }));
 
+  const networkFiltered = activeNetwork
+    ? moatsWithMeta.filter(
+        (c) => (c.network ?? "").toLowerCase() === activeNetwork,
+      )
+    : moatsWithMeta;
+
   const filteredMoats = (
     statusFilter === "all"
-      ? moatsWithMeta
-      : moatsWithMeta.filter((c) => c.status === statusFilter)
+      ? networkFiltered
+      : networkFiltered.filter((c) => c.status === statusFilter)
   ).sort((a, b) => {
     const tvmA = tvmMap[a.contractAddress.toLowerCase()] ?? 0;
     const tvmB = tvmMap[b.contractAddress.toLowerCase()] ?? 0;
@@ -386,6 +398,7 @@ export default function Home() {
             <p className="text-muted-foreground text-sm mt-1">
               {filteredMoats.length} active{" "}
               {filteredMoats.length === 1 ? "moat" : "moats"}
+              {activeChainLabel ? ` on ${activeChainLabel}` : ""}
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">
@@ -417,9 +430,11 @@ export default function Home() {
           </div>
         ) : filteredMoats.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
-            <p className="text-lg">No Moats found</p>
+            <p className="text-lg">
+              No Moats found{activeChainLabel ? ` on ${activeChainLabel}` : ""}
+            </p>
             <p className="text-sm mt-2">
-              Check back soon or connect your wallet to explore positions
+              Try switching networks from the chain selector at the top right.
             </p>
           </div>
         ) : (

@@ -89,11 +89,16 @@ createAppKit({
 
 export const wagmiConfig = wagmiAdapter.wagmiConfig;
 
-// Display metadata for the nav chain selector
-export const CHAIN_DISPLAY: Record<number, { label: string; logo: string }> = {
-  [avalanche.id]: { label: "Avalanche", logo: "/chains/avalanche.png" },
-  [mainnet.id]: { label: "Ethereum", logo: "/chains/ethereum.png" },
-  [base.id]: { label: "Base", logo: "/chains/base.png" },
-  [grotto.id]: { label: "The Grotto", logo: "/chains/grotto.png" },
-  [blaze.id]: { label: "Blaze", logo: "/chains/blaze.png" },
+// Display metadata for the nav chain selector.
+// `network` matches the `network` string returned by the Moats API config docs,
+// used to filter Moat cards by the currently-selected chain.
+export const CHAIN_DISPLAY: Record<
+  number,
+  { label: string; logo: string; network: string }
+> = {
+  [avalanche.id]: { label: "Avalanche", logo: "/chains/avalanche.png", network: "avalanche" },
+  [mainnet.id]: { label: "Ethereum", logo: "/chains/ethereum.png", network: "ethereum" },
+  [base.id]: { label: "Base", logo: "/chains/base.png", network: "base" },
+  [grotto.id]: { label: "The Grotto", logo: "/chains/grotto.png", network: "grotto" },
+  [blaze.id]: { label: "Blaze", logo: "/chains/blaze.png", network: "blaze" },
 };
