@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, TrendingUp, LayoutDashboard, Trophy, Wallet, ChevronDown } from "lucide-react";
+import { Menu, X, TrendingUp, LayoutDashboard, Trophy, Wallet, ChevronDown, Check } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useAppKit, useAppKitNetwork } from "@reown/appkit/react";
-import { CHAIN_DISPLAY } from "@/lib/wagmi-config";
+import { CHAIN_DISPLAY, networks } from "@/lib/wagmi-config";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -12,9 +12,23 @@ export function Navbar() {
   const [location] = useLocation();
   const { isConnected, address } = useAccount();
   const { open } = useAppKit();
-  const { chainId } = useAppKitNetwork();
+  const { chainId, switchNetwork } = useAppKitNetwork();
   const currentChain =
     typeof chainId === "number" ? CHAIN_DISPLAY[chainId] : undefined;
+  const [chainMenuOpen, setChainMenuOpen] = useState(false);
+  const chainMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close the chain dropdown when clicking outside
+  useEffect(() => {
+    if (!chainMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (chainMenuRef.current && !chainMenuRef.current.contains(e.target as Node)) {
+        setChainMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [chainMenuOpen]);
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 20);
@@ -102,25 +116,83 @@ export function Navbar() {
         {/* Wallet Button */}
         <div className="flex items-center md:justify-self-end gap-2 sm:gap-3 shrink-0">
           {/* Chain Selector */}
-          <button
-            data-testid="btn-chain-selector"
-            onClick={() => open({ view: "Networks" })}
-            className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-lg border border-border bg-card/40 hover:border-primary/60 hover:bg-card/70 transition-all duration-200 text-xs sm:text-sm font-medium whitespace-nowrap"
-          >
-            {currentChain ? (
-              <>
-                <img
-                  src={currentChain.logo}
-                  alt={currentChain.label}
-                  className="w-5 h-5 rounded-full shrink-0 object-cover"
-                />
-                <span className="hidden md:inline">{currentChain.label}</span>
-              </>
-            ) : (
-              <span className="hidden md:inline text-muted-foreground">Select Network</span>
-            )}
-            <ChevronDown size={14} className="text-muted-foreground shrink-0" />
-          </button>
+          <div ref={chainMenuRef} className="relative">
+            <button
+              data-testid="btn-chain-selector"
+              onClick={() => setChainMenuOpen((v) => !v)}
+              className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-lg border border-border bg-card/40 hover:border-primary/60 hover:bg-card/70 transition-all duration-200 text-xs sm:text-sm font-medium whitespace-nowrap"
+            >
+              {currentChain ? (
+                <>
+                  <img
+                    src={currentChain.logo}
+                    alt={currentChain.label}
+                    className="w-5 h-5 rounded-full shrink-0 object-cover"
+                  />
+                  <span className="hidden md:inline">{currentChain.label}</span>
+                </>
+              ) : (
+                <span className="hidden md:inline text-muted-foreground">Select Network</span>
+              )}
+              <ChevronDown
+                size={14}
+                className={`text-muted-foreground shrink-0 transition-transform duration-200 ${
+                  chainMenuOpen ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+
+            <AnimatePresence>
+              {chainMenuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 mt-2 w-56 rounded-xl border border-border bg-card/95 backdrop-blur-xl shadow-2xl shadow-black/40 overflow-hidden z-50"
+                >
+                  <div className="px-3 py-2 text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border/60">
+                    Select Network
+                  </div>
+                  <ul className="py-1">
+                    {networks.map((n) => {
+                      const display = CHAIN_DISPLAY[Number(n.id)];
+                      if (!display) return null;
+                      const isActive = Number(n.id) === chainId;
+                      return (
+                        <li key={String(n.id)}>
+                          <button
+                            data-testid={`chain-option-${display.network}`}
+                            onClick={() => {
+                              if (!isActive) switchNetwork(n);
+                              setChainMenuOpen(false);
+                            }}
+                            className={`w-full flex items-center gap-3 px-3 py-2 text-sm transition-colors ${
+                              isActive
+                                ? "bg-primary/10 text-primary"
+                                : "hover:bg-muted/40 text-foreground"
+                            }`}
+                          >
+                            <img
+                              src={display.logo}
+                              alt={display.label}
+                              className="w-6 h-6 rounded-full shrink-0 object-cover"
+                            />
+                            <span className="flex-1 text-left font-medium">
+                              {display.label}
+                            </span>
+                            {isActive && (
+                              <Check size={14} className="text-primary shrink-0" />
+                            )}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           {isConnected && address ? (
             <button
