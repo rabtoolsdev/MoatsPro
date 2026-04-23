@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, TrendingUp, LayoutDashboard, Trophy, Wallet } from "lucide-react";
+import { Menu, X, TrendingUp, LayoutDashboard, Trophy, Wallet, ChevronDown } from "lucide-react";
 import { useAccount } from "wagmi";
-import { useAppKit } from "@reown/appkit/react";
+import { useAppKit, useAppKitNetwork } from "@reown/appkit/react";
+import { CHAIN_DISPLAY } from "@/lib/wagmi-config";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -11,6 +12,9 @@ export function Navbar() {
   const [location] = useLocation();
   const { isConnected, address } = useAccount();
   const { open } = useAppKit();
+  const { chainId } = useAppKitNetwork();
+  const currentChain =
+    typeof chainId === "number" ? CHAIN_DISPLAY[chainId] : undefined;
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 20);
@@ -97,6 +101,28 @@ export function Navbar() {
 
         {/* Wallet Button */}
         <div className="flex items-center md:justify-self-end gap-2 sm:gap-3 shrink-0">
+          {/* Chain Selector */}
+          <button
+            data-testid="btn-chain-selector"
+            onClick={() => open({ view: "Networks" })}
+            className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-lg border border-border bg-card/40 hover:border-primary/60 hover:bg-card/70 transition-all duration-200 text-xs sm:text-sm font-medium whitespace-nowrap"
+          >
+            {currentChain ? (
+              <>
+                <span
+                  className="flex items-center justify-center w-5 h-5 rounded-full text-[9px] font-bold shrink-0"
+                  style={{ backgroundColor: currentChain.bg, color: currentChain.color }}
+                >
+                  {currentChain.short.slice(0, 3)}
+                </span>
+                <span className="hidden md:inline">{currentChain.label}</span>
+              </>
+            ) : (
+              <span className="hidden md:inline text-muted-foreground">Select Network</span>
+            )}
+            <ChevronDown size={14} className="text-muted-foreground shrink-0" />
+          </button>
+
           {isConnected && address ? (
             <button
               data-testid="btn-wallet-connected"

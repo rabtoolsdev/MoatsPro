@@ -1,13 +1,52 @@
 import { createAppKit } from "@reown/appkit/react";
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
-import { mainnet, arbitrum, base, optimism, polygon, avalanche } from "@reown/appkit/networks";
+import { mainnet, base, avalanche } from "@reown/appkit/networks";
 import type { AppKitNetwork } from "@reown/appkit/networks";
+import { defineChain } from "viem";
 import { http } from "wagmi";
 
 export const projectId = "13318bff388bcd13cf50b4a10e9d7671";
 
+// Avalanche L1 subnet — The Grotto
+export const grotto = defineChain({
+  id: 36463,
+  name: "The Grotto",
+  nativeCurrency: { name: "Heresy", symbol: "HERESY", decimals: 18 },
+  rpcUrls: {
+    default: { http: ["https://subnets.avax.network/thegrotto/mainnet/rpc"] },
+  },
+  blockExplorers: {
+    default: {
+      name: "Subnet Explorer",
+      url: "https://subnets.avax.network/thegrotto",
+    },
+  },
+});
+
+// Avalanche L1 subnet — Blaze
+export const blaze = defineChain({
+  id: 46975,
+  name: "Blaze",
+  nativeCurrency: { name: "Blaze", symbol: "BLAZE", decimals: 18 },
+  rpcUrls: {
+    default: { http: ["https://subnets.avax.network/blaze/mainnet/rpc"] },
+  },
+  blockExplorers: {
+    default: {
+      name: "Subnet Explorer",
+      url: "https://subnets.avax.network/blaze",
+    },
+  },
+});
+
 // Avalanche is first — primary Moat Protocol deployment network
-export const networks: [AppKitNetwork, ...AppKitNetwork[]] = [avalanche, mainnet, arbitrum, base, optimism, polygon];
+export const networks: [AppKitNetwork, ...AppKitNetwork[]] = [
+  avalanche,
+  mainnet,
+  base,
+  grotto as unknown as AppKitNetwork,
+  blaze as unknown as AppKitNetwork,
+];
 
 export const wagmiAdapter = new WagmiAdapter({
   networks,
@@ -16,10 +55,9 @@ export const wagmiAdapter = new WagmiAdapter({
   transports: {
     [avalanche.id]: http("https://api.avax.network/ext/bc/C/rpc"),
     [mainnet.id]: http("https://eth.llamarpc.com"),
-    [arbitrum.id]: http("https://arb1.arbitrum.io/rpc"),
     [base.id]: http("https://mainnet.base.org"),
-    [optimism.id]: http("https://mainnet.optimism.io"),
-    [polygon.id]: http("https://polygon-rpc.com"),
+    [grotto.id]: http(grotto.rpcUrls.default.http[0]),
+    [blaze.id]: http(blaze.rpcUrls.default.http[0]),
   },
 });
 
@@ -50,3 +88,15 @@ createAppKit({
 });
 
 export const wagmiConfig = wagmiAdapter.wagmiConfig;
+
+// Display metadata for the nav chain selector
+export const CHAIN_DISPLAY: Record<
+  number,
+  { label: string; short: string; color: string; bg: string }
+> = {
+  [avalanche.id]: { label: "Avalanche", short: "AVAX", color: "#ffffff", bg: "#e84142" },
+  [mainnet.id]: { label: "Ethereum", short: "ETH", color: "#ffffff", bg: "#627eea" },
+  [base.id]: { label: "Base", short: "BASE", color: "#ffffff", bg: "#0052ff" },
+  [grotto.id]: { label: "The Grotto", short: "GRT", color: "#ffffff", bg: "#7c3aed" },
+  [blaze.id]: { label: "Blaze", short: "BLZ", color: "#ffffff", bg: "#f97316" },
+};
