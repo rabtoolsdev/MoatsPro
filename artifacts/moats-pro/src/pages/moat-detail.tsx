@@ -571,13 +571,18 @@ export default function MoatDetail() {
                   const daysRemaining = dailyAmt > 0 && remainingAmt > 0
                     ? Math.max(0, Math.round(remainingAmt / dailyAmt))
                     : null;
-                  // % of distributed rewards that have been claimed by users.
-                  // Distributed = claimed (already taken out) + balance still sitting
-                  // in the moat contract waiting to be claimed.
+                  // % of the *total* reward pool that users have actually claimed.
+                  // Total = already claimed + sitting in the moat contract (distributed
+                  // but unclaimed) + still in the reward wallet (yet to be distributed).
+                  // → If users claim, the % goes up.
+                  // → If users don't claim, distributed-but-unclaimed counts against them
+                  //   (the % stays low), but the denominator doesn't shrink as the wallet
+                  //   pushes funds into the contract.
                   const inContract = getContractBalance(token.tokenAddress);
-                  const distributed = token.totalRewardsClaimed + inContract;
-                  const claimedPct = distributed > 0
-                    ? Math.round((token.totalRewardsClaimed / distributed) * 100)
+                  const inWallet = getPoolBalance(token.tokenAddress);
+                  const totalPool = token.totalRewardsClaimed + inContract + inWallet;
+                  const claimedPct = totalPool > 0
+                    ? Math.round((token.totalRewardsClaimed / totalPool) * 100)
                     : 0;
                   const fmtAmt = (n: number) =>
                     n >= 1_000_000 ? `${(n / 1_000_000).toFixed(2)}M`
