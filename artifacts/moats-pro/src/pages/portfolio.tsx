@@ -237,7 +237,9 @@ export default function Portfolio() {
           priceMap?.[id] ?? dexInfoMap?.[t.tokenAddress.toLowerCase()]?.price ?? 0;
         if (price === 0) return sum;
         const est = dailyEstimates[`${moatLower}_${t.tokenAddress.toLowerCase()}`] ?? 0;
-        const dailyAmt = t.tokenAmount > 0 ? t.tokenAmount : est;
+        const freqH = t.frequencyHours ?? 24;
+        const distsPerDay = freqH > 0 ? 24 / freqH : 1;
+        const dailyAmt = t.tokenAmount > 0 ? t.tokenAmount * distsPerDay : est;
         return sum + dailyAmt * price;
       }, 0);
   };

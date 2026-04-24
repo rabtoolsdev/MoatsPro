@@ -181,8 +181,10 @@ export function MoatCard({ moat, tvlUSD, supplyPct, logoUrl, dexLiquidityUSD, de
                     <>
                       {visible.slice(0, 3).map((token) => {
                         const est = dailyEstimates?.[`${moatLower}_${token.tokenAddress.toLowerCase()}`] ?? 0;
+                        const freqH = token.frequencyHours ?? 24;
+                        const distsPerDay = freqH > 0 ? 24 / freqH : 1;
                         let label: string;
-                        if (token.tokenAmount > 0) label = `${fmtAmt(token.tokenAmount)}/day`;
+                        if (token.tokenAmount > 0) label = `${fmtAmt(token.tokenAmount * distsPerDay)}/day`;
                         else if (est > 0) label = `~${fmtAmt(est)}/day`;
                         else label = fmtAmt(token.totalRewardsDeposited);
                         return (

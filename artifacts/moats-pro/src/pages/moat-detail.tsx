@@ -492,7 +492,9 @@ export default function MoatDetail() {
                           <span className="font-medium text-foreground">
                             {(() => {
                               const est = getEstDaily(token.tokenAddress);
-                              const amt = token.tokenAmount > 0 ? token.tokenAmount : est;
+                              const freqH = token.frequencyHours ?? 24;
+                              const distsPerDay = freqH > 0 ? 24 / freqH : 1;
+                              const amt = token.tokenAmount > 0 ? token.tokenAmount * distsPerDay : est;
                               const prefix = token.tokenAmount > 0 ? "" : est > 0 ? "~" : "";
                               const fmt =
                                 amt >= 1_000_000 ? `${(amt / 1_000_000).toFixed(2)}M`
@@ -548,7 +550,9 @@ export default function MoatDetail() {
                   const token = moatConfig.rewardTokens.filter((t) => t.enabled)[0];
                   if (!token) return null;
                   const estDaily = getEstDaily(token.tokenAddress);
-                  const dailyAmt = token.tokenAmount > 0 ? token.tokenAmount : estDaily;
+                  const freqH = token.frequencyHours ?? 24;
+                  const distsPerDay = freqH > 0 ? 24 / freqH : 1;
+                  const dailyAmt = token.tokenAmount > 0 ? token.tokenAmount * distsPerDay : estDaily;
                   const isEstimated = token.tokenAmount === 0 && estDaily > 0;
                   const daysRemaining = dailyAmt > 0 && token.totalRewardsDeposited > 0
                     ? Math.max(0, Math.round((token.totalRewardsDeposited - token.totalRewardsClaimed) / dailyAmt))
