@@ -558,8 +558,14 @@ export default function MoatDetail() {
                   const distsPerDay = freqH > 0 ? 24 / freqH : 1;
                   const dailyAmt = token.tokenAmount > 0 ? token.tokenAmount * distsPerDay : estDaily;
                   const isEstimated = token.tokenAmount === 0 && estDaily > 0;
-                  const daysRemaining = dailyAmt > 0 && token.totalRewardsDeposited > 0
-                    ? Math.max(0, Math.round((token.totalRewardsDeposited - token.totalRewardsClaimed) / dailyAmt))
+                  // Prefer the live reward-wallet balance (real funds remaining); fall back
+                  // to the on-contract counter (deposited - claimed) if no wallet balance.
+                  const livePool = getPoolBalance(token.tokenAddress);
+                  const remainingAmt = livePool > 0
+                    ? livePool
+                    : Math.max(0, token.totalRewardsDeposited - token.totalRewardsClaimed);
+                  const daysRemaining = dailyAmt > 0 && remainingAmt > 0
+                    ? Math.max(0, Math.round(remainingAmt / dailyAmt))
                     : null;
                   const claimedPct = token.totalRewardsDeposited > 0
                     ? Math.round((token.totalRewardsClaimed / token.totalRewardsDeposited) * 100)
