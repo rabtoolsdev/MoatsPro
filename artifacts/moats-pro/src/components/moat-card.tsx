@@ -17,6 +17,8 @@ interface MoatCardProps {
   dexPairCount?: number;
   /** Estimated tokens-per-day per `${moatLower}_${tokenLower}` for percentage-based reward Moats */
   dailyEstimates?: Record<string, number>;
+  /** Live `balanceOf(publicAddress)` per `${moatLower}_${tokenLower}` for the off-chain reward wallet */
+  poolBalances?: Record<string, number>;
 }
 
 const statusColors: Record<string, { border: string; badge: string; text: string; hoverGlow: string }> = {
@@ -102,7 +104,7 @@ function MoatLogo({
 
 export { MoatLogo };
 
-export function MoatCard({ moat, tvlUSD, supplyPct, logoUrl, dexLiquidityUSD, dexPairCount, dailyEstimates }: MoatCardProps) {
+export function MoatCard({ moat, tvlUSD, supplyPct, logoUrl, dexLiquidityUSD, dexPairCount, dailyEstimates, poolBalances }: MoatCardProps) {
   const statusStyle = statusColors[moat.status] || statusColors.Community;
   const activeRewardTokens = moat.rewardTokens.filter((t) => t.enabled);
   const meta = getMoatMeta(moat.contractAddress);
@@ -210,6 +212,33 @@ export function MoatCard({ moat, tvlUSD, supplyPct, logoUrl, dexLiquidityUSD, de
           )}
 
           <div className="mt-auto pt-3 border-t border-border/40 space-y-2">
+            {(() => {
+              const moatLower = moat.contractAddress.toLowerCase();
+              const poolToken = activeRewardTokens.find((t) => {
+                const bal = poolBalances?.[`${moatLower}_${t.tokenAddress.toLowerCase()}`] ?? 0;
+                return bal > 0;
+              });
+              if (!poolToken) return null;
+              const bal = poolBalances?.[`${moatLower}_${poolToken.tokenAddress.toLowerCase()}`] ?? 0;
+              const fmtPool = (v: number) => {
+                if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M`;
+                if (v >= 1_000) return `${(v / 1_000).toFixed(1)}K`;
+                if (v >= 1) return v.toLocaleString(undefined, { maximumFractionDigits: 2 });
+                if (v > 0) return parseFloat(v.toPrecision(4)).toString();
+                return "0";
+              };
+              return (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Total Pool</span>
+                  <span
+                    data-testid={`text-pool-${moat.contractAddress}`}
+                    className="font-bold text-emerald-400 tabular-nums"
+                  >
+                    {fmtPool(bal)} {poolToken.symbol}
+                  </span>
+                </div>
+              );
+            })()}
             {tvlUSD !== undefined && tvlUSD > 0 && (
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">TVM</span>

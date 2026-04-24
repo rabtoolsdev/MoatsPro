@@ -13,6 +13,7 @@ import { MOAT_V3_ABI, ERC20_ABI, MOAT_LOGO_ABI } from "@/lib/moat-abi";
 import { getMoatMeta } from "@/lib/moat-metadata";
 import { useResolveMoatMetas } from "@/hooks/use-resolve-moat-metas";
 import { useDailyRewardEstimates } from "@/hooks/use-daily-reward-estimates";
+import { useRewardPoolBalances } from "@/hooks/use-reward-pool-balances";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { MoatCard } from "@/components/moat-card";
@@ -170,6 +171,7 @@ export default function Home() {
   );
 
   const dailyEstimates = useDailyRewardEstimates(configs);
+  const poolBalances = useRewardPoolBalances(configs);
 
   const getTokenPrice = (_network: string, tokenAddr: string): number => {
     return dexInfoMap?.[tokenAddr.toLowerCase()]?.price ?? 0;
@@ -454,6 +456,7 @@ export default function Home() {
                   dexLiquidityUSD={liquidityTvlMap[moat.contractAddress.toLowerCase()]?.liquidityUsd}
                   dexPairCount={liquidityTvlMap[moat.contractAddress.toLowerCase()]?.pairCount}
                   dailyEstimates={dailyEstimates}
+                  poolBalances={poolBalances}
                 />
               </motion.div>
             ))}

@@ -24,6 +24,7 @@ import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
 import { useDexscreenerInfo } from "@/hooks/use-dexscreener";
 import { useResolveMoatMetas } from "@/hooks/use-resolve-moat-metas";
 import { useDailyRewardEstimates } from "@/hooks/use-daily-reward-estimates";
+import { useRewardPoolBalances } from "@/hooks/use-reward-pool-balances";
 import { ERC20_ABI, MOAT_LOGO_ABI } from "@/lib/moat-abi";
 
 type ActionTab = "stake" | "lock" | "claim" | "withdraw" | "burn";
@@ -180,9 +181,12 @@ export default function MoatDetail() {
       : [],
   );
   const dailyEstimates = useDailyRewardEstimates(moatConfig ? [moatConfig] : undefined);
+  const poolBalances = useRewardPoolBalances(moatConfig ? [moatConfig] : undefined);
   const moatLowerKey = (contractAddress ?? "").toLowerCase();
   const getEstDaily = (tokenAddr: string) =>
     dailyEstimates[`${moatLowerKey}_${tokenAddr.toLowerCase()}`] ?? 0;
+  const getPoolBalance = (tokenAddr: string) =>
+    poolBalances[`${moatLowerKey}_${tokenAddr.toLowerCase()}`] ?? 0;
   const stakingTokenPrice = stats.stakingToken
     ? (dexInfoMap?.[stats.stakingToken.toLowerCase()]?.price ?? 0)
     : 0;
@@ -595,7 +599,7 @@ export default function MoatDetail() {
                       <div className="text-xs">
                         <p className="text-muted-foreground">Total Pool</p>
                         <p className="font-bold text-foreground mt-0.5 tabular-nums">
-                          {fmtAmt(token.totalRewardsDeposited)} {token.symbol}
+                          {fmtAmt(getPoolBalance(token.tokenAddress) || token.totalRewardsDeposited)} {token.symbol}
                         </p>
                       </div>
                     </div>
