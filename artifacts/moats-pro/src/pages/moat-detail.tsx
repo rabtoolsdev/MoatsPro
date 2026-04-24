@@ -25,6 +25,7 @@ import { useDexscreenerInfo } from "@/hooks/use-dexscreener";
 import { useResolveMoatMetas } from "@/hooks/use-resolve-moat-metas";
 import { useDailyRewardEstimates } from "@/hooks/use-daily-reward-estimates";
 import { useRewardPoolBalances } from "@/hooks/use-reward-pool-balances";
+import { useContractRewardBalances } from "@/hooks/use-contract-reward-balances";
 import { ERC20_ABI, MOAT_LOGO_ABI } from "@/lib/moat-abi";
 
 type ActionTab = "stake" | "lock" | "claim" | "withdraw" | "burn";
@@ -182,11 +183,14 @@ export default function MoatDetail() {
   );
   const dailyEstimates = useDailyRewardEstimates(moatConfig ? [moatConfig] : undefined);
   const poolBalances = useRewardPoolBalances(moatConfig ? [moatConfig] : undefined);
+  const contractRewardBalances = useContractRewardBalances(moatConfig ? [moatConfig] : undefined);
   const moatLowerKey = (contractAddress ?? "").toLowerCase();
   const getEstDaily = (tokenAddr: string) =>
     dailyEstimates[`${moatLowerKey}_${tokenAddr.toLowerCase()}`] ?? 0;
   const getPoolBalance = (tokenAddr: string) =>
     poolBalances[`${moatLowerKey}_${tokenAddr.toLowerCase()}`] ?? 0;
+  const getContractBalance = (tokenAddr: string) =>
+    contractRewardBalances[`${moatLowerKey}_${tokenAddr.toLowerCase()}`] ?? 0;
   const stakingTokenPrice = stats.stakingToken
     ? (dexInfoMap?.[stats.stakingToken.toLowerCase()]?.price ?? 0)
     : 0;
@@ -567,8 +571,13 @@ export default function MoatDetail() {
                   const daysRemaining = dailyAmt > 0 && remainingAmt > 0
                     ? Math.max(0, Math.round(remainingAmt / dailyAmt))
                     : null;
-                  const claimedPct = token.totalRewardsDeposited > 0
-                    ? Math.round((token.totalRewardsClaimed / token.totalRewardsDeposited) * 100)
+                  // % of distributed rewards that have been claimed by users.
+                  // Distributed = claimed (already taken out) + balance still sitting
+                  // in the moat contract waiting to be claimed.
+                  const inContract = getContractBalance(token.tokenAddress);
+                  const distributed = token.totalRewardsClaimed + inContract;
+                  const claimedPct = distributed > 0
+                    ? Math.round((token.totalRewardsClaimed / distributed) * 100)
                     : 0;
                   const fmtAmt = (n: number) =>
                     n >= 1_000_000 ? `${(n / 1_000_000).toFixed(2)}M`
