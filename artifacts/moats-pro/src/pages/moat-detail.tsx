@@ -523,7 +523,7 @@ export default function MoatDetail() {
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span>Total Deposited</span>
+                          <span>Total Distributed</span>
                           <span className="font-medium text-foreground">
                             {(() => {
                               const v = token.totalRewardsDeposited;
