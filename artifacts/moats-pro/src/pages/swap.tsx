@@ -7,7 +7,12 @@ import { Navbar } from "@/components/navbar";
 import { TokenSelectModal } from "@/components/swap/token-select-modal";
 import { TokenLogo } from "@/components/swap/token-logo";
 import { SlippageSettings } from "@/components/swap/slippage-settings";
-import { deriveMoatTokens, type MoatToken } from "@/lib/moat-tokens";
+import {
+  BASE_TOKENS,
+  deriveMoatTokens,
+  isNativeToken,
+  type MoatToken,
+} from "@/lib/moat-tokens";
 import {
   AVALANCHE_CHAIN_ID,
   FEE_BPS,
@@ -15,7 +20,12 @@ import {
 } from "@/lib/swap-routers";
 import { networks } from "@/lib/wagmi-config";
 import { useAllMoatConfigs } from "@/hooks/use-moats-api";
-import { useTokenAllowance, useTokenBalance, useApproveToken } from "@/hooks/use-moat-contract";
+import {
+  useTokenAllowance,
+  useTokenBalance,
+  useApproveToken,
+  useSwapFromBalance,
+} from "@/hooks/use-moat-contract";
 import { useSwapQuote, useExecuteSwap } from "@/hooks/use-swap";
 import { useSlippage } from "@/hooks/use-slippage";
 import { useToast } from "@/hooks/use-toast";
@@ -29,26 +39,31 @@ export default function Swap() {
   const { toast } = useToast();
 
   const { data: moats } = useAllMoatConfigs();
-  const tokens = useMemo(() => deriveMoatTokens(moats), [moats]);
+  const moatTokens = useMemo(() => deriveMoatTokens(moats), [moats]);
+  const toTokens = moatTokens;
+  const fromTokens = useMemo(
+    () => [...BASE_TOKENS, ...moatTokens],
+    [moatTokens]
+  );
   const { slippage, setSlippage } = useSlippage();
 
-  const [fromToken, setFromToken] = useState<MoatToken | null>(null);
+  const [fromToken, setFromToken] = useState<MoatToken | null>(BASE_TOKENS[0]);
   const [toToken, setToToken] = useState<MoatToken | null>(null);
   const [amount, setAmount] = useState("");
   const [pickerSide, setPickerSide] = useState<Side | null>(null);
 
-  // Pre-select first two tokens once loaded
+  // Pre-select first moat token for "to" side once loaded
   useEffect(() => {
-    if (tokens.length >= 2 && !fromToken && !toToken) {
-      setFromToken(tokens[0]);
-      setToToken(tokens[1]);
+    if (moatTokens.length >= 1 && !toToken) {
+      setToToken(moatTokens[0]);
     }
-  }, [tokens, fromToken, toToken]);
+  }, [moatTokens, toToken]);
 
-  const fromBal = useTokenBalance(fromToken?.address);
+  const fromBal = useSwapFromBalance(fromToken);
   const toBal = useTokenBalance(toToken?.address);
   const fromDecimals = (fromBal.decimals as number | undefined) ?? fromToken?.decimals ?? 18;
   const toDecimals = (toBal.decimals as number | undefined) ?? toToken?.decimals ?? 18;
+  const isFromNative = !!fromToken && isNativeToken(fromToken.address);
 
   const onAvalanche = chainId === AVALANCHE_CHAIN_ID;
 
@@ -62,11 +77,11 @@ export default function Swap() {
   });
 
   const allowance = useTokenAllowance(
-    fromToken?.address,
+    isFromNative ? undefined : fromToken?.address,
     quote.best?.approveTo
   );
 
-  const approver = useApproveToken(fromToken?.address);
+  const approver = useApproveToken(isFromNative ? undefined : fromToken?.address);
   const executor = useExecuteSwap();
 
   const amountRaw = useMemo(() => {
@@ -85,7 +100,10 @@ export default function Swap() {
 
   const allowanceRaw = (allowance.data as bigint | undefined) ?? 0n;
   const needsApproval =
-    !!quote.best && amountRaw > 0n && allowanceRaw < amountRaw;
+    !isFromNative &&
+    !!quote.best &&
+    amountRaw > 0n &&
+    allowanceRaw < amountRaw;
 
   // Toast on swap success
   useEffect(() => {
@@ -127,7 +145,16 @@ export default function Swap() {
     }
   }, [approver.error]);
 
+  const canFlip = useMemo(() => {
+    if (!fromToken) return false;
+    // Flip would put the current "from" into "to" — only allowed if it is a moat-backed token.
+    return moatTokens.some(
+      (t) => t.address.toLowerCase() === fromToken.address.toLowerCase()
+    );
+  }, [fromToken, moatTokens]);
+
   const flip = () => {
+    if (!canFlip) return;
     const a = fromToken;
     setFromToken(toToken);
     setToToken(a);
@@ -216,7 +243,7 @@ export default function Swap() {
             Moat Swap
           </h1>
           <p className="text-sm text-muted-foreground mt-1.5">
-            Trade between any moat-backed tokens at the best rate.
+            Pay with AVAX, USDC, USDT, WAVAX, or any moat-backed token at the best rate.
           </p>
         </div>
 
@@ -246,13 +273,19 @@ export default function Swap() {
             <div className="h-px w-full bg-border/40 absolute top-1/2" />
             <button
               onClick={flip}
+              disabled={!canFlip}
               data-testid="btn-flip-tokens"
-              className="relative z-10 w-9 h-9 rounded-full border border-border bg-card hover:border-primary/60 hover:bg-primary/5 hover:text-primary transition-all duration-200 flex items-center justify-center group"
+              title={canFlip ? "Flip tokens" : "AVAX, WAVAX, USDC, and USDT can only be paid in"}
+              className={`relative z-10 w-9 h-9 rounded-full border border-border bg-card transition-all duration-200 flex items-center justify-center group ${
+                canFlip
+                  ? "hover:border-primary/60 hover:bg-primary/5 hover:text-primary"
+                  : "opacity-40 cursor-not-allowed"
+              }`}
               aria-label="Flip tokens"
             >
               <ArrowDownUp
                 size={14}
-                className="text-muted-foreground group-hover:text-primary transition-colors"
+                className={`text-muted-foreground transition-colors ${canFlip ? "group-hover:text-primary" : ""}`}
               />
             </button>
           </div>
@@ -348,7 +381,12 @@ export default function Swap() {
         onSelect={(t) => {
           if (pickerSide === "from") {
             if (toToken && t.address.toLowerCase() === toToken.address.toLowerCase()) {
-              setToToken(fromToken);
+              const prevFromIsMoat =
+                fromToken &&
+                moatTokens.some(
+                  (m) => m.address.toLowerCase() === fromToken.address.toLowerCase()
+                );
+              setToToken(prevFromIsMoat ? fromToken : null);
             }
             setFromToken(t);
           } else if (pickerSide === "to") {
@@ -358,9 +396,14 @@ export default function Swap() {
             setToToken(t);
           }
         }}
-        tokens={tokens}
+        tokens={pickerSide === "from" ? fromTokens : toTokens}
         excludeAddress={pickerSide === "from" ? toToken?.address : fromToken?.address}
         title={pickerSide === "from" ? "Pay with" : "Receive"}
+        footerLabel={
+          pickerSide === "from"
+            ? `${fromTokens.length} tokens · base + moat-backed`
+            : `${toTokens.length} moat-backed tokens`
+        }
       />
     </div>
   );

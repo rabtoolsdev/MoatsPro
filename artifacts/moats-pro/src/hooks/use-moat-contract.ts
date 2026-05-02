@@ -1,8 +1,9 @@
-import { useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt, useBalance } from "wagmi";
 import { useAccount } from "wagmi";
 import { parseUnits, formatUnits } from "viem";
 import { useMemo } from "react";
 import { MOAT_V3_ABI, ERC20_ABI } from "@/lib/moat-abi";
+import { isNativeToken, type MoatToken } from "@/lib/moat-tokens";
 
 export type MoatContractAddress = `0x${string}`;
 
@@ -149,6 +150,63 @@ export function useTokenBalance(
         ? formatUnits(balance.data, decimals.data)
         : undefined,
     isLoading: balance.isLoading,
+  };
+}
+
+export function useSwapFromBalance(token: MoatToken | null) {
+  const { address } = useAccount();
+  const isNative = !!token && isNativeToken(token.address);
+  const erc20Enabled = !!token && !isNative && !!address;
+  const nativeEnabled = isNative && !!address;
+
+  const erc20Bal = useReadContract({
+    address: token?.address,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    query: { enabled: erc20Enabled, refetchInterval: 15_000 },
+  });
+
+  const erc20Decimals = useReadContract({
+    address: token?.address,
+    abi: ERC20_ABI,
+    functionName: "decimals",
+    query: { enabled: erc20Enabled },
+  });
+
+  const erc20Symbol = useReadContract({
+    address: token?.address,
+    abi: ERC20_ABI,
+    functionName: "symbol",
+    query: { enabled: erc20Enabled },
+  });
+
+  const native = useBalance({
+    address: nativeEnabled ? address : undefined,
+    query: { enabled: nativeEnabled, refetchInterval: 15_000 },
+  });
+
+  if (isNative) {
+    const value = native.data?.value;
+    const dec = native.data?.decimals ?? token?.decimals ?? 18;
+    return {
+      balance: value,
+      decimals: dec,
+      symbol: native.data?.symbol ?? token?.symbol,
+      formatted: value !== undefined ? formatUnits(value, dec) : undefined,
+      isLoading: native.isLoading,
+    };
+  }
+
+  return {
+    balance: erc20Bal.data,
+    decimals: erc20Decimals.data,
+    symbol: erc20Symbol.data,
+    formatted:
+      erc20Bal.data !== undefined && erc20Decimals.data !== undefined
+        ? formatUnits(erc20Bal.data, erc20Decimals.data)
+        : undefined,
+    isLoading: erc20Bal.isLoading,
   };
 }
 

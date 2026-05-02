@@ -11,6 +11,7 @@ interface TokenSelectModalProps {
   tokens: MoatToken[];
   excludeAddress?: string;
   title?: string;
+  footerLabel?: string;
 }
 
 export function TokenSelectModal({
@@ -20,6 +21,7 @@ export function TokenSelectModal({
   tokens,
   excludeAddress,
   title = "Select a token",
+  footerLabel,
 }: TokenSelectModalProps) {
   const [query, setQuery] = useState("");
 
@@ -104,7 +106,7 @@ export function TokenSelectModal({
             <div className="max-h-[60vh] overflow-y-auto py-1">
               {filtered.length === 0 ? (
                 <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-                  No matching moat-backed tokens found.
+                  No matching tokens found.
                 </div>
               ) : (
                 filtered.map((token) => (
@@ -134,7 +136,7 @@ export function TokenSelectModal({
             </div>
 
             <div className="px-4 py-2.5 border-t border-border/40 bg-muted/10 text-[10px] uppercase tracking-wider text-muted-foreground text-center">
-              {tokens.length} moat-backed tokens
+              {footerLabel ?? `${tokens.length} tokens`}
             </div>
           </motion.div>
         </motion.div>
