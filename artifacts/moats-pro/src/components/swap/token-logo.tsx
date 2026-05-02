@@ -3,21 +3,103 @@ import { useMemo, useState } from "react";
 interface TokenLogoProps {
   address: string;
   symbol: string;
+  /** Optional network slug (avalanche, ethereum, base, …). Defaults to avalanche
+   * for backwards compatibility with the swap UI. */
+  network?: string;
+  /** Optional explicit URL to try first (highest priority). */
   hint?: string;
   size?: number;
   className?: string;
 }
 
-function buildSources(address: string, hint?: string): string[] {
-  const lower = address.toLowerCase();
+// Native sentinel addresses used by aggregators / Moats: 0x0…0 (most common)
+// and 0xeeee…eeee (Li.Fi / 1inch convention).
+const NATIVE_SENTINELS = new Set([
+  "0x0000000000000000000000000000000000000000",
+  "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+]);
+
+// Trust Wallet's `blockchains/<folder>` for ERC20 contracts and native logos.
+const TRUSTWALLET_FOLDER: Record<string, string> = {
+  avalanche: "avalanchec",
+  ethereum: "ethereum",
+  base: "base",
+  optimism: "optimism",
+  arbitrum: "arbitrum",
+  polygon: "polygon",
+  bsc: "smartchain",
+};
+
+// DexScreener token logo CDN; covers most actively-traded ERC20s.
+const DEXSCREENER_CHAIN: Record<string, string> = {
+  avalanche: "avalanche",
+  ethereum: "ethereum",
+  base: "base",
+  optimism: "optimism",
+  arbitrum: "arbitrum",
+  polygon: "polygon",
+  bsc: "bsc",
+};
+
+// CoinGecko fallback for the most common native tokens. URLs taken from the
+// public CoinGecko coin pages (large variant). These cover the chains Moats
+// currently supports.
+const NATIVE_COINGECKO: Record<string, string> = {
+  avalanche:
+    "https://assets.coingecko.com/coins/images/12559/large/Avalanche_Circle_RedWhite_Trans.png",
+  ethereum:
+    "https://assets.coingecko.com/coins/images/279/large/ethereum.png",
+  base: "https://assets.coingecko.com/coins/images/279/large/ethereum.png",
+  optimism:
+    "https://assets.coingecko.com/coins/images/279/large/ethereum.png",
+  arbitrum:
+    "https://assets.coingecko.com/coins/images/279/large/ethereum.png",
+  polygon:
+    "https://assets.coingecko.com/coins/images/4713/large/polygon.png",
+  bsc: "https://assets.coingecko.com/coins/images/825/large/bnb-icon2_2x.png",
+};
+
+function buildSources(
+  address: string,
+  network: string,
+  hint?: string,
+): string[] {
   const sources: string[] = [];
   if (hint) sources.push(hint);
-  // DexScreener — works for most actively-traded Avalanche tokens
-  sources.push(`https://dd.dexscreener.com/ds-data/tokens/avalanche/${lower}.png`);
-  // TrustWallet — needs checksum address; we approximate by using lower (works for some)
-  sources.push(
-    `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/avalanchec/assets/${address}/logo.png`,
-  );
+
+  const lower = address.toLowerCase();
+  const isNative = NATIVE_SENTINELS.has(lower);
+  const tw = TRUSTWALLET_FOLDER[network];
+  const ds = DEXSCREENER_CHAIN[network];
+
+  if (isNative) {
+    // Trust Wallet keeps the native coin logo at <chain>/info/logo.png.
+    if (tw) {
+      sources.push(
+        `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/${tw}/info/logo.png`,
+      );
+    }
+    // CoinGecko fallback for native tokens — almost always reachable.
+    const cg = NATIVE_COINGECKO[network];
+    if (cg) sources.push(cg);
+  } else {
+    // ERC20 token: prefer DexScreener (usually has a logo), then Trust Wallet
+    // (uses the original-case address). We also try the lowercase variant in
+    // case the input was already checksum-cased.
+    if (ds) sources.push(`https://dd.dexscreener.com/ds-data/tokens/${ds}/${lower}.png`);
+    if (tw) {
+      sources.push(
+        `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/${tw}/assets/${address}/logo.png`,
+      );
+      // Also try the address as-stored (not always checksum-cased).
+      if (address !== lower) {
+        sources.push(
+          `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/${tw}/assets/${lower}/logo.png`,
+        );
+      }
+    }
+  }
+
   return Array.from(new Set(sources.filter(Boolean)));
 }
 
@@ -31,19 +113,23 @@ function symbolGradient(symbol: string): string {
 export function TokenLogo({
   address,
   symbol,
+  network = "avalanche",
   hint,
   size = 24,
   className,
 }: TokenLogoProps) {
-  const sources = useMemo(() => buildSources(address, hint), [address, hint]);
-  // Reset the source index whenever the token (address/hint) changes, so a
-  // newly-picked token always starts from the highest-priority source instead
-  // of inheriting the previous token's failure state.
-  const [prevKey, setPrevKey] = useState(`${address}|${hint ?? ""}`);
+  const sources = useMemo(
+    () => buildSources(address, network, hint),
+    [address, network, hint],
+  );
+  // Reset the source index whenever the token (address/hint/network) changes,
+  // so a newly-picked token always starts from the highest-priority source
+  // instead of inheriting the previous token's failure state.
+  const cacheKey = `${address}|${network}|${hint ?? ""}`;
+  const [prevKey, setPrevKey] = useState(cacheKey);
   const [idx, setIdx] = useState(0);
-  const currentKey = `${address}|${hint ?? ""}`;
-  if (prevKey !== currentKey) {
-    setPrevKey(currentKey);
+  if (prevKey !== cacheKey) {
+    setPrevKey(cacheKey);
     setIdx(0);
   }
 

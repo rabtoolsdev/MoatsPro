@@ -642,14 +642,16 @@ function TxRow({ row: r }: { row: SwapRow }) {
             <TokenLogo
               address={r.fromTokenAddress}
               symbol={r.fromTokenSymbol}
+              network={r.network}
               size={20}
-              className="ring-2 ring-card"
+              className="ring-2 ring-card bg-card"
             />
             <TokenLogo
               address={r.toTokenAddress}
               symbol={r.toTokenSymbol}
+              network={r.network}
               size={20}
-              className="ring-2 ring-card"
+              className="ring-2 ring-card bg-card"
             />
           </div>
           <div className="leading-tight">
