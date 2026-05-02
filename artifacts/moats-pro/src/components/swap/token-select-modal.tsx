@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, X } from "lucide-react";
 import type { MoatToken } from "@/lib/moat-tokens";
+import { TokenLogo } from "@/components/swap/token-logo";
 
 interface TokenSelectModalProps {
   open: boolean;
@@ -116,22 +117,13 @@ export function TokenSelectModal({
                     data-testid={`btn-select-token-${token.symbol}`}
                     className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors text-left"
                   >
-                    <div className="w-9 h-9 rounded-full bg-muted/40 border border-border/40 overflow-hidden flex items-center justify-center shrink-0">
-                      {token.logoUrl ? (
-                        <img
-                          src={token.logoUrl}
-                          alt={token.symbol}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).style.display = "none";
-                          }}
-                        />
-                      ) : (
-                        <span className="text-xs font-bold text-muted-foreground">
-                          {token.symbol.slice(0, 2)}
-                        </span>
-                      )}
-                    </div>
+                    <TokenLogo
+                      address={token.address}
+                      symbol={token.symbol}
+                      hint={token.logoUrl}
+                      size={36}
+                      className="border border-border/40"
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-semibold">{token.symbol}</div>
                       <div className="text-xs text-muted-foreground truncate">{token.name}</div>

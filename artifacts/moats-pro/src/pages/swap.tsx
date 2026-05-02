@@ -5,6 +5,7 @@ import { formatUnits, parseUnits } from "viem";
 import { ArrowDownUp, ChevronDown, Loader2, Settings, Wallet } from "lucide-react";
 import { Navbar } from "@/components/navbar";
 import { TokenSelectModal } from "@/components/swap/token-select-modal";
+import { TokenLogo } from "@/components/swap/token-logo";
 import { deriveMoatTokens, type MoatToken } from "@/lib/moat-tokens";
 import {
   AVALANCHE_CHAIN_ID,
@@ -403,22 +404,12 @@ function TokenInput({
         >
           {token ? (
             <>
-              <div className="w-6 h-6 rounded-full bg-muted/40 overflow-hidden flex items-center justify-center shrink-0">
-                {token.logoUrl ? (
-                  <img
-                    src={token.logoUrl}
-                    alt={token.symbol}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).style.display = "none";
-                    }}
-                  />
-                ) : (
-                  <span className="text-[10px] font-bold text-muted-foreground">
-                    {token.symbol.slice(0, 2)}
-                  </span>
-                )}
-              </div>
+              <TokenLogo
+                address={token.address}
+                symbol={token.symbol}
+                hint={token.logoUrl}
+                size={24}
+              />
               <span className="text-sm font-semibold">{token.symbol}</span>
             </>
           ) : (
