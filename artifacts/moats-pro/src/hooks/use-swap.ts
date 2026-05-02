@@ -7,8 +7,11 @@ import {
   pickBestQuote,
   type QuoteRequest,
   type QuoteResult,
+  type RouterId,
   type SwapQuote,
 } from "@/lib/swap-routers";
+
+export type RouterPreference = RouterId | "auto";
 
 export interface UseSwapQuoteParams {
   chainId?: number;
@@ -18,10 +21,22 @@ export interface UseSwapQuoteParams {
   fromDecimals?: number;
   enabled?: boolean;
   slippage?: number;
+  /**
+   * Router the user manually picked from the "Routed via" dropdown. When
+   * "auto" (or omitted) we fall back to `pickBestQuote` (highest output).
+   * When a specific router is selected we surface that router's quote even
+   * if another aggregator returned a better price — the user's choice wins.
+   */
+  preferredRouter?: RouterPreference;
 }
 
 export interface UseSwapQuoteResult {
+  /** The quote that will actually be executed — preferred router (if it has
+   *  a quote) or auto-best otherwise. */
   best: SwapQuote | null;
+  /** The auto-best quote regardless of preferredRouter — useful for showing
+   *  "Auto picks Li.Fi" hints in the router dropdown. */
+  autoBest: SwapQuote | null;
   results: QuoteResult[];
   isLoading: boolean;
   isFetching: boolean;
@@ -39,6 +54,7 @@ export function useSwapQuote(params: UseSwapQuoteParams): UseSwapQuoteResult {
     fromDecimals,
     enabled = true,
     slippage,
+    preferredRouter = "auto",
   } = params;
 
   const validAmount =
@@ -85,9 +101,22 @@ export function useSwapQuote(params: UseSwapQuoteParams): UseSwapQuoteResult {
     retry: 1,
   });
 
+  const results = query.data?.results ?? [];
+  const autoBest = query.data?.best ?? null;
+  // Resolve the user's manual router pick. If they picked a specific router
+  // and that router returned a quote, use it — even when another aggregator
+  // beats it. If their pick failed (no quote), gracefully fall back to the
+  // auto-best so the swap still works; the dropdown surfaces the warning.
+  const manualPick =
+    preferredRouter === "auto"
+      ? null
+      : results.find((r) => r.router === preferredRouter && r.ok)?.quote ?? null;
+  const best = manualPick ?? autoBest;
+
   return {
-    best: query.data?.best ?? null,
-    results: query.data?.results ?? [],
+    best,
+    autoBest,
+    results,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     error: query.error as Error | null,

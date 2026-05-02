@@ -24,6 +24,13 @@ export interface DexTokenInfo {
   /** Number of liquidity pools found on DexScreener */
   pairCount: number;
   /**
+   * Token logo URL pulled from DexScreener's `info.imageUrl`. This is the
+   * canonical token image used across DexScreener's UI and is what creators
+   * upload when they "verify" their token's profile, so it matches what the
+   * Explore page / token-detail tooling shows.
+   */
+  imageUrl?: string;
+  /**
    * True if this address is itself a Uniswap-V2-style LP pair contract (i.e.
    * a staking token that represents a share of a liquidity pool).
    */
@@ -39,6 +46,7 @@ export interface DexTokenInfo {
 async function fetchBatch(
   batch: string[],
   acc: Record<string, { price: number; liq: number }[]>,
+  images?: Record<string, { liq: number; url: string }>,
 ): Promise<Set<string>> {
   // Returns the set of queried addresses that were represented in the response.
   const seen = new Set<string>();
@@ -50,6 +58,7 @@ async function fetchBatch(
         baseToken: { address: string; symbol: string };
         priceUsd?: string;
         liquidity?: { usd?: number };
+        info?: { imageUrl?: string };
       }>;
     };
     const queried = new Set(batch);
@@ -59,6 +68,13 @@ async function fetchBatch(
       const liq = pair.liquidity?.usd ?? 0;
       if (price > 0 && liq > 0) {
         (acc[addr] ||= []).push({ price, liq });
+      }
+      // Track the imageUrl from the *deepest-liquidity* pair so we use the
+      // canonical project profile (avoids picking a tiny test pool's logo).
+      const img = pair.info?.imageUrl;
+      if (images && img) {
+        const cur = images[addr];
+        if (!cur || liq > cur.liq) images[addr] = { liq, url: img };
       }
       if (queried.has(addr)) seen.add(addr);
     }
@@ -71,6 +87,7 @@ async function fetchBatch(
 async function fetchDexInfo(addresses: string[]): Promise<Record<string, DexTokenInfo>> {
   if (addresses.length === 0) return {};
   const acc: Record<string, { price: number; liq: number }[]> = {};
+  const images: Record<string, { liq: number; url: string }> = {};
   const missing: string[] = [];
   // LP staking tokens (e.g. Pharaoh's hCASH/WAVAX pair) are pair contracts
   // themselves. Their per-LP-unit price comes from /pairs, but for the DEX TVL
@@ -80,7 +97,7 @@ async function fetchDexInfo(addresses: string[]): Promise<Record<string, DexToke
 
   for (let i = 0; i < addresses.length; i += BATCH_SIZE) {
     const batch = addresses.slice(i, i + BATCH_SIZE);
-    const seen = await fetchBatch(batch, acc);
+    const seen = await fetchBatch(batch, acc, images);
     // Truncation safeguard: any queried token with NO pairs in the response
     // might either truly have no DEX listing OR have been dropped due to the
     // ~30-pair response cap. Re-query unseen tokens individually so we never
@@ -94,7 +111,7 @@ async function fetchDexInfo(addresses: string[]): Promise<Record<string, DexToke
   // ERC-20s with their own pair listing, so they only resolve via /pairs/{addr}.
   const lpBaseAddrs: string[] = [];
   for (const addr of missing) {
-    const seen = await fetchBatch([addr], acc);
+    const seen = await fetchBatch([addr], acc, images);
     if (seen.has(addr)) continue;
     try {
       const res = await fetch(`${DEXSCREENER_PAIRS_API}/${DEFAULT_PAIR_CHAIN}/${addr}`);
@@ -131,7 +148,7 @@ async function fetchDexInfo(addresses: string[]): Promise<Record<string, DexToke
   // reflects the underlying token's full liquidity (e.g. hCASH appears in 4
   // pools across Pharaoh + TraderJoe, not just the single LP staking pool).
   for (const baseAddr of lpBaseAddrs) {
-    await fetchBatch([baseAddr], acc);
+    await fetchBatch([baseAddr], acc, images);
   }
 
   const out: Record<string, DexTokenInfo> = {};
@@ -153,6 +170,9 @@ async function fetchDexInfo(addresses: string[]): Promise<Record<string, DexToke
         price: basePrice,
         liquidityUsd: totalLiq,
         pairCount: basePairs.length,
+        // LP staking tokens reuse the underlying base token's logo (e.g. a
+        // hCASH/WAVAX LP shows the hCASH icon).
+        imageUrl: images[lp.baseAddr]?.url,
         isLpToken: true,
         lpPoolLiquidityUsd: lp.lpPoolLiquidityUsd,
       };
@@ -163,7 +183,12 @@ async function fetchDexInfo(addresses: string[]): Promise<Record<string, DexToke
       const price = totalLiq > 0
         ? pairs.reduce((s, p) => s + p.price * p.liq, 0) / totalLiq
         : 0;
-      out[addr] = { price, liquidityUsd: totalLiq, pairCount: pairs.length };
+      out[addr] = {
+        price,
+        liquidityUsd: totalLiq,
+        pairCount: pairs.length,
+        imageUrl: images[addr]?.url,
+      };
     }
   }
   return out;

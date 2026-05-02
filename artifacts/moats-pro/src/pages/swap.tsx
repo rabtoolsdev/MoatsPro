@@ -2,7 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { useAccount } from "wagmi";
 import { useAppKit, useAppKitNetwork } from "@reown/appkit/react";
 import { formatUnits, parseUnits } from "viem";
-import { ArrowDownUp, ChevronDown, Loader2, Wallet } from "lucide-react";
+import { ArrowDownUp, Check, ChevronDown, Loader2, Wallet, Zap } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import moatSwapLogo from "@assets/Moats_Logo_Swap_1777739220258.png";
 import { Navbar } from "@/components/navbar";
 import { TokenSelectModal } from "@/components/swap/token-select-modal";
@@ -19,16 +27,25 @@ import {
   FEE_BPS,
   FEE_WALLET,
   SWAP_SUPPORTED_CHAIN_IDS,
+  type QuoteResult,
+  type RouterId,
+  type SwapQuote,
 } from "@/lib/swap-routers";
 import { networks, CHAIN_DISPLAY } from "@/lib/wagmi-config";
 import { useAllMoatConfigs } from "@/hooks/use-moats-api";
+import { useDexscreenerInfo } from "@/hooks/use-dexscreener";
 import {
   useTokenAllowance,
   useTokenBalance,
   useApproveToken,
   useSwapFromBalance,
 } from "@/hooks/use-moat-contract";
-import { useSwapQuote, useExecuteSwap, type FeeTransfer } from "@/hooks/use-swap";
+import {
+  useSwapQuote,
+  useExecuteSwap,
+  type FeeTransfer,
+  type RouterPreference,
+} from "@/hooks/use-swap";
 import { useSlippage } from "@/hooks/use-slippage";
 import { useWalletAssetBalances } from "@/hooks/use-wallet-assets";
 import { useToast } from "@/hooks/use-toast";
@@ -69,10 +86,27 @@ export default function Swap() {
   );
 
   const { data: moats } = useAllMoatConfigs();
-  const moatTokens = useMemo(
+  const rawMoatTokens = useMemo(
     () => deriveMoatTokens(moats, networkKey),
     [moats, networkKey],
   );
+
+  // Pull each moat token's canonical image from DexScreener — same source
+  // the Explore page uses for token branding. This gives us real project
+  // logos (Gator, ARENA, SEEDS, …) instead of broken Trust Wallet 404s.
+  const moatTokenAddrs = useMemo(
+    () => rawMoatTokens.map((t) => t.address.toLowerCase()),
+    [rawMoatTokens],
+  );
+  const { data: dexInfoMap } = useDexscreenerInfo(moatTokenAddrs);
+
+  const moatTokens = useMemo(() => {
+    if (!dexInfoMap || Object.keys(dexInfoMap).length === 0) return rawMoatTokens;
+    return rawMoatTokens.map((t) => {
+      const img = dexInfoMap[t.address.toLowerCase()]?.imageUrl;
+      return img ? { ...t, logoUrl: img } : t;
+    });
+  }, [rawMoatTokens, dexInfoMap]);
   // Both sides accept the full token universe — base assets + moat-backed
   // tokens for the *current* chain. This makes the swap symmetric (e.g. buy
   // a moat token with the chain's native asset, or sell it back).
@@ -91,6 +125,10 @@ export default function Swap() {
   const [amount, setAmount] = useState("");
   const [pickerSide, setPickerSide] = useState<Side | null>(null);
   const [flipCount, setFlipCount] = useState(0);
+  // Manual router override. "auto" lets pickBestQuote choose the best output;
+  // any specific router id forces the quote/tx through that aggregator even
+  // if another would have priced higher.
+  const [preferredRouter, setPreferredRouter] = useState<RouterPreference>("auto");
 
   // When the user switches networks the previously-selected tokens belong
   // to the wrong chain — reset to that chain's defaults so we never quote
@@ -152,6 +190,7 @@ export default function Swap() {
     fromAmount: swapAmountStr,
     fromDecimals,
     slippage,
+    preferredRouter,
     enabled: isSwapSupported && isConnected,
   });
 
@@ -478,19 +517,19 @@ export default function Swap() {
               />
             )}
             <Row label="Moat fee" value={`${(FEE_BPS / 100).toFixed(2)}%`} />
-            {quote.best && (
+            {(quote.best || quote.results.length > 0) && (
               <Row
                 label="Routed via"
                 value={
-                  <span className="flex items-center gap-1.5">
-                    <span className="relative flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-semibold uppercase tracking-wide">
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary live-dot" aria-hidden />
-                      {quote.best.router === "lifi" ? "Li.Fi" : quote.best.router}
-                    </span>
-                    <span className="text-muted-foreground/80 truncate max-w-[140px]">
-                      via {quote.best.toolName}
-                    </span>
-                  </span>
+                  <RouterSelector
+                    preferred={preferredRouter}
+                    onChange={setPreferredRouter}
+                    results={quote.results}
+                    autoBest={quote.autoBest}
+                    activeQuote={quote.best}
+                    toDecimals={toDecimals}
+                    toSymbol={toToken?.symbol}
+                  />
                 }
               />
             )}
@@ -655,6 +694,158 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
       <span className="text-muted-foreground">{label}</span>
       <span className="text-foreground/90 font-medium">{value}</span>
     </div>
+  );
+}
+
+// Routers we expose in the manual selector. Order = display order in dropdown.
+// 0x is omitted because the integration is currently scaffolded only and never
+// returns a real quote — surfacing it would just be a permanently-disabled item.
+const SELECTABLE_ROUTERS: { id: RouterId; label: string }[] = [
+  { id: "lifi", label: "Li.Fi" },
+  { id: "odos", label: "Odos" },
+];
+
+function routerLabel(id: RouterId): string {
+  return SELECTABLE_ROUTERS.find((r) => r.id === id)?.label ?? id;
+}
+
+interface RouterSelectorProps {
+  preferred: RouterPreference;
+  onChange: (next: RouterPreference) => void;
+  results: QuoteResult[];
+  autoBest: SwapQuote | null;
+  activeQuote: SwapQuote | null;
+  toDecimals: number;
+  toSymbol?: string;
+}
+
+function RouterSelector({
+  preferred,
+  onChange,
+  results,
+  autoBest,
+  activeQuote,
+  toDecimals,
+  toSymbol,
+}: RouterSelectorProps) {
+  // Trigger label: shows the router whose quote is currently driving the swap.
+  // When in auto mode we annotate which aggregator auto picked.
+  const triggerRouter = activeQuote?.router;
+  const triggerToolName = activeQuote?.toolName;
+  const isManual = preferred !== "auto";
+  const usedFallback = isManual && triggerRouter !== preferred;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        data-testid="btn-router-selector"
+        className="group flex items-center gap-1.5 px-2 py-1 -my-1 rounded-md hover:bg-muted/40 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+      >
+        <span className="relative flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-semibold uppercase tracking-wide">
+          {preferred === "auto" ? (
+            <Zap size={10} className="-ml-0.5" aria-hidden />
+          ) : (
+            <span className="w-1.5 h-1.5 rounded-full bg-primary live-dot" aria-hidden />
+          )}
+          {preferred === "auto"
+            ? `Auto${triggerRouter ? ` · ${routerLabel(triggerRouter)}` : ""}`
+            : routerLabel(preferred)}
+        </span>
+        {triggerToolName && (
+          <span className="text-muted-foreground/80 truncate max-w-[120px] text-[11px]">
+            via {triggerToolName}
+          </span>
+        )}
+        <ChevronDown
+          size={12}
+          className="text-muted-foreground/70 group-hover:text-foreground transition-colors"
+          aria-hidden
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        className="w-60 bg-popover/95 backdrop-blur border-border/60"
+      >
+        <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+          Route quote through
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+
+        {/* Auto — picks the router with the highest output */}
+        <DropdownMenuItem
+          data-testid="router-option-auto"
+          onSelect={() => onChange("auto")}
+          className="flex items-start gap-2 cursor-pointer"
+        >
+          <Check
+            size={14}
+            className={`mt-0.5 shrink-0 ${preferred === "auto" ? "text-primary" : "opacity-0"}`}
+            aria-hidden
+          />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 text-xs font-semibold">
+              <Zap size={11} className="text-primary" aria-hidden />
+              Auto (best price)
+            </div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">
+              {autoBest
+                ? `Currently ${routerLabel(autoBest.router)} · ${formatNumber(parseFloat(formatUnits(BigInt(autoBest.toAmountRaw), toDecimals)))} ${toSymbol ?? ""}`
+                : "Picks the highest-output aggregator"}
+            </div>
+          </div>
+        </DropdownMenuItem>
+
+        {SELECTABLE_ROUTERS.map(({ id, label }) => {
+          const result = results.find((r) => r.router === id);
+          const ok = !!result?.ok && !!result.quote;
+          const out = ok && result?.quote
+            ? formatNumber(parseFloat(formatUnits(BigInt(result.quote.toAmountRaw), toDecimals)))
+            : null;
+          const isPicked = preferred === id;
+          return (
+            <DropdownMenuItem
+              key={id}
+              data-testid={`router-option-${id}`}
+              disabled={!ok}
+              onSelect={() => {
+                if (ok) onChange(id);
+              }}
+              className="flex items-start gap-2 cursor-pointer data-[disabled]:cursor-not-allowed"
+            >
+              <Check
+                size={14}
+                className={`mt-0.5 shrink-0 ${isPicked ? "text-primary" : "opacity-0"}`}
+                aria-hidden
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2 text-xs font-semibold">
+                  <span>{label}</span>
+                  {ok && out && (
+                    <span className="text-muted-foreground font-normal text-[10px] truncate">
+                      {out} {toSymbol}
+                    </span>
+                  )}
+                </div>
+                <div className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">
+                  {ok
+                    ? `via ${result?.quote?.toolName ?? label}`
+                    : result?.error ?? "No route available"}
+                </div>
+              </div>
+            </DropdownMenuItem>
+          );
+        })}
+
+        {usedFallback && (
+          <>
+            <DropdownMenuSeparator />
+            <div className="px-2 py-1.5 text-[10px] text-amber-400/90 leading-snug">
+              {routerLabel(preferred as RouterId)} has no quote — using auto-best ({triggerRouter ? routerLabel(triggerRouter) : "—"}) for this trade.
+            </div>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
