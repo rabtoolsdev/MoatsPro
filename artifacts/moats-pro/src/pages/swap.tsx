@@ -360,12 +360,6 @@ export default function Swap() {
                 value={`${formatNumber(parseFloat(toAmountMinFormatted))} ${toToken?.symbol ?? ""}`}
               />
             )}
-            {quote.best && quote.best.estimatedGasUsd !== undefined && (
-              <Row
-                label="Network fee"
-                value={`≈ $${quote.best.estimatedGasUsd.toFixed(2)}`}
-              />
-            )}
             <Row label="Moat fee" value={`${(FEE_BPS / 100).toFixed(2)}%`} />
             {quote.best && (
               <Row
