@@ -435,8 +435,7 @@ export default function Swap() {
 
   // Surface a route error only when no router could quote at all. Prefer the
   // Li.Fi message (broadest aggregator → most informative reason), then fall
-  // back to Odos / KyberSwap. 0x errors are intentionally last because the
-  // "not configured" message would drown out real routing reasons.
+  // back to Odos / KyberSwap.
   const allRoutersFailed =
     !quote.isLoading &&
     !quote.best &&
@@ -446,7 +445,7 @@ export default function Swap() {
     if (!allRoutersFailed) return undefined;
     const byRouter = (id: RouterId) =>
       quote.results.find((r) => r.router === id && !r.ok)?.error;
-    return byRouter("lifi") ?? byRouter("odos") ?? byRouter("kyber") ?? byRouter("0x");
+    return byRouter("lifi") ?? byRouter("odos") ?? byRouter("kyber");
   })();
 
   // ---------- UI ----------
@@ -623,7 +622,7 @@ export default function Swap() {
 
           <div className="mt-3 text-[10px] text-muted-foreground/70 text-center flex items-center justify-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-primary/80 live-dot" aria-hidden />
-            <span>Quotes auto-refresh every 20s · Comparing Li.Fi, Odos, KyberSwap{import.meta.env.VITE_0X_API_KEY ? " & 0x" : ""} for best execution</span>
+            <span>Quotes auto-refresh every 20s · Comparing Li.Fi, Odos, KyberSwap for best execution</span>
           </div>
           </div>
         </div>
@@ -764,16 +763,15 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 // Routers we expose in the manual selector. Order = display order in dropdown.
-// 0x is only surfaced when a VITE_0X_API_KEY is configured at build time —
-// otherwise the option would be permanently disabled. KyberSwap and Li.Fi/Odos
-// require no key.
+// 0x is intentionally hidden for now (its v2 endpoint charges a ~0.15% volume
+// fee on output that would silently shrink the user's receive amount when it
+// wins). The implementation in swap-routers.ts is preserved — re-enable by
+// adding back `{ id: "0x", label: "0x" }` (gated on VITE_0X_API_KEY) and the
+// `get0xQuote(req)` call in `getAllQuotes`.
 const SELECTABLE_ROUTERS: { id: RouterId; label: string }[] = [
   { id: "lifi", label: "Li.Fi" },
   { id: "odos", label: "Odos" },
   { id: "kyber", label: "KyberSwap" },
-  ...(import.meta.env.VITE_0X_API_KEY
-    ? ([{ id: "0x" as RouterId, label: "0x" }] as const)
-    : []),
 ];
 
 function routerLabel(id: RouterId): string {

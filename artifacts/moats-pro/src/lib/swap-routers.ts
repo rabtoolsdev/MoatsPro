@@ -601,9 +601,14 @@ function parseOdosError(status: number, body: string): string {
 }
 
 export async function getAllQuotes(req: QuoteRequest): Promise<QuoteResult[]> {
+  // 0x is intentionally excluded from the parallel comparison for now —
+  // its v2 endpoint always charges a ~0.15% volume fee on the user's output
+  // which would silently undercut the other routers when it wins "auto".
+  // Re-enable by adding `get0xQuote(req)` back to this Promise.all and
+  // restoring the conditional `{ id: "0x", label: "0x" }` entry in
+  // SELECTABLE_ROUTERS (artifacts/moats-pro/src/pages/swap.tsx).
   const results = await Promise.all([
     getLifiQuote(req),
-    get0xQuote(req),
     getOdosQuote(req),
     getKyberQuote(req),
   ]);
