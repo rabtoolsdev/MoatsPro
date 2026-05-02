@@ -3,6 +3,7 @@ import { useAccount } from "wagmi";
 import { useAppKit, useAppKitNetwork } from "@reown/appkit/react";
 import { formatUnits, parseUnits } from "viem";
 import { ArrowDownUp, ChevronDown, Loader2, Wallet } from "lucide-react";
+import moatSwapLogo from "@assets/MOATS_SWAP_LOGO_1777739164876.png";
 import { Navbar } from "@/components/navbar";
 import { TokenSelectModal } from "@/components/swap/token-select-modal";
 import { TokenLogo } from "@/components/swap/token-logo";
@@ -321,10 +322,13 @@ export default function Swap() {
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
       <div className="pt-28 sm:pt-32 pb-24 px-4 max-w-xl mx-auto">
-        <div className="mb-6 text-center">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-br from-foreground to-primary/80 bg-clip-text text-transparent">
-            Moat Swap
-          </h1>
+        <div className="mb-6 flex justify-center">
+          <img
+            src={moatSwapLogo}
+            alt="The Moats Swap"
+            className="h-20 sm:h-24 w-auto select-none drop-shadow-[0_4px_24px_rgba(0,212,255,0.18)]"
+            draggable={false}
+          />
         </div>
 
         <div className="relative">
