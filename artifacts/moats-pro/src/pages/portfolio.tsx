@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { useAccount, useReadContracts } from "wagmi";
+import { useAppKit } from "@reown/appkit/react";
 import { formatUnits } from "viem";
 import { motion } from "framer-motion";
 import { Wallet, TrendingUp, Award, AlertCircle, ArrowDownRight, Lock, DollarSign, ArrowUpRight, Flame, Gift } from "lucide-react";
@@ -26,6 +27,7 @@ function formatTokenAmount(raw: bigint, decimals: number = 18): string {
 
 export default function Portfolio() {
   const { address, isConnected } = useAccount();
+  const { open } = useAppKit();
   const { data: mapsScore, isLoading: scoreLoading } = useMapsScore(address);
   const { data: configs, isLoading: configsLoading } = useAllMoatConfigs();
   const { data: userEvents, isLoading: eventsLoading } = useUserEvents(address);
@@ -343,7 +345,14 @@ export default function Portfolio() {
             <p className="text-muted-foreground mb-8 max-w-md mx-auto">
               Connect your wallet to view your Moats positions and MAPS score.
             </p>
-            <w3m-connect-button />
+            <button
+              onClick={() => open({ view: "Connect" })}
+              data-testid="btn-connect-wallet-portfolio"
+              className="btn-shimmer inline-flex items-center gap-2 px-8 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-all duration-200 hover:shadow-[0_0_24px_rgba(0,212,255,0.4)]"
+            >
+              <Wallet size={16} />
+              Connect Wallet
+            </button>
           </motion.div>
         ) : (
           <div className="space-y-8">

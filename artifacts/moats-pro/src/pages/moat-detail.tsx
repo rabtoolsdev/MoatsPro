@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useParams } from "wouter";
 import { useAccount, useReadContracts, useReadContract } from "wagmi";
+import { useAppKit } from "@reown/appkit/react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Zap, Users, TrendingUp, Lock, Gift, Flame,
   AlertCircle, CheckCircle, Loader2, Coins, ExternalLink,
-  Unlock, Clock, AlertTriangle,
+  Unlock, Clock, AlertTriangle, Wallet,
 } from "lucide-react";
 import { Link } from "wouter";
 import { formatUnits, parseUnits } from "viem";
@@ -82,6 +83,8 @@ export default function MoatDetail() {
   const params = useParams<{ address: string }>();
   const contractAddress = params.address as MoatContractAddress | undefined;
   const { address: userAddress, isConnected } = useAccount();
+
+  const { open } = useAppKit();
 
   const [activeTab, setActiveTab] = useState<ActionTab>("stake");
   const [stakeAmount, setStakeAmount] = useState("");
@@ -371,7 +374,14 @@ export default function MoatDetail() {
           className="mb-8"
         >
           {configLoading ? (
-            <div className="h-20 w-full rounded-xl skeleton-shimmer" />
+            <div className="flex items-start gap-4">
+              <div className="w-16 h-16 rounded-2xl skeleton-shimmer shrink-0" />
+              <div className="flex-1 space-y-2 pt-1">
+                <div className="h-7 w-2/3 rounded-md skeleton-shimmer" />
+                <div className="h-3 w-1/3 rounded-md skeleton-shimmer" />
+                <div className="h-3 w-1/2 rounded-md skeleton-shimmer" />
+              </div>
+            </div>
           ) : (
             <div className="flex items-start gap-4">
               <MoatLogo
@@ -1003,7 +1013,14 @@ export default function MoatDetail() {
                     <p className="text-muted-foreground text-sm mb-4">
                       Connect your wallet to interact with this Moat
                     </p>
-                    <w3m-connect-button />
+                    <button
+                      onClick={() => open({ view: "Connect" })}
+                      data-testid="btn-connect-wallet-actions"
+                      className="btn-shimmer inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-all duration-200 hover:shadow-[0_0_20px_rgba(0,212,255,0.35)]"
+                    >
+                      <Wallet size={15} />
+                      Connect Wallet
+                    </button>
                   </div>
                 ) : (
                   <>
@@ -1350,7 +1367,14 @@ export default function MoatDetail() {
                     <p className="text-muted-foreground text-sm mb-4">
                       Connect your wallet to view and claim rewards
                     </p>
-                    <w3m-connect-button />
+                    <button
+                      onClick={() => open({ view: "Connect" })}
+                      data-testid="btn-connect-wallet-rewards"
+                      className="btn-shimmer inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-all duration-200 hover:shadow-[0_0_20px_rgba(0,212,255,0.35)]"
+                    >
+                      <Wallet size={15} />
+                      Connect Wallet
+                    </button>
                   </div>
                 ) : userInfo.isLoading ? (
                   <div className="space-y-2">
