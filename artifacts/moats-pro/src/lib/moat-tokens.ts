@@ -139,6 +139,22 @@ const BASE_TOKENS_BASE: MoatToken[] = [
     decimals: 6,
     moatContractAddresses: [],
   },
+  {
+    address: "0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2",
+    symbol: "USDT",
+    name: "Tether USD",
+    logoUrl: TW_BASE_LOGO("0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2"),
+    decimals: 6,
+    moatContractAddresses: [],
+  },
+  {
+    address: "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf",
+    symbol: "cbBTC",
+    name: "Coinbase Wrapped BTC",
+    logoUrl: TW_BASE_LOGO("0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf"),
+    decimals: 8,
+    moatContractAddresses: [],
+  },
 ];
 
 // Per-chain base token universe used by the Moat Swap. The swap UI looks

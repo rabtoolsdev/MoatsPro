@@ -8,7 +8,7 @@ import { TokenSelectModal } from "@/components/swap/token-select-modal";
 import { TokenLogo } from "@/components/swap/token-logo";
 import { SlippageSettings } from "@/components/swap/slippage-settings";
 import {
-  BASE_TOKENS,
+  getBaseTokensForChain,
   deriveMoatTokens,
   isNativeToken,
   type MoatToken,
@@ -17,8 +17,9 @@ import {
   AVALANCHE_CHAIN_ID,
   FEE_BPS,
   FEE_WALLET,
+  SWAP_SUPPORTED_CHAIN_IDS,
 } from "@/lib/swap-routers";
-import { networks } from "@/lib/wagmi-config";
+import { networks, CHAIN_DISPLAY } from "@/lib/wagmi-config";
 import { useAllMoatConfigs } from "@/hooks/use-moats-api";
 import {
   useTokenAllowance,
@@ -36,27 +37,67 @@ type Side = "from" | "to";
 export default function Swap() {
   const { isConnected, address } = useAccount();
   const { open } = useAppKit();
-  const { chainId, switchNetwork } = useAppKitNetwork();
+  const { chainId: rawChainId, switchNetwork } = useAppKitNetwork();
   const { toast } = useToast();
 
+  // Normalize chainId to a number (AppKit may surface a string).
+  const activeChainId = useMemo(() => {
+    if (rawChainId == null) return undefined;
+    const n = typeof rawChainId === "number" ? rawChainId : Number(rawChainId);
+    return Number.isFinite(n) ? n : undefined;
+  }, [rawChainId]);
+
+  // Network key the Moats API uses (e.g. "avalanche", "ethereum", "base"),
+  // derived from the wallet's connected chain. Falls back to Avalanche so
+  // the UI stays useful before a wallet is connected.
+  const networkKey = activeChainId
+    ? CHAIN_DISPLAY[activeChainId]?.network ?? "avalanche"
+    : "avalanche";
+
+  // Aggregator coverage gate. Subnets (Grotto, Blaze) aren't in Li.Fi/Odos.
+  const isSwapSupported =
+    !!activeChainId && SWAP_SUPPORTED_CHAIN_IDS.includes(activeChainId);
+
+  // Base assets shown to the user are pulled from the *connected* chain so
+  // they swap with what they actually hold (AVAX/USDC on Avalanche, ETH/USDC
+  // on Ethereum, ETH/USDC on Base, etc.).
+  const baseTokens = useMemo(
+    () => getBaseTokensForChain(activeChainId ?? AVALANCHE_CHAIN_ID),
+    [activeChainId],
+  );
+
   const { data: moats } = useAllMoatConfigs();
-  const moatTokens = useMemo(() => deriveMoatTokens(moats), [moats]);
+  const moatTokens = useMemo(
+    () => deriveMoatTokens(moats, networkKey),
+    [moats, networkKey],
+  );
   // Both sides accept the full token universe — base assets + moat-backed
-  // tokens. This makes the swap symmetric (e.g. buy a moat token with AVAX,
-  // or sell it back for AVAX/USDC/USDT/WAVAX/BTC.b or another moat token).
+  // tokens for the *current* chain. This makes the swap symmetric (e.g. buy
+  // a moat token with the chain's native asset, or sell it back).
   const allTokens = useMemo(
-    () => [...BASE_TOKENS, ...moatTokens],
-    [moatTokens]
+    () => [...baseTokens, ...moatTokens],
+    [baseTokens, moatTokens]
   );
   const fromTokens = allTokens;
   const toTokens = allTokens;
   const { slippage, setSlippage } = useSlippage();
 
-  const [fromToken, setFromToken] = useState<MoatToken | null>(BASE_TOKENS[0]);
+  const [fromToken, setFromToken] = useState<MoatToken | null>(
+    baseTokens[0] ?? null,
+  );
   const [toToken, setToToken] = useState<MoatToken | null>(null);
   const [amount, setAmount] = useState("");
   const [pickerSide, setPickerSide] = useState<Side | null>(null);
   const [flipCount, setFlipCount] = useState(0);
+
+  // When the user switches networks the previously-selected tokens belong
+  // to the wrong chain — reset to that chain's defaults so we never quote
+  // an Avalanche token while the wallet is on Ethereum (etc.).
+  useEffect(() => {
+    setFromToken(baseTokens[0] ?? null);
+    setToToken(null);
+    setAmount("");
+  }, [activeChainId, baseTokens]);
 
   // Pre-select first moat token for "to" side once loaded
   useEffect(() => {
@@ -71,10 +112,12 @@ export default function Swap() {
   const toDecimals = (toBal.decimals as number | undefined) ?? toToken?.decimals ?? 18;
   const isFromNative = !!fromToken && isNativeToken(fromToken.address);
 
-  const onAvalanche = chainId === AVALANCHE_CHAIN_ID;
-
-  // Wallet balances for the "You pay" picker (auto-shows assets the user holds).
-  const { balances: walletBalances } = useWalletAssetBalances(fromTokens);
+  // Wallet balances for the "You pay" picker (auto-shows assets the user
+  // holds on the currently connected chain).
+  const { balances: walletBalances } = useWalletAssetBalances(
+    fromTokens,
+    activeChainId,
+  );
 
   const amountRaw = useMemo(() => {
     try {
@@ -101,12 +144,13 @@ export default function Swap() {
   }, [swapRaw, fromDecimals]);
 
   const quote = useSwapQuote({
+    chainId: activeChainId,
     fromTokenAddress: fromToken?.address,
     toTokenAddress: toToken?.address,
     fromAmount: swapAmountStr,
     fromDecimals,
     slippage,
-    enabled: onAvalanche && isConnected,
+    enabled: isSwapSupported && isConnected,
   });
 
   const allowance = useTokenAllowance(
@@ -234,9 +278,9 @@ export default function Swap() {
   const buttonState = (() => {
     if (!isConnected)
       return { label: "Connect Wallet", action: () => open({ view: "Connect" }), disabled: false, primary: true };
-    if (!onAvalanche)
+    if (!isSwapSupported)
       return {
-        label: "Switch to Avalanche",
+        label: "Switch to a supported chain",
         action: () => {
           const avax = networks.find((n) => Number(n.id) === AVALANCHE_CHAIN_ID);
           if (avax && typeof switchNetwork === "function") switchNetwork(avax);
