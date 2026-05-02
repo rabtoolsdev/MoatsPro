@@ -133,7 +133,7 @@ function parseLifiError(status: number, body: string): string {
 }
 
 const ZEROX_API_KEY = (import.meta.env.VITE_0X_API_KEY as string | undefined) ?? "";
-const ODOS_REFERRAL_CODE = (import.meta.env.VITE_ODOS_REFERRAL_CODE as string | undefined) ?? "";
+const ODOS_REFERRAL_CODE_RAW = (import.meta.env.VITE_ODOS_REFERRAL_CODE as string | undefined) ?? "";
 
 export async function get0xQuote(_req: QuoteRequest): Promise<QuoteResult> {
   if (!ZEROX_API_KEY) {
@@ -150,19 +150,149 @@ export async function get0xQuote(_req: QuoteRequest): Promise<QuoteResult> {
   };
 }
 
-export async function getOdosQuote(_req: QuoteRequest): Promise<QuoteResult> {
-  if (!ODOS_REFERRAL_CODE) {
+interface OdosQuoteResponse {
+  pathId?: string;
+  outAmounts?: string[];
+  gasEstimateValue?: number;
+  detail?: string;
+  message?: string;
+}
+
+interface OdosAssembleResponse {
+  transaction?: {
+    to?: string;
+    data?: string;
+    value?: string | number;
+    gas?: number;
+  };
+  detail?: string;
+  message?: string;
+}
+
+// Odos handles tokens Li.Fi rejects (e.g. tokens with buy/sell transfer tax)
+// and is used as a complementary aggregator. `pickBestQuote` chooses whichever
+// router returns the most output. Referral code is optional.
+export async function getOdosQuote(req: QuoteRequest): Promise<QuoteResult> {
+  try {
+    const slippage = req.slippage ?? DEFAULT_SLIPPAGE;
+    const rawFromAmount = parseUnits(req.fromAmount, req.fromDecimals).toString();
+
+    // Odos uses 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee for native, but
+    // the all-zero address also works on the v2 SOR; we keep zeros for
+    // consistency with Li.Fi.
+    const referralCode = ODOS_REFERRAL_CODE_RAW
+      ? Number(ODOS_REFERRAL_CODE_RAW)
+      : undefined;
+
+    const quoteRes = await fetch("https://api.odos.xyz/sor/quote/v2", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chainId: AVALANCHE_CHAIN_ID,
+        inputTokens: [
+          { tokenAddress: req.fromTokenAddress, amount: rawFromAmount },
+        ],
+        outputTokens: [
+          { tokenAddress: req.toTokenAddress, proportion: 1 },
+        ],
+        userAddr: req.fromAddress,
+        slippageLimitPercent: slippage * 100,
+        ...(referralCode !== undefined && Number.isFinite(referralCode)
+          ? { referralCode }
+          : {}),
+        compact: true,
+      }),
+    });
+
+    if (!quoteRes.ok) {
+      const body = await quoteRes.text().catch(() => "");
+      return {
+        router: "odos",
+        ok: false,
+        error: parseOdosError(quoteRes.status, body),
+      };
+    }
+    const qd = (await quoteRes.json()) as OdosQuoteResponse;
+    if (!qd.pathId || !qd.outAmounts?.[0]) {
+      return {
+        router: "odos",
+        ok: false,
+        error: qd.detail || qd.message || "No Odos route available.",
+      };
+    }
+
+    const asmRes = await fetch("https://api.odos.xyz/sor/assemble", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userAddr: req.fromAddress,
+        pathId: qd.pathId,
+        simulate: false,
+      }),
+    });
+    if (!asmRes.ok) {
+      const body = await asmRes.text().catch(() => "");
+      return {
+        router: "odos",
+        ok: false,
+        error: parseOdosError(asmRes.status, body),
+      };
+    }
+    const asm = (await asmRes.json()) as OdosAssembleResponse;
+    const tx = asm.transaction;
+    if (!tx?.to || !tx?.data) {
+      return {
+        router: "odos",
+        ok: false,
+        error: asm.detail || asm.message || "Odos returned no transaction.",
+      };
+    }
+
+    const outAmount = BigInt(qd.outAmounts[0]);
+    const slippageBps = BigInt(Math.max(0, Math.round(slippage * 10_000)));
+    const toAmountMin = outAmount - (outAmount * slippageBps) / 10_000n;
+
+    return {
+      router: "odos",
+      ok: true,
+      quote: {
+        router: "odos",
+        toolName: "Odos",
+        fromAmountRaw: rawFromAmount,
+        toAmountRaw: outAmount.toString(),
+        toAmountMinRaw: toAmountMin.toString(),
+        estimatedGasUsd:
+          typeof qd.gasEstimateValue === "number" && qd.gasEstimateValue > 0
+            ? qd.gasEstimateValue
+            : undefined,
+        approveTo: tx.to as `0x${string}`,
+        tx: {
+          to: tx.to as `0x${string}`,
+          data: tx.data as `0x${string}`,
+          value: BigInt(tx.value ?? "0"),
+        },
+      },
+    };
+  } catch (e) {
     return {
       router: "odos",
       ok: false,
-      error: "ODOS router not configured (VITE_ODOS_REFERRAL_CODE missing).",
+      error: e instanceof Error ? e.message : "Odos quote request failed",
     };
   }
-  return {
-    router: "odos",
-    ok: false,
-    error: "ODOS router scaffolded — wiring pending. Using Li.Fi best route.",
-  };
+}
+
+function parseOdosError(status: number, body: string): string {
+  if (status === 429) return "Odos rate limit hit. Try again in a moment.";
+  if (status >= 500) return "Odos service is temporarily unavailable.";
+  try {
+    const parsed = JSON.parse(body);
+    if (typeof parsed?.detail === "string") return parsed.detail;
+    if (typeof parsed?.message === "string") return parsed.message;
+  } catch {
+    /* ignore */
+  }
+  return `Odos quote failed (HTTP ${status})`;
 }
 
 export async function getAllQuotes(req: QuoteRequest): Promise<QuoteResult[]> {

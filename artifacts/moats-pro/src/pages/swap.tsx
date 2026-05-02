@@ -215,11 +215,20 @@ export default function Swap() {
     return out / inp;
   }, [quote.best, fromToken, toToken, fromDecimals, toDecimals]);
 
-  const lifiUnavailable =
+  // Surface a route error only when no router could quote at all. Treat
+  // stub/"not configured" errors (0x) as silent so they don't drown out the
+  // real reason from Li.Fi or Odos.
+  const allRoutersFailed =
     !quote.isLoading &&
     !quote.best &&
-    quote.results.some((r) => r.router === "lifi" && !r.ok);
-  const lifiError = quote.results.find((r) => r.router === "lifi" && !r.ok)?.error;
+    quote.results.length > 0 &&
+    quote.results.every((r) => !r.ok);
+  const routeError = (() => {
+    if (!allRoutersFailed) return undefined;
+    const lifi = quote.results.find((r) => r.router === "lifi" && !r.ok)?.error;
+    const odos = quote.results.find((r) => r.router === "odos" && !r.ok)?.error;
+    return lifi ?? odos;
+  })();
 
   // ---------- UI ----------
   const buttonState = (() => {
@@ -370,9 +379,9 @@ export default function Swap() {
                 }
               />
             )}
-            {lifiUnavailable && lifiError && (
+            {routeError && (
               <div className="text-[11px] text-amber-400/90 mt-2 px-2 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                {lifiError}
+                {routeError}
               </div>
             )}
           </div>
