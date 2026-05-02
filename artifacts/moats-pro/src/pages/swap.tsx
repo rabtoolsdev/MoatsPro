@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useAccount } from "wagmi";
+import { useAccount, useReadContracts } from "wagmi";
 import { useAppKit, useAppKitNetwork } from "@reown/appkit/react";
 import { formatUnits, parseUnits } from "viem";
 import { ArrowDownUp, Check, ChevronDown, Loader2, Wallet, Zap } from "lucide-react";
@@ -33,7 +33,7 @@ import {
 } from "@/lib/swap-routers";
 import { networks, CHAIN_DISPLAY } from "@/lib/wagmi-config";
 import { useAllMoatConfigs } from "@/hooks/use-moats-api";
-import { useDexscreenerInfo } from "@/hooks/use-dexscreener";
+import { MOAT_LOGO_ABI } from "@/lib/moat-abi";
 import {
   useTokenAllowance,
   useTokenBalance,
@@ -91,22 +91,50 @@ export default function Swap() {
     [moats, networkKey],
   );
 
-  // Pull each moat token's canonical image from DexScreener — same source
-  // the Explore page uses for token branding. This gives us real project
-  // logos (Gator, ARENA, SEEDS, …) instead of broken Trust Wallet 404s.
-  const moatTokenAddrs = useMemo(
-    () => rawMoatTokens.map((t) => t.address.toLowerCase()),
-    [rawMoatTokens],
-  );
-  const { data: dexInfoMap } = useDexscreenerInfo(moatTokenAddrs);
+  // Pull moat-token logos from the same on-chain source the Explore and
+  // Portfolio pages use: every moat contract exposes a getLogoURL() and we
+  // simply mirror it. A token may be backed by multiple moat contracts, so
+  // we use the first non-empty result.
+  const logoContracts = useMemo(() => {
+    if (!moats) return [];
+    return moats.map((c) => ({
+      address: c.contractAddress as `0x${string}`,
+      abi: MOAT_LOGO_ABI,
+      functionName: "getLogoURL" as const,
+    }));
+  }, [moats]);
+
+  const { data: logoData } = useReadContracts({
+    contracts: logoContracts,
+    query: {
+      enabled: logoContracts.length > 0,
+      staleTime: 5 * 60 * 1000,
+      gcTime: 30 * 60 * 1000,
+    },
+  });
+
+  const moatLogoByContract = useMemo((): Record<string, string> => {
+    if (!logoData || !moats) return {};
+    const m: Record<string, string> = {};
+    moats.forEach((c, i) => {
+      const r = logoData[i];
+      if (r?.status === "success" && typeof r.result === "string" && r.result.length > 0) {
+        m[c.contractAddress.toLowerCase()] = r.result;
+      }
+    });
+    return m;
+  }, [logoData, moats]);
 
   const moatTokens = useMemo(() => {
-    if (!dexInfoMap || Object.keys(dexInfoMap).length === 0) return rawMoatTokens;
+    if (Object.keys(moatLogoByContract).length === 0) return rawMoatTokens;
     return rawMoatTokens.map((t) => {
-      const img = dexInfoMap[t.address.toLowerCase()]?.imageUrl;
-      return img ? { ...t, logoUrl: img } : t;
+      for (const ca of t.moatContractAddresses) {
+        const logo = moatLogoByContract[ca.toLowerCase()];
+        if (logo) return { ...t, logoUrl: logo };
+      }
+      return t;
     });
-  }, [rawMoatTokens, dexInfoMap]);
+  }, [rawMoatTokens, moatLogoByContract]);
   // Both sides accept the full token universe — base assets + moat-backed
   // tokens for the *current* chain. This makes the swap symmetric (e.g. buy
   // a moat token with the chain's native asset, or sell it back).
