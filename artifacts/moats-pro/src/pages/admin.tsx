@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useReadContracts } from "wagmi";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Activity,
@@ -19,6 +20,9 @@ import {
 import { Navbar } from "@/components/navbar";
 import { TokenLogo } from "@/components/swap/token-logo";
 import { CHAIN_DISPLAY } from "@/lib/wagmi-config";
+import { useAllMoatConfigs } from "@/hooks/use-moats-api";
+import { MOAT_LOGO_ABI } from "@/lib/moat-abi";
+import { getMoatMeta } from "@/lib/moat-metadata";
 import {
   fetchStats,
   fetchSwaps,
@@ -75,6 +79,44 @@ export default function Admin() {
   const isFetching = stats.isFetching || swaps.isFetching || users.isFetching;
   const lastUpdated = stats.dataUpdatedAt;
 
+  // On-chain moat token logos (mirrors Explore/Portfolio/Swap recipe). Swap
+  // rows store the underlying ERC20 token address, so we resolve each moat
+  // config's getLogoURL() and key the result by that token address.
+  const { data: moatConfigs } = useAllMoatConfigs();
+  const logoContracts = useMemo(() => {
+    if (!moatConfigs) return [];
+    return moatConfigs.map((c) => ({
+      address: c.contractAddress as `0x${string}`,
+      abi: MOAT_LOGO_ABI,
+      functionName: "getLogoURL" as const,
+    }));
+  }, [moatConfigs]);
+  const { data: logoData } = useReadContracts({
+    contracts: logoContracts,
+    query: {
+      enabled: logoContracts.length > 0,
+      staleTime: 5 * 60 * 1000,
+      gcTime: 30 * 60 * 1000,
+    },
+  });
+  const moatLogoByTokenAddress = useMemo((): Record<string, string> => {
+    if (!moatConfigs) return {};
+    const m: Record<string, string> = {};
+    moatConfigs.forEach((c, i) => {
+      const meta = getMoatMeta(c.contractAddress);
+      if (!meta.tokenAddress) return;
+      const tokenKey = meta.tokenAddress.toLowerCase();
+      if (m[tokenKey]) return; // first non-empty logo wins
+      const r = logoData?.[i];
+      if (r?.status === "success" && typeof r.result === "string" && r.result.length > 0) {
+        m[tokenKey] = r.result;
+      } else if (meta.logoUrl) {
+        m[tokenKey] = meta.logoUrl;
+      }
+    });
+    return m;
+  }, [logoData, moatConfigs]);
+
   return (
     <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
       {/* Ambient glow */}
@@ -130,6 +172,7 @@ export default function Admin() {
                   loading={swaps.isLoading}
                   addressFilter={addressFilter}
                   setAddressFilter={setAddressFilter}
+                  moatLogoByTokenAddress={moatLogoByTokenAddress}
                 />
               ) : (
                 <UsersTable
@@ -553,12 +596,14 @@ function TransactionsTable({
   loading,
   addressFilter,
   setAddressFilter,
+  moatLogoByTokenAddress,
 }: {
   rows: SwapRow[];
   total: number;
   loading: boolean;
   addressFilter: string;
   setAddressFilter: (v: string) => void;
+  moatLogoByTokenAddress: Record<string, string>;
 }) {
   return (
     <div className="rounded-2xl border border-border/60 bg-card/50 backdrop-blur-sm overflow-hidden">
@@ -608,7 +653,13 @@ function TransactionsTable({
                 </td>
               </tr>
             ) : (
-              rows.map((r) => <TxRow key={r.id} row={r} />)
+              rows.map((r) => (
+                <TxRow
+                  key={r.id}
+                  row={r}
+                  moatLogoByTokenAddress={moatLogoByTokenAddress}
+                />
+              ))
             )}
           </tbody>
         </table>
@@ -617,8 +668,16 @@ function TransactionsTable({
   );
 }
 
-function TxRow({ row: r }: { row: SwapRow }) {
+function TxRow({
+  row: r,
+  moatLogoByTokenAddress,
+}: {
+  row: SwapRow;
+  moatLogoByTokenAddress: Record<string, string>;
+}) {
   const display = CHAIN_DISPLAY[r.chainId];
+  const fromLogoHint = moatLogoByTokenAddress[r.fromTokenAddress.toLowerCase()];
+  const toLogoHint = moatLogoByTokenAddress[r.toTokenAddress.toLowerCase()];
   return (
     <tr
       className="border-b border-border/20 hover:bg-primary/[0.04] transition-colors"
@@ -643,6 +702,7 @@ function TxRow({ row: r }: { row: SwapRow }) {
               address={r.fromTokenAddress}
               symbol={r.fromTokenSymbol}
               network={r.network}
+              hint={fromLogoHint}
               size={20}
               className="ring-2 ring-card bg-card"
             />
@@ -650,6 +710,7 @@ function TxRow({ row: r }: { row: SwapRow }) {
               address={r.toTokenAddress}
               symbol={r.toTokenSymbol}
               network={r.network}
+              hint={toLogoHint}
               size={20}
               className="ring-2 ring-card bg-card"
             />
