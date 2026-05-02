@@ -494,7 +494,31 @@ function TransactionsTable({
                     {r.fromUsd != null ? formatUsd(r.fromUsd) : "—"}
                   </td>
                   <td className="px-3 py-2 text-xs text-right font-mono whitespace-nowrap text-primary/90">
-                    {r.feeUsd != null ? formatUsd(r.feeUsd) : "—"}
+                    <div className="flex items-center justify-end gap-1.5">
+                      <div className="flex flex-col items-end leading-tight">
+                        {r.feeAmount != null && (
+                          <span>{formatTokenAmount(r.feeAmount)} {r.fromTokenSymbol}</span>
+                        )}
+                        {r.feeUsd != null && (
+                          <span className="text-[10px] text-muted-foreground/70">
+                            {formatUsd(r.feeUsd)}
+                          </span>
+                        )}
+                        {r.feeAmount == null && r.feeUsd == null && <span>—</span>}
+                      </div>
+                      {r.feeTxHash && (
+                        <a
+                          href={explorerTx(r.chainId, r.feeTxHash)}
+                          target="_blank"
+                          rel="noreferrer"
+                          data-testid={`link-fee-tx-${r.id}`}
+                          title="View fee transfer on explorer"
+                          className="text-primary/70 hover:text-primary"
+                        >
+                          <ArrowUpRight size={11} />
+                        </a>
+                      )}
+                    </div>
                   </td>
                   <td className="px-3 py-2 text-[10px] uppercase">
                     <span className="px-1.5 py-0.5 rounded bg-muted/30 font-semibold">
@@ -601,6 +625,22 @@ function formatAmount(v: number): string {
   if (v < 1) return v.toFixed(4).replace(/\.?0+$/, "");
   if (v < 1000) return v.toFixed(3).replace(/\.?0+$/, "");
   return v.toLocaleString("en-US", { maximumFractionDigits: 2 });
+}
+
+// Always-readable token amount that never collapses to "0" or scientific form,
+// even for tiny fee transfers (e.g. 0.00099 AVAX).
+function formatTokenAmount(v: number): string {
+  if (!Number.isFinite(v) || v === 0) return "0";
+  const abs = Math.abs(v);
+  let decimals: number;
+  if (abs >= 1) decimals = 4;
+  else if (abs >= 0.01) decimals = 5;
+  else if (abs >= 0.0001) decimals = 6;
+  else if (abs >= 0.000001) decimals = 8;
+  else decimals = 10;
+  // Trim trailing zeros but keep at least 2 decimals for readability.
+  const s = v.toFixed(decimals);
+  return s.replace(/(\.\d*?[1-9])0+$/, "$1").replace(/\.0+$/, "");
 }
 
 function formatRelative(iso: string): string {
