@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { useAccount, useBalance, useReadContracts } from "wagmi";
 import { erc20Abi, formatUnits } from "viem";
 import { isNativeToken, type MoatToken } from "@/lib/moat-tokens";
-import { AVALANCHE_CHAIN_ID } from "@/lib/swap-routers";
 
 export interface AssetBalance {
   raw: bigint;
@@ -11,7 +10,14 @@ export interface AssetBalance {
 
 export type WalletBalances = Record<string, AssetBalance | undefined>;
 
-export function useWalletAssetBalances(tokens: MoatToken[]): {
+// Reads balances for the given token list against the wallet's currently
+// connected chain. We deliberately do NOT pin a chainId — wagmi auto-uses
+// the active chain, so when the user switches networks (Avalanche →
+// Ethereum → Base) balances follow without a remount.
+export function useWalletAssetBalances(
+  tokens: MoatToken[],
+  chainId?: number,
+): {
   balances: WalletBalances;
   isLoading: boolean;
 } {
@@ -28,7 +34,7 @@ export function useWalletAssetBalances(tokens: MoatToken[]): {
 
   const native = useBalance({
     address,
-    chainId: AVALANCHE_CHAIN_ID,
+    chainId,
     query: { enabled: isConnected && !!address && !!nativeToken },
   });
 
@@ -38,7 +44,7 @@ export function useWalletAssetBalances(tokens: MoatToken[]): {
       abi: erc20Abi,
       functionName: "balanceOf" as const,
       args: address ? [address] : undefined,
-      chainId: AVALANCHE_CHAIN_ID,
+      chainId,
     })),
     query: {
       enabled: isConnected && !!address && erc20Tokens.length > 0,

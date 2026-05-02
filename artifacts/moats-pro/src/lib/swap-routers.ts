@@ -8,11 +8,21 @@ export const FEE_DECIMAL = FEE_BPS / 10_000;
 // via a direct ERC20/native transfer to FEE_WALLET before each swap.
 export const INTEGRATOR_NAME = "moats-pro";
 export const AVALANCHE_CHAIN_ID = 43114;
+export const ETHEREUM_CHAIN_ID = 1;
+export const BASE_CHAIN_ID = 8453;
+// Chains where Li.Fi + Odos can route (others — e.g. Avalanche subnets —
+// don't have aggregator coverage and the swap UI gracefully disables).
+export const SWAP_SUPPORTED_CHAIN_IDS: readonly number[] = [
+  AVALANCHE_CHAIN_ID,
+  ETHEREUM_CHAIN_ID,
+  BASE_CHAIN_ID,
+] as const;
 export const DEFAULT_SLIPPAGE = 0.005;
 
 export type RouterId = "lifi" | "0x" | "odos";
 
 export interface QuoteRequest {
+  chainId: number;
   fromTokenAddress: `0x${string}`;
   toTokenAddress: `0x${string}`;
   fromAmount: string;
@@ -67,8 +77,8 @@ export async function getLifiQuote(req: QuoteRequest): Promise<QuoteResult> {
     const slippage = req.slippage ?? DEFAULT_SLIPPAGE;
     const rawFromAmount = parseUnits(req.fromAmount, req.fromDecimals).toString();
     const params = new URLSearchParams({
-      fromChain: String(AVALANCHE_CHAIN_ID),
-      toChain: String(AVALANCHE_CHAIN_ID),
+      fromChain: String(req.chainId),
+      toChain: String(req.chainId),
       fromToken: req.fromTokenAddress,
       toToken: req.toTokenAddress,
       fromAmount: rawFromAmount,
@@ -188,7 +198,7 @@ export async function getOdosQuote(req: QuoteRequest): Promise<QuoteResult> {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        chainId: AVALANCHE_CHAIN_ID,
+        chainId: req.chainId,
         inputTokens: [
           { tokenAddress: req.fromTokenAddress, amount: rawFromAmount },
         ],

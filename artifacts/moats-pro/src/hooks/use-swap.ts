@@ -11,6 +11,7 @@ import {
 } from "@/lib/swap-routers";
 
 export interface UseSwapQuoteParams {
+  chainId?: number;
   fromTokenAddress?: `0x${string}`;
   toTokenAddress?: `0x${string}`;
   fromAmount?: string;
@@ -31,6 +32,7 @@ export interface UseSwapQuoteResult {
 export function useSwapQuote(params: UseSwapQuoteParams): UseSwapQuoteResult {
   const { address } = useAccount();
   const {
+    chainId,
     fromTokenAddress,
     toTokenAddress,
     fromAmount,
@@ -45,6 +47,7 @@ export function useSwapQuote(params: UseSwapQuoteParams): UseSwapQuoteResult {
   const queryEnabled =
     !!enabled &&
     !!address &&
+    !!chainId &&
     !!fromTokenAddress &&
     !!toTokenAddress &&
     fromTokenAddress.toLowerCase() !== toTokenAddress.toLowerCase() &&
@@ -55,6 +58,7 @@ export function useSwapQuote(params: UseSwapQuoteParams): UseSwapQuoteResult {
     queryKey: [
       "swap-quote",
       address,
+      chainId,
       fromTokenAddress,
       toTokenAddress,
       fromAmount,
@@ -63,6 +67,7 @@ export function useSwapQuote(params: UseSwapQuoteParams): UseSwapQuoteResult {
     ],
     queryFn: async () => {
       const req: QuoteRequest = {
+        chainId: chainId!,
         fromTokenAddress: fromTokenAddress!,
         toTokenAddress: toTokenAddress!,
         fromAmount: fromAmount!,
