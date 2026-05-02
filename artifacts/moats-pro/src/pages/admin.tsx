@@ -1,7 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
 import {
+  Activity,
   ArrowUpRight,
+  CheckCircle2,
+  Coins,
+  Copy,
+  DollarSign,
   Filter,
   Loader2,
   RefreshCw,
@@ -11,6 +17,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { Navbar } from "@/components/navbar";
+import { TokenLogo } from "@/components/swap/token-logo";
 import { CHAIN_DISPLAY } from "@/lib/wagmi-config";
 import {
   fetchStats,
@@ -65,17 +72,24 @@ export default function Admin() {
     refetchInterval: 30_000,
   });
 
+  const isFetching = stats.isFetching || swaps.isFetching || users.isFetching;
+  const lastUpdated = stats.dataUpdatedAt;
+
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
+      {/* Ambient glow */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,hsl(195_100%_50%/0.10),transparent_70%)]" />
+      <div className="pointer-events-none absolute -left-32 top-1/3 h-[420px] w-[420px] rounded-full bg-primary/5 blur-3xl" />
       <Navbar />
-      <div className="pt-24 sm:pt-28 pb-24 px-4 max-w-7xl mx-auto" data-testid="admin-page">
+      <div className="relative pt-24 sm:pt-28 pb-24 px-4 max-w-7xl mx-auto" data-testid="admin-page">
         <Header
+          isFetching={isFetching}
+          lastUpdated={lastUpdated}
           onRefresh={() => {
             void stats.refetch();
             void swaps.refetch();
             void users.refetch();
           }}
-          isFetching={stats.isFetching || swaps.isFetching || users.isFetching}
         />
 
         <Filters
@@ -89,61 +103,106 @@ export default function Admin() {
 
         <ChainBreakdown data={stats.data} />
 
-        <div className="mt-8">
-          <div className="flex items-center gap-1 border-b border-border/40 mb-4">
-            <TabButton active={tab === "transactions"} onClick={() => setTab("transactions")}>
-              <TrendingUp size={14} /> Transactions
-            </TabButton>
-            <TabButton active={tab === "users"} onClick={() => setTab("users")}>
-              <UsersIcon size={14} /> Users
-            </TabButton>
+        <div className="mt-10">
+          <div className="flex items-center justify-between border-b border-border/40 mb-4 flex-wrap gap-3">
+            <div className="flex items-center gap-1">
+              <TabButton active={tab === "transactions"} onClick={() => setTab("transactions")}>
+                <TrendingUp size={14} /> Transactions
+              </TabButton>
+              <TabButton active={tab === "users"} onClick={() => setTab("users")}>
+                <UsersIcon size={14} /> Users
+              </TabButton>
+            </div>
           </div>
 
-          {tab === "transactions" ? (
-            <TransactionsTable
-              rows={swaps.data?.rows ?? []}
-              total={swaps.data?.total ?? 0}
-              loading={swaps.isLoading}
-              addressFilter={addressFilter}
-              setAddressFilter={setAddressFilter}
-            />
-          ) : (
-            <UsersTable rows={users.data?.rows ?? []} loading={users.isLoading} />
-          )}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={tab}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.18 }}
+            >
+              {tab === "transactions" ? (
+                <TransactionsTable
+                  rows={swaps.data?.rows ?? []}
+                  total={swaps.data?.total ?? 0}
+                  loading={swaps.isLoading}
+                  addressFilter={addressFilter}
+                  setAddressFilter={setAddressFilter}
+                />
+              ) : (
+                <UsersTable
+                  rows={users.data?.rows ?? []}
+                  loading={users.isLoading}
+                  chainFilter={chainFilter}
+                />
+              )}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
     </div>
   );
 }
 
+// ─────────────────────────────────────────── Header ───────────────────────────────────────────
+
 function Header({
   onRefresh,
   isFetching,
+  lastUpdated,
 }: {
   onRefresh: () => void;
   isFetching: boolean;
+  lastUpdated: number;
 }) {
+  const [, force] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => force((n) => n + 1), 5_000);
+    return () => clearInterval(id);
+  }, []);
   return (
-    <div className="flex items-end justify-between mb-5 gap-3 flex-wrap">
+    <div className="flex items-end justify-between mb-7 gap-3 flex-wrap">
       <div>
-        <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
-          Moat Swap
+        <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-primary/80 font-semibold mb-1.5">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+          </span>
+          Live · Moat Swap
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Admin Dashboard</h1>
+        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent">
+          Admin Dashboard
+        </h1>
+        <div className="mt-1.5 text-xs text-muted-foreground/80">
+          Real-time platform analytics. Auto-refresh every 30s.
+          {lastUpdated > 0 && (
+            <span className="ml-2 text-muted-foreground/60">
+              · Updated {formatRelative(new Date(lastUpdated).toISOString())}
+            </span>
+          )}
+        </div>
       </div>
       <div className="flex items-center gap-2">
         <button
           onClick={onRefresh}
           data-testid="btn-admin-refresh"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card/40 hover:border-primary/60 hover:bg-card/70 transition-all text-xs"
+          className="group flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-border/60 bg-card/40 hover:border-primary/60 hover:bg-card/70 hover:shadow-[0_0_24px_-8px_hsl(195_100%_50%/0.6)] transition-all text-xs font-medium"
         >
-          {isFetching ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+          {isFetching ? (
+            <Loader2 size={12} className="animate-spin text-primary" />
+          ) : (
+            <RefreshCw size={12} className="group-hover:text-primary transition-colors" />
+          )}
           Refresh
         </button>
       </div>
     </div>
   );
 }
+
+// ─────────────────────────────────────────── Filters ───────────────────────────────────────────
 
 function Filters({
   range,
@@ -161,16 +220,16 @@ function Filters({
     [],
   );
   return (
-    <div className="flex items-center gap-3 mb-5 flex-wrap">
-      <div className="flex items-center gap-1 p-1 rounded-lg border border-border/60 bg-card/40">
+    <div className="flex items-center gap-3 mb-6 flex-wrap">
+      <div className="flex items-center gap-1 p-1 rounded-xl border border-border/60 bg-card/40 backdrop-blur-sm">
         {RANGE_LABELS.map((r) => (
           <button
             key={r.value}
             onClick={() => setRange(r.value)}
             data-testid={`range-${r.value}`}
-            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+            className={`relative px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               range === r.value
-                ? "bg-primary/15 text-primary"
+                ? "bg-primary/15 text-primary shadow-[inset_0_0_0_1px_hsl(195_100%_50%/0.3)]"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -178,16 +237,16 @@ function Filters({
           </button>
         ))}
       </div>
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Filter size={12} /> Chain:
+      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+        <Filter size={11} /> Chain
       </div>
-      <div className="flex items-center gap-1 p-1 rounded-lg border border-border/60 bg-card/40 flex-wrap">
+      <div className="flex items-center gap-1 p-1 rounded-xl border border-border/60 bg-card/40 backdrop-blur-sm flex-wrap">
         <button
           onClick={() => setChainFilter(null)}
           data-testid="chain-all"
-          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
             chainFilter === null
-              ? "bg-primary/15 text-primary"
+              ? "bg-primary/15 text-primary shadow-[inset_0_0_0_1px_hsl(195_100%_50%/0.3)]"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
@@ -198,9 +257,9 @@ function Filters({
             key={c.id}
             onClick={() => setChainFilter(c.id)}
             data-testid={`chain-${c.network}`}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all ${
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               chainFilter === c.id
-                ? "bg-primary/15 text-primary"
+                ? "bg-primary/15 text-primary shadow-[inset_0_0_0_1px_hsl(195_100%_50%/0.3)]"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -212,6 +271,8 @@ function Filters({
     </div>
   );
 }
+
+// ─────────────────────────────────────────── Stats ───────────────────────────────────────────
 
 function StatsGrid({
   data,
@@ -230,34 +291,42 @@ function StatsGrid({
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       <Stat
+        icon={<DollarSign size={14} />}
+        accent="from-cyan-400/20 via-cyan-400/0 to-cyan-400/0"
         label="Volume (USD)"
         value={t ? formatUsd(t.volumeUsd) : "—"}
-        sub={all ? `All time: ${formatUsd(all.volumeUsd)}` : undefined}
+        sub={all ? `All time ${formatUsd(all.volumeUsd)}` : undefined}
         loading={loading}
         testId="stat-volume"
       />
       <Stat
+        icon={<Activity size={14} />}
+        accent="from-emerald-400/20 via-emerald-400/0 to-emerald-400/0"
         label="Swaps"
         value={t ? formatInt(t.count) : "—"}
-        sub={all ? `All time: ${formatInt(all.count)}` : undefined}
+        sub={all ? `All time ${formatInt(all.count)}` : undefined}
         loading={loading}
         testId="stat-count"
       />
       <Stat
+        icon={<Coins size={14} />}
+        accent="from-amber-400/20 via-amber-400/0 to-amber-400/0"
         label="Fees collected"
         value={t ? formatUsd(t.feeUsd) : "—"}
-        sub={all ? `All time: ${formatUsd(all.feeUsd)}` : undefined}
+        sub={all ? `All time ${formatUsd(all.feeUsd)}` : undefined}
         loading={loading}
         testId="stat-fees"
       />
       <Stat
+        icon={<UsersIcon size={14} />}
+        accent="from-violet-400/20 via-violet-400/0 to-violet-400/0"
         label="Unique users"
         value={t ? formatInt(t.uniqueUsers) : "—"}
         sub={
           t && t.count > 0 && t.avgSwapUsd
-            ? `Avg swap: ${formatUsd(t.avgSwapUsd)}`
+            ? `Avg swap ${formatUsd(t.avgSwapUsd)}`
             : all
-              ? `All time: ${formatInt(all.uniqueUsers)}`
+              ? `All time ${formatInt(all.uniqueUsers)}`
               : undefined
         }
         loading={loading}
@@ -268,12 +337,16 @@ function StatsGrid({
 }
 
 function Stat({
+  icon,
+  accent,
   label,
   value,
   sub,
   loading,
   testId,
 }: {
+  icon: React.ReactNode;
+  accent: string;
   label: string;
   value: string;
   sub?: string;
@@ -282,19 +355,33 @@ function Stat({
 }) {
   return (
     <div
-      className="rounded-xl border border-border/60 bg-card/40 p-4"
+      className="group relative rounded-2xl border border-border/60 bg-card/50 backdrop-blur-sm p-4 overflow-hidden hover:border-primary/40 transition-colors"
       data-testid={testId}
     >
-      <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
-        {label}
+      <div
+        className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${accent} opacity-60 group-hover:opacity-100 transition-opacity`}
+      />
+      <div className="relative">
+        <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-semibold">
+          <span className="text-primary/70">{icon}</span>
+          {label}
+        </div>
+        <div className="mt-2 text-3xl font-bold tracking-tight tabular-nums">
+          {loading ? (
+            <span className="inline-block w-24 h-8 rounded bg-muted/30 animate-pulse" />
+          ) : (
+            value
+          )}
+        </div>
+        {sub && (
+          <div className="mt-1 text-[11px] text-muted-foreground/70 font-mono">{sub}</div>
+        )}
       </div>
-      <div className="mt-1.5 text-2xl font-bold tracking-tight">
-        {loading ? <span className="inline-block w-20 h-7 rounded bg-muted/30 animate-pulse" /> : value}
-      </div>
-      {sub && <div className="mt-1 text-[11px] text-muted-foreground/70">{sub}</div>}
     </div>
   );
 }
+
+// ─────────────────────────────────────── Chain / Routes ───────────────────────────────────────
 
 function ChainBreakdown({
   data,
@@ -309,85 +396,127 @@ function ChainBreakdown({
   const byChain = data?.byChain ?? [];
   const byRouter = data?.byRouter ?? [];
   if (byChain.length === 0 && byRouter.length === 0) return null;
+  const totalVolume = byChain.reduce((s, c) => s + c.volumeUsd, 0);
+  const totalRouterCount = byRouter.reduce((s, r) => s + r.count, 0);
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-      <div className="rounded-xl border border-border/60 bg-card/40 p-4">
-        <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">
-          Volume by chain
-        </div>
+      <Panel title="Volume by chain" icon={<TrendingUp size={12} />}>
         {byChain.length === 0 ? (
-          <div className="text-xs text-muted-foreground/70">No swaps in this range.</div>
+          <Empty>No swaps in this range.</Empty>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {byChain
               .slice()
               .sort((a, b) => b.volumeUsd - a.volumeUsd)
               .map((c) => {
                 const display = CHAIN_DISPLAY[c.chainId];
-                const max = Math.max(...byChain.map((x) => x.volumeUsd), 1);
-                const pct = (c.volumeUsd / max) * 100;
+                const pct = totalVolume > 0 ? (c.volumeUsd / totalVolume) * 100 : 0;
                 return (
-                  <div key={c.chainId} className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 w-32 shrink-0">
-                      {display && (
-                        <img src={display.logo} alt="" className="w-4 h-4 rounded-full" />
-                      )}
-                      <span className="text-xs font-medium">{display?.label ?? c.network}</span>
+                  <div key={c.chainId} className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {display && (
+                          <img src={display.logo} alt="" className="w-5 h-5 rounded-full" />
+                        )}
+                        <span className="text-xs font-semibold truncate">
+                          {display?.label ?? c.network}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground/70">
+                          {c.count} {c.count === 1 ? "swap" : "swaps"}
+                        </span>
+                      </div>
+                      <div className="flex items-baseline gap-2 shrink-0">
+                        <span className="text-sm font-mono font-semibold tabular-nums">
+                          {formatUsd(c.volumeUsd)}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground/70 tabular-nums w-10 text-right">
+                          {pct.toFixed(0)}%
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex-1 h-2 rounded-full bg-muted/20 overflow-hidden">
-                      <div
-                        className="h-full bg-primary/60"
-                        style={{ width: `${pct}%` }}
+                    <div className="h-1.5 rounded-full bg-muted/20 overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${pct}%` }}
+                        transition={{ duration: 0.6, ease: "easeOut" }}
+                        className="h-full rounded-full bg-gradient-to-r from-primary/80 to-cyan-400/80"
                       />
-                    </div>
-                    <div className="text-xs font-mono w-28 text-right">
-                      {formatUsd(c.volumeUsd)}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground w-12 text-right">
-                      {c.count} sw
                     </div>
                   </div>
                 );
               })}
           </div>
         )}
-      </div>
+      </Panel>
 
-      <div className="rounded-xl border border-border/60 bg-card/40 p-4">
-        <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">
-          Routes used
-        </div>
+      <Panel title="Routes used" icon={<Activity size={12} />}>
         {byRouter.length === 0 ? (
-          <div className="text-xs text-muted-foreground/70">No swaps in this range.</div>
+          <Empty>No swaps in this range.</Empty>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {byRouter
               .slice()
               .sort((a, b) => b.count - a.count)
               .map((r) => {
-                const max = Math.max(...byRouter.map((x) => x.count), 1);
-                const pct = (r.count / max) * 100;
+                const pct = totalRouterCount > 0 ? (r.count / totalRouterCount) * 100 : 0;
                 return (
-                  <div key={r.router} className="flex items-center gap-3">
-                    <div className="w-32 shrink-0 text-xs font-medium uppercase">
-                      {r.router === "lifi" ? "Li.Fi" : r.router}
+                  <div key={r.router} className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-xs font-semibold uppercase tracking-wider">
+                        {prettyRouter(r.router)}
+                      </div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-sm font-mono font-semibold tabular-nums">
+                          {r.count}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground/70 tabular-nums w-10 text-right">
+                          {pct.toFixed(0)}%
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex-1 h-2 rounded-full bg-muted/20 overflow-hidden">
-                      <div
-                        className="h-full bg-primary/60"
-                        style={{ width: `${pct}%` }}
+                    <div className="h-1.5 rounded-full bg-muted/20 overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${pct}%` }}
+                        transition={{ duration: 0.6, ease: "easeOut" }}
+                        className="h-full rounded-full bg-gradient-to-r from-violet-400/80 to-primary/70"
                       />
                     </div>
-                    <div className="text-xs font-mono w-16 text-right">{r.count}</div>
                   </div>
                 );
               })}
           </div>
         )}
-      </div>
+      </Panel>
     </div>
   );
 }
+
+function Panel({
+  title,
+  icon,
+  children,
+}: {
+  title: string;
+  icon?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-border/60 bg-card/50 backdrop-blur-sm p-5">
+      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.18em] text-muted-foreground font-semibold mb-4">
+        {icon && <span className="text-primary/70">{icon}</span>}
+        {title}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Empty({ children }: { children: React.ReactNode }) {
+  return <div className="text-xs text-muted-foreground/70 py-4 text-center">{children}</div>;
+}
+
+// ─────────────────────────────────────────── Tabs ───────────────────────────────────────────
 
 function TabButton({
   active,
@@ -401,16 +530,22 @@ function TabButton({
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-all ${
-        active
-          ? "border-primary text-primary"
-          : "border-transparent text-muted-foreground hover:text-foreground"
+      className={`relative flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold transition-all ${
+        active ? "text-primary" : "text-muted-foreground hover:text-foreground"
       }`}
     >
       {children}
+      {active && (
+        <motion.span
+          layoutId="admin-tab-underline"
+          className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary"
+        />
+      )}
     </button>
   );
 }
+
+// ─────────────────────────────────────── Transactions table ───────────────────────────────────
 
 function TransactionsTable({
   rows,
@@ -426,12 +561,14 @@ function TransactionsTable({
   setAddressFilter: (v: string) => void;
 }) {
   return (
-    <div className="rounded-xl border border-border/60 bg-card/40 overflow-hidden">
-      <div className="flex items-center justify-between p-3 border-b border-border/40 gap-3 flex-wrap">
-        <div className="text-sm font-medium">
-          {loading ? "Loading…" : `${formatInt(rows.length)} of ${formatInt(total)} swaps`}
+    <div className="rounded-2xl border border-border/60 bg-card/50 backdrop-blur-sm overflow-hidden">
+      <div className="flex items-center justify-between p-4 border-b border-border/40 gap-3 flex-wrap">
+        <div className="text-sm font-semibold">
+          {loading
+            ? "Loading…"
+            : `${formatInt(rows.length)} of ${formatInt(total)} ${total === 1 ? "swap" : "swaps"}`}
         </div>
-        <div className="relative flex-1 max-w-xs">
+        <div className="relative flex-1 max-w-xs min-w-[200px]">
           <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
@@ -439,109 +576,40 @@ function TransactionsTable({
             value={addressFilter}
             onChange={(e) => setAddressFilter(e.target.value)}
             data-testid="input-address-filter"
-            className="w-full pl-7 pr-2 py-1.5 rounded-md bg-muted/20 border border-border/60 focus:border-primary/60 focus:outline-none text-xs font-mono"
+            className="w-full pl-7 pr-2 py-2 rounded-lg bg-muted/20 border border-border/60 focus:border-primary/60 focus:ring-1 focus:ring-primary/40 focus:outline-none text-xs font-mono transition-colors"
           />
         </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead>
-            <tr className="text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border/40">
-              <th className="text-left px-3 py-2 font-semibold">Time</th>
-              <th className="text-left px-3 py-2 font-semibold">User</th>
-              <th className="text-left px-3 py-2 font-semibold">Chain</th>
-              <th className="text-left px-3 py-2 font-semibold">From → To</th>
-              <th className="text-right px-3 py-2 font-semibold">Volume</th>
-              <th className="text-right px-3 py-2 font-semibold">Fee</th>
-              <th className="text-left px-3 py-2 font-semibold">Router</th>
-              <th className="text-right px-3 py-2 font-semibold">Tx</th>
+          <thead className="sticky top-0 z-10 bg-card/80 backdrop-blur">
+            <tr className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground border-b border-border/40">
+              <Th>Time</Th>
+              <Th>User</Th>
+              <Th>Chain</Th>
+              <Th>From → To</Th>
+              <Th align="right">Volume</Th>
+              <Th align="right">Fee</Th>
+              <Th>Router</Th>
+              <Th align="right">Status</Th>
+              <Th align="right">Tx</Th>
             </tr>
           </thead>
           <tbody>
             {loading && rows.length === 0 ? (
-              <tr><td colSpan={8} className="px-3 py-8 text-center text-muted-foreground text-xs">Loading…</td></tr>
+              <SkeletonRows cols={9} />
             ) : rows.length === 0 ? (
-              <tr><td colSpan={8} className="px-3 py-8 text-center text-muted-foreground text-xs">No swaps yet for this filter.</td></tr>
-            ) : rows.map((r) => {
-              const display = CHAIN_DISPLAY[r.chainId];
-              return (
-                <tr key={r.id} className="border-b border-border/30 hover:bg-muted/10" data-testid={`row-swap-${r.id}`}>
-                  <td className="px-3 py-2 text-xs whitespace-nowrap text-muted-foreground">
-                    {formatRelative(r.createdAt)}
-                  </td>
-                  <td className="px-3 py-2 text-xs font-mono">
-                    <a
-                      href={explorerAddr(r.chainId, r.walletAddress)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-foreground hover:text-primary"
-                    >
-                      {shortAddr(r.walletAddress)}
-                    </a>
-                  </td>
-                  <td className="px-3 py-2">
-                    <div className="flex items-center gap-1.5 text-xs">
-                      {display && <img src={display.logo} alt="" className="w-3.5 h-3.5 rounded-full" />}
-                      <span>{display?.label ?? r.network}</span>
-                    </div>
-                  </td>
-                  <td className="px-3 py-2 text-xs">
-                    <span className="font-medium">{formatAmount(r.fromAmount)} {r.fromTokenSymbol}</span>
-                    <span className="text-muted-foreground mx-1">→</span>
-                    <span className="font-medium">{formatAmount(r.toAmount)} {r.toTokenSymbol}</span>
-                  </td>
-                  <td className="px-3 py-2 text-xs text-right font-mono whitespace-nowrap">
-                    {r.fromUsd != null ? formatUsd(r.fromUsd) : "—"}
-                  </td>
-                  <td className="px-3 py-2 text-xs text-right font-mono whitespace-nowrap text-primary/90">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <div className="flex flex-col items-end leading-tight">
-                        {r.feeAmount != null && (
-                          <span>{formatTokenAmount(r.feeAmount)} {r.fromTokenSymbol}</span>
-                        )}
-                        {r.feeUsd != null && (
-                          <span className="text-[10px] text-muted-foreground/70">
-                            {formatUsd(r.feeUsd)}
-                          </span>
-                        )}
-                        {r.feeAmount == null && r.feeUsd == null && <span>—</span>}
-                      </div>
-                      {r.feeTxHash && (
-                        <a
-                          href={explorerTx(r.chainId, r.feeTxHash)}
-                          target="_blank"
-                          rel="noreferrer"
-                          data-testid={`link-fee-tx-${r.id}`}
-                          title="View fee transfer on explorer"
-                          className="text-primary/70 hover:text-primary"
-                        >
-                          <ArrowUpRight size={11} />
-                        </a>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-3 py-2 text-[10px] uppercase">
-                    <span className="px-1.5 py-0.5 rounded bg-muted/30 font-semibold">
-                      {r.router === "lifi" ? "Li.Fi" : r.router}
-                    </span>
-                    {r.toolName && (
-                      <span className="text-muted-foreground/70 ml-1.5 lowercase">via {r.toolName}</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    <a
-                      href={explorerTx(r.chainId, r.txHash)}
-                      target="_blank"
-                      rel="noreferrer"
-                      data-testid={`link-tx-${r.id}`}
-                      className="inline-flex items-center gap-1 text-primary hover:underline text-xs"
-                    >
-                      View <ArrowUpRight size={11} />
-                    </a>
-                  </td>
-                </tr>
-              );
-            })}
+              <tr>
+                <td colSpan={9} className="px-3 py-12 text-center">
+                  <div className="text-xs text-muted-foreground/70">No swaps yet for this filter.</div>
+                  <div className="text-[10px] text-muted-foreground/50 mt-1">
+                    Activity will appear here as users swap.
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              rows.map((r) => <TxRow key={r.id} row={r} />)
+            )}
           </tbody>
         </table>
       </div>
@@ -549,48 +617,294 @@ function TransactionsTable({
   );
 }
 
-function UsersTable({ rows, loading }: { rows: UserRow[]; loading: boolean }) {
+function TxRow({ row: r }: { row: SwapRow }) {
+  const display = CHAIN_DISPLAY[r.chainId];
   return (
-    <div className="rounded-xl border border-border/60 bg-card/40 overflow-hidden">
-      <div className="p-3 border-b border-border/40 text-sm font-medium">
-        {loading ? "Loading…" : `${formatInt(rows.length)} users`}
+    <tr
+      className="border-b border-border/20 hover:bg-primary/[0.04] transition-colors"
+      data-testid={`row-swap-${r.id}`}
+    >
+      <td className="px-3 py-3 text-xs whitespace-nowrap text-muted-foreground tabular-nums">
+        {formatRelative(r.createdAt)}
+      </td>
+      <td className="px-3 py-3 text-xs">
+        <CopyableAddress address={r.walletAddress} chainId={r.chainId} />
+      </td>
+      <td className="px-3 py-3">
+        <div className="flex items-center gap-1.5 text-xs">
+          {display && <img src={display.logo} alt="" className="w-4 h-4 rounded-full" />}
+          <span className="font-medium">{display?.label ?? r.network}</span>
+        </div>
+      </td>
+      <td className="px-3 py-3 text-xs">
+        <div className="flex items-center gap-2">
+          <div className="flex -space-x-1.5">
+            <TokenLogo
+              address={r.fromTokenAddress}
+              symbol={r.fromTokenSymbol}
+              size={20}
+              className="ring-2 ring-card"
+            />
+            <TokenLogo
+              address={r.toTokenAddress}
+              symbol={r.toTokenSymbol}
+              size={20}
+              className="ring-2 ring-card"
+            />
+          </div>
+          <div className="leading-tight">
+            <div className="font-medium tabular-nums">
+              {formatAmount(r.fromAmount)} {r.fromTokenSymbol}
+            </div>
+            <div className="text-[10px] text-muted-foreground/70 tabular-nums">
+              → {formatAmount(r.toAmount)} {r.toTokenSymbol}
+            </div>
+          </div>
+        </div>
+      </td>
+      <td className="px-3 py-3 text-xs text-right font-mono tabular-nums whitespace-nowrap">
+        {r.fromUsd != null ? formatUsd(r.fromUsd) : "—"}
+      </td>
+      <td className="px-3 py-3 text-xs text-right font-mono whitespace-nowrap">
+        <div className="flex items-center justify-end gap-1.5">
+          <div className="flex flex-col items-end leading-tight">
+            {r.feeAmount != null && (
+              <span className="text-primary/90 tabular-nums">
+                {formatTokenAmount(r.feeAmount)} {r.fromTokenSymbol}
+              </span>
+            )}
+            {r.feeUsd != null && (
+              <span className="text-[10px] text-muted-foreground/70 tabular-nums">
+                {formatUsd(r.feeUsd)}
+              </span>
+            )}
+            {r.feeAmount == null && r.feeUsd == null && <span>—</span>}
+          </div>
+          {r.feeTxHash && (
+            <a
+              href={explorerTx(r.chainId, r.feeTxHash)}
+              target="_blank"
+              rel="noreferrer"
+              data-testid={`link-fee-tx-${r.id}`}
+              title="View fee transfer on explorer"
+              className="text-primary/70 hover:text-primary"
+            >
+              <ArrowUpRight size={11} />
+            </a>
+          )}
+        </div>
+      </td>
+      <td className="px-3 py-3 text-[10px] uppercase">
+        <div className="flex flex-col items-start gap-0.5">
+          <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary font-bold tracking-wider">
+            {prettyRouter(r.router)}
+          </span>
+          {r.toolName && (
+            <span className="text-muted-foreground/60 lowercase tracking-normal text-[10px]">
+              via {r.toolName}
+            </span>
+          )}
+        </div>
+      </td>
+      <td className="px-3 py-3 text-right">
+        <StatusPill status={r.status} />
+      </td>
+      <td className="px-3 py-3 text-right">
+        <a
+          href={explorerTx(r.chainId, r.txHash)}
+          target="_blank"
+          rel="noreferrer"
+          data-testid={`link-tx-${r.id}`}
+          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-primary hover:bg-primary/10 hover:text-primary transition-colors text-xs font-medium"
+        >
+          View <ArrowUpRight size={11} />
+        </a>
+      </td>
+    </tr>
+  );
+}
+
+function StatusPill({ status }: { status: string }) {
+  const ok = status === "success";
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+        ok
+          ? "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20"
+          : "bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/20"
+      }`}
+    >
+      {ok && <CheckCircle2 size={10} />}
+      {status}
+    </span>
+  );
+}
+
+function CopyableAddress({
+  address,
+  chainId,
+}: {
+  address: string;
+  chainId: number | null;
+}) {
+  const [copied, setCopied] = useState(false);
+  const onCopy = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    } catch {
+      /* ignore */
+    }
+  };
+  return (
+    <span className="group inline-flex items-center gap-1.5 font-mono">
+      {chainId != null ? (
+        <a
+          href={explorerAddr(chainId, address)}
+          target="_blank"
+          rel="noreferrer"
+          className="text-foreground hover:text-primary transition-colors"
+        >
+          {shortAddr(address)}
+        </a>
+      ) : (
+        <span className="text-foreground">{shortAddr(address)}</span>
+      )}
+      <button
+        onClick={onCopy}
+        aria-label={copied ? "Address copied" : "Copy wallet address"}
+        title={copied ? "Copied!" : "Copy address"}
+        className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/60 rounded transition-opacity text-muted-foreground hover:text-primary"
+      >
+        {copied ? <CheckCircle2 size={11} className="text-emerald-400" /> : <Copy size={11} />}
+      </button>
+    </span>
+  );
+}
+
+function SkeletonRows({ cols, rows = 5 }: { cols: number; rows?: number }) {
+  return (
+    <>
+      {Array.from({ length: rows }).map((_, i) => (
+        <tr key={i} className="border-b border-border/20">
+          {Array.from({ length: cols }).map((_, j) => (
+            <td key={j} className="px-3 py-3.5">
+              <div
+                className="h-3 rounded bg-muted/20 animate-pulse"
+                style={{ width: `${50 + ((i * 7 + j * 11) % 40)}%` }}
+              />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
+  );
+}
+
+function Th({ children, align }: { children: React.ReactNode; align?: "right" }) {
+  return (
+    <th
+      className={`px-3 py-3 font-bold ${
+        align === "right" ? "text-right" : "text-left"
+      }`}
+    >
+      {children}
+    </th>
+  );
+}
+
+// ─────────────────────────────────────────── Users ───────────────────────────────────────────
+
+function UsersTable({
+  rows,
+  loading,
+  chainFilter,
+}: {
+  rows: UserRow[];
+  loading: boolean;
+  chainFilter: number | null;
+}) {
+  const topVolume = rows[0]?.volumeUsd ?? 0;
+  return (
+    <div className="rounded-2xl border border-border/60 bg-card/50 backdrop-blur-sm overflow-hidden">
+      <div className="p-4 border-b border-border/40 flex items-center justify-between">
+        <div className="text-sm font-semibold">
+          {loading ? "Loading…" : `${formatInt(rows.length)} ${rows.length === 1 ? "user" : "users"}`}
+        </div>
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          Sorted by volume
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead>
-            <tr className="text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border/40">
-              <th className="text-left px-3 py-2 font-semibold">Wallet</th>
-              <th className="text-right px-3 py-2 font-semibold">Swaps</th>
-              <th className="text-right px-3 py-2 font-semibold">Volume</th>
-              <th className="text-right px-3 py-2 font-semibold">Fees paid</th>
-              <th className="text-right px-3 py-2 font-semibold">First</th>
-              <th className="text-right px-3 py-2 font-semibold">Last</th>
+          <thead className="sticky top-0 bg-card/80 backdrop-blur">
+            <tr className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground border-b border-border/40">
+              <Th>Rank</Th>
+              <Th>Wallet</Th>
+              <Th align="right">Swaps</Th>
+              <Th align="right">Volume</Th>
+              <Th align="right">Fees paid</Th>
+              <Th align="right">First</Th>
+              <Th align="right">Last</Th>
             </tr>
           </thead>
           <tbody>
             {loading && rows.length === 0 ? (
-              <tr><td colSpan={6} className="px-3 py-8 text-center text-muted-foreground text-xs">Loading…</td></tr>
+              <SkeletonRows cols={7} />
             ) : rows.length === 0 ? (
-              <tr><td colSpan={6} className="px-3 py-8 text-center text-muted-foreground text-xs">No users yet.</td></tr>
-            ) : rows.map((u) => (
-              <tr key={u.walletAddress} className="border-b border-border/30 hover:bg-muted/10" data-testid={`row-user-${u.walletAddress}`}>
-                <td className="px-3 py-2 text-xs font-mono">
-                  <div className="flex items-center gap-1.5">
-                    <Wallet size={11} className="text-muted-foreground" />
-                    {shortAddr(u.walletAddress)}
-                  </div>
-                </td>
-                <td className="px-3 py-2 text-xs text-right font-mono">{formatInt(u.swapCount)}</td>
-                <td className="px-3 py-2 text-xs text-right font-mono">{formatUsd(u.volumeUsd)}</td>
-                <td className="px-3 py-2 text-xs text-right font-mono text-primary/90">{formatUsd(u.feeUsd)}</td>
-                <td className="px-3 py-2 text-xs text-right text-muted-foreground whitespace-nowrap">
-                  {formatDate(u.firstSwap)}
-                </td>
-                <td className="px-3 py-2 text-xs text-right text-muted-foreground whitespace-nowrap">
-                  {formatRelative(u.lastSwap)}
+              <tr>
+                <td colSpan={7} className="px-3 py-12 text-center text-muted-foreground/70 text-xs">
+                  No users yet.
                 </td>
               </tr>
-            ))}
+            ) : (
+              rows.map((u, i) => {
+                const pct = topVolume > 0 ? (u.volumeUsd / topVolume) * 100 : 0;
+                return (
+                  <tr
+                    key={u.walletAddress}
+                    className="border-b border-border/20 hover:bg-primary/[0.04] transition-colors"
+                    data-testid={`row-user-${u.walletAddress}`}
+                  >
+                    <td className="px-3 py-3 text-xs">
+                      <RankBadge rank={i + 1} />
+                    </td>
+                    <td className="px-3 py-3 text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <Wallet size={11} className="text-primary/70" />
+                        <CopyableAddress address={u.walletAddress} chainId={chainFilter} />
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 text-xs text-right font-mono tabular-nums">
+                      {formatInt(u.swapCount)}
+                    </td>
+                    <td className="px-3 py-3 text-xs text-right font-mono tabular-nums">
+                      <div className="flex flex-col items-end gap-1">
+                        <span>{formatUsd(u.volumeUsd)}</span>
+                        <div className="w-20 h-1 rounded-full bg-muted/20 overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-primary/80 to-cyan-400/80"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 text-xs text-right font-mono tabular-nums text-primary/90">
+                      {formatUsd(u.feeUsd)}
+                    </td>
+                    <td className="px-3 py-3 text-xs text-right text-muted-foreground whitespace-nowrap tabular-nums">
+                      {formatDate(u.firstSwap)}
+                    </td>
+                    <td className="px-3 py-3 text-xs text-right text-muted-foreground whitespace-nowrap tabular-nums">
+                      {formatRelative(u.lastSwap)}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>
@@ -598,11 +912,36 @@ function UsersTable({ rows, loading }: { rows: UserRow[]; loading: boolean }) {
   );
 }
 
-// ---------- helpers ----------
+function RankBadge({ rank }: { rank: number }) {
+  const variant =
+    rank === 1
+      ? "bg-gradient-to-br from-amber-300/30 to-amber-500/20 text-amber-300 ring-amber-400/30"
+      : rank === 2
+        ? "bg-gradient-to-br from-slate-300/30 to-slate-500/20 text-slate-200 ring-slate-400/30"
+        : rank === 3
+          ? "bg-gradient-to-br from-orange-400/30 to-orange-600/20 text-orange-300 ring-orange-400/30"
+          : "bg-muted/30 text-muted-foreground ring-border/40";
+  return (
+    <span
+      className={`inline-flex items-center justify-center w-6 h-6 rounded-md text-[11px] font-bold tabular-nums ring-1 ${variant}`}
+    >
+      {rank}
+    </span>
+  );
+}
+
+// ───────────────────────────────────────── helpers ─────────────────────────────────────────
 
 function shortAddr(a: string): string {
   if (!a) return "—";
   return `${a.slice(0, 6)}…${a.slice(-4)}`;
+}
+
+function prettyRouter(r: string): string {
+  if (r === "lifi") return "Li.Fi";
+  if (r === "odos") return "ODOS";
+  if (r === "0x") return "0x";
+  return r;
 }
 
 function formatUsd(v: number | null | undefined): string {
@@ -610,7 +949,6 @@ function formatUsd(v: number | null | undefined): string {
   if (v === 0) return "$0";
   const abs = Math.abs(v);
   if (abs < 0.01) {
-    // Show extra precision for sub-cent amounts (fees on tiny swaps).
     if (abs < 0.0001) return `$${v.toFixed(6).replace(/0+$/, "").replace(/\.$/, "")}`;
     return `$${v.toFixed(5).replace(/0+$/, "").replace(/\.$/, "")}`;
   }
@@ -633,8 +971,6 @@ function formatAmount(v: number): string {
   return v.toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
 
-// Always-readable token amount that never collapses to "0" or scientific form,
-// even for tiny fee transfers (e.g. 0.00099 AVAX).
 function formatTokenAmount(v: number): string {
   if (!Number.isFinite(v) || v === 0) return "0";
   const abs = Math.abs(v);
@@ -644,7 +980,6 @@ function formatTokenAmount(v: number): string {
   else if (abs >= 0.0001) decimals = 6;
   else if (abs >= 0.000001) decimals = 8;
   else decimals = 10;
-  // Trim trailing zeros but keep at least 2 decimals for readability.
   const s = v.toFixed(decimals);
   return s.replace(/(\.\d*?[1-9])0+$/, "$1").replace(/\.0+$/, "");
 }
