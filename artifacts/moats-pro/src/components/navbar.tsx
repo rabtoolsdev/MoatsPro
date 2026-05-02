@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, TrendingUp, LayoutDashboard, Trophy, Wallet, ChevronDown, Check } from "lucide-react";
+import { Menu, X, TrendingUp, LayoutDashboard, Trophy, Wallet, ChevronDown, Check, ArrowLeftRight } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useAppKit, useAppKitNetwork } from "@reown/appkit/react";
 import { CHAIN_DISPLAY, networks } from "@/lib/wagmi-config";
@@ -40,6 +40,7 @@ export function Navbar() {
     { href: "/", label: "Explore", icon: TrendingUp },
     { href: "/portfolio", label: "Portfolio", icon: LayoutDashboard },
     { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
+    { href: "/swap", label: "Swap", icon: ArrowLeftRight },
   ];
 
   const shortAddress = address

@@ -44,6 +44,14 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 - `/portfolio` — Real wallet positions (from /events?userAddress=...), tx history, MAPS score + rank
 - `/leaderboard` — Top-3 podium + full MAPS score rankings table with epoch info
 - `/moat/:address` — Moat detail: protocol name/logo, reward tokens, yield metrics panel (Daily Emission, Reward Duration, Total Pool), on-chain stats, 4-tab action panel (Stake/Withdraw/Lock/Claim), top stakers
+- `/swap` — Moat Swap: token-to-token swaps between any moat-backed tokens. Aggregates routes via Li.Fi (which internally routes across 0x, ODOS, KyberSwap, ParaSwap, etc.). 0.33% integrator fee → `0x037a3b41975B44cF6038e48f1433831aB8810Af7`. 0x and ODOS direct quote sources are scaffolded behind `VITE_0X_API_KEY` / `VITE_ODOS_REFERRAL_CODE` env flags for future activation.
+
+#### Swap Architecture (`/swap`)
+- `src/lib/swap-routers.ts` — Router clients (Li.Fi active; 0x/ODOS gated by env vars), `getAllQuotes()` runs in parallel, `pickBestQuote()` picks the highest output. Fee = 33 bps (0.33%) applied via Li.Fi `fee` + `referrer` params (no manual transfer needed).
+- `src/lib/moat-tokens.ts` — Derives the swappable token list from `useAllMoatConfigs()` + `MOAT_METADATA` (filters out LP tokens since aggregators can't swap them).
+- `src/hooks/use-swap.ts` — `useSwapQuote()` (TanStack Query, 20s refetch) + `useExecuteSwap()` (uses `useSendTransaction` since Li.Fi returns raw calldata).
+- `src/components/swap/token-select-modal.tsx` — Searchable token picker.
+- Approve flow uses existing `useApproveToken` against `quote.approveTo` (Li.Fi's diamond proxy).
 
 #### Key Source Files
 - `src/lib/wagmi-config.ts` — AppKit + wagmi config (Avalanche first)
