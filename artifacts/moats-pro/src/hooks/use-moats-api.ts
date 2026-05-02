@@ -80,6 +80,7 @@ export function useMapsEpoch() {
     queryKey: ["moats", "maps", "epoch"],
     queryFn: () => moatsApi.getMapsLeaderboard(),
     staleTime: 60_000,
+    refetchInterval: 60_000,
     select: (data) => data?.currentEpoch,
   });
 }

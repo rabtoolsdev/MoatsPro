@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Trophy, Medal, Crown, Search, Share2, Wallet } from "lucide-react";
+import { Trophy, Medal, Crown, Search, Share2, Wallet, Clock } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useAppKit } from "@reown/appkit/react";
 import { useMapsLeaderboard, useMapsEpoch } from "@/hooks/use-moats-api";
@@ -119,6 +119,9 @@ export default function Leaderboard() {
                 ? `Ended ${timeAgo(new Date(currentEpoch.endTime).getTime())}`
                 : `Started ${timeAgo(new Date(currentEpoch.startTime).getTime())}`}
             </p>
+          )}
+          {currentEpoch && !currentEpoch.isComplete && currentEpoch.endTime && (
+            <EpochCountdown endTime={currentEpoch.endTime} />
           )}
         </motion.div>
 
@@ -331,5 +334,74 @@ export default function Leaderboard() {
         />
       )}
     </div>
+  );
+}
+
+function EpochCountdown({ endTime }: { endTime: string }) {
+  const endMs = useMemo(() => new Date(endTime).getTime(), [endTime]);
+  const [now, setNow] = useState<number>(() => Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Guard against invalid dates and already-elapsed end times
+  if (!Number.isFinite(endMs) || endMs <= now) {
+    return null;
+  }
+
+  const remaining = Math.max(0, endMs - now);
+  const ended = remaining === 0;
+
+  const totalSeconds = Math.floor(remaining / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  const pad = (n: number) => n.toString().padStart(2, "0");
+
+  const blocks = [
+    { label: "Days", value: pad(days) },
+    { label: "Hours", value: pad(hours) },
+    { label: "Minutes", value: pad(minutes) },
+    { label: "Seconds", value: pad(seconds) },
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.1 }}
+      className="mt-4 rounded-xl border border-cyan-500/20 bg-gradient-to-br from-cyan-500/5 via-background to-background p-4 sm:p-5 max-w-xl"
+      data-testid="epoch-countdown"
+      role="timer"
+      aria-live="off"
+      aria-label={`Epoch ends in ${days} days, ${hours} hours, ${minutes} minutes, ${seconds} seconds`}
+    >
+      <div className="flex items-center gap-2 mb-3">
+        <Clock size={14} className="text-cyan-400" />
+        <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+          {ended ? "Epoch ended" : "Epoch ends in"}
+        </span>
+      </div>
+      <div className="grid grid-cols-4 gap-2 sm:gap-3">
+        {blocks.map((b) => (
+          <div
+            key={b.label}
+            className="rounded-lg bg-card/50 border border-border/40 px-2 py-3 text-center"
+            data-testid={`epoch-countdown-${b.label.toLowerCase()}`}
+          >
+            <div className="font-mono font-bold text-2xl sm:text-3xl text-cyan-300 tabular-nums leading-none">
+              {b.value}
+            </div>
+            <div className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground mt-1.5">
+              {b.label}
+            </div>
+          </div>
+        ))}
+      </div>
+    </motion.div>
   );
 }
