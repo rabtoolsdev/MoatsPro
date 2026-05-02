@@ -150,24 +150,63 @@ export interface UseExecuteSwapResult {
   isPending: boolean;
   isConfirming: boolean;
   isSuccess: boolean;
+  /**
+   * True when the most recent `execute()` reused a fee that the user had
+   * already paid in a prior failed/cancelled attempt — i.e. they were not
+   * charged again. Reset whenever a new `execute()` starts.
+   */
+  feeReused: boolean;
   error: Error | null;
 }
 
+interface FeeCredit {
+  key: string;
+  feeHash: `0x${string}`;
+}
+
+function makeFeeKey(
+  payer: `0x${string}` | undefined,
+  chainId: number | undefined,
+  fee: FeeTransfer,
+): string | null {
+  // Without a connected payer we can't safely attribute a credit, so refuse
+  // to build a key — the caller will treat that as "no reuse possible".
+  if (!payer) return null;
+  return [
+    payer.toLowerCase(),
+    chainId ?? 0,
+    fee.tokenAddress.toLowerCase(),
+    fee.amount.toString(),
+    fee.wallet.toLowerCase(),
+  ].join("|");
+}
+
 export function useExecuteSwap(): UseExecuteSwapResult {
+  const { address, chainId } = useAccount();
   const [step, setStep] = useState<SwapStep>("idle");
   const [feeHash, setFeeHash] = useState<`0x${string}` | undefined>();
   const [swapHash, setSwapHash] = useState<`0x${string}` | undefined>();
   const [error, setError] = useState<Error | null>(null);
+  const [feeReused, setFeeReused] = useState(false);
+  // Credit kept in component-state so a fee paid in attempt N can be reused
+  // by attempt N+1 when the swap leg failed or the user cancelled the
+  // simulation. Cleared once a swap finally succeeds.
+  const [feeCredit, setFeeCredit] = useState<FeeCredit | null>(null);
   const pendingSwap = useRef<SwapQuote | null>(null);
+  const pendingFeeKey = useRef<string | null>(null);
 
   const { sendTransactionAsync } = useSendTransaction();
   const feeReceipt = useWaitForTransactionReceipt({ hash: feeHash });
   const swapReceipt = useWaitForTransactionReceipt({ hash: swapHash });
 
-  // After fee confirms, send the swap tx.
+  // After fee confirms, store the credit (so a subsequent retry can skip the
+  // fee tx) and send the swap tx.
   useEffect(() => {
     if (step !== "fee-confirming") return;
     if (!feeReceipt.isSuccess) return;
+    if (pendingFeeKey.current && feeHash) {
+      setFeeCredit({ key: pendingFeeKey.current, feeHash });
+    }
     const quote = pendingSwap.current;
     if (!quote) return;
     setStep("swap");
@@ -184,22 +223,35 @@ export function useExecuteSwap(): UseExecuteSwapResult {
         setError(e instanceof Error ? e : new Error("Swap transaction failed"));
         setStep("error");
       });
-  }, [step, feeReceipt.isSuccess, sendTransactionAsync]);
+  }, [step, feeReceipt.isSuccess, sendTransactionAsync, feeHash]);
 
-  // After swap confirms, mark success.
+  // After swap confirms, mark success and burn the fee credit — the next
+  // swap is a brand-new intent and should pay its own fee.
   useEffect(() => {
     if (step === "swap-confirming" && swapReceipt.isSuccess) {
       setStep("success");
+      setFeeCredit(null);
+      pendingFeeKey.current = null;
     }
   }, [step, swapReceipt.isSuccess]);
 
-  // Surface a failed receipt as an error.
+  // Surface a failed receipt as an error. We deliberately do NOT clear
+  // `feeCredit` here — keeping it lets the user retry without paying again.
   useEffect(() => {
     if (step === "fee-confirming" && feeReceipt.isError) {
       setError(feeReceipt.error ?? new Error("Fee transfer failed"));
       setStep("error");
     }
   }, [step, feeReceipt.isError, feeReceipt.error]);
+
+  // Defense-in-depth: if the connected wallet changes (disconnect / switch
+  // account), drop any credit so wallet B can never reuse a fee paid by
+  // wallet A. The fee-key already binds the payer address, but clearing
+  // here keeps stale state from leaking across sessions.
+  useEffect(() => {
+    setFeeCredit(null);
+    pendingFeeKey.current = null;
+  }, [address]);
   useEffect(() => {
     if (step === "swap-confirming" && swapReceipt.isError) {
       setError(swapReceipt.error ?? new Error("Swap transaction failed"));
@@ -210,12 +262,35 @@ export function useExecuteSwap(): UseExecuteSwapResult {
   const execute = useCallback(
     async (quote: SwapQuote, fee?: FeeTransfer | null) => {
       setError(null);
-      setFeeHash(undefined);
       setSwapHash(undefined);
+      setFeeReused(false);
       pendingSwap.current = quote;
 
       try {
         if (fee && fee.amount > 0n) {
+          const feeKey = makeFeeKey(address, chainId, fee);
+
+          // If the user already paid this exact fee in a prior attempt that
+          // failed (or was cancelled at simulation), skip straight to the
+          // swap and reuse the stored fee hash for recording. The key is
+          // bound to the connected payer so a different wallet can never
+          // inherit another wallet's credit.
+          if (feeKey && feeCredit && feeCredit.key === feeKey) {
+            setFeeHash(feeCredit.feeHash);
+            setFeeReused(true);
+            setStep("swap");
+            const hash = await sendTransactionAsync({
+              to: quote.tx.to,
+              data: quote.tx.data,
+              value: quote.tx.value,
+            });
+            setSwapHash(hash);
+            setStep("swap-confirming");
+            return;
+          }
+
+          setFeeHash(undefined);
+          pendingFeeKey.current = feeKey;
           setStep("fee");
           const tx = fee.isNative
             ? { to: fee.wallet, value: fee.amount }
@@ -233,6 +308,8 @@ export function useExecuteSwap(): UseExecuteSwapResult {
           setStep("fee-confirming");
           // Swap is dispatched by the effect once the fee receipt confirms.
         } else {
+          setFeeHash(undefined);
+          pendingFeeKey.current = null;
           setStep("swap");
           const hash = await sendTransactionAsync({
             to: quote.tx.to,
@@ -247,7 +324,7 @@ export function useExecuteSwap(): UseExecuteSwapResult {
         setStep("error");
       }
     },
-    [sendTransactionAsync],
+    [sendTransactionAsync, address, chainId, feeCredit],
   );
 
   const reset = useCallback(() => {
@@ -255,6 +332,7 @@ export function useExecuteSwap(): UseExecuteSwapResult {
     setFeeHash(undefined);
     setSwapHash(undefined);
     setError(null);
+    setFeeReused(false);
     pendingSwap.current = null;
   }, []);
 
@@ -268,6 +346,7 @@ export function useExecuteSwap(): UseExecuteSwapResult {
     isPending: step === "fee" || step === "swap",
     isConfirming: step === "fee-confirming" || step === "swap-confirming",
     isSuccess: step === "success",
+    feeReused,
     error,
   };
 }

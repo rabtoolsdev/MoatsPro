@@ -359,6 +359,17 @@ export default function Swap() {
     }
   }, [executor.error]);
 
+  // Reassure the user when we skip the fee transfer because they already
+  // paid for this exact swap intent in a previous attempt.
+  useEffect(() => {
+    if (executor.feeReused) {
+      toast({
+        title: "Reusing fee from your previous attempt",
+        description: "You won't be charged the swap fee again.",
+      });
+    }
+  }, [executor.feeReused]);
+
   useEffect(() => {
     if (approver.error) {
       toast({
