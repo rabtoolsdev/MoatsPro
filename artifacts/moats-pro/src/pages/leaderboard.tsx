@@ -95,8 +95,9 @@ export default function Leaderboard() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h1 className="text-4xl font-bold mb-2">Leaderboard</h1>
-          <div className="flex items-center gap-3">
+          <h1 className="text-4xl font-bold mb-3">Leaderboard</h1>
+          <EpochCountdown />
+          <div className="flex items-center gap-3 mt-5">
             <p className="text-muted-foreground">
               Top MAPS scorers across all Moats
             </p>
@@ -119,9 +120,6 @@ export default function Leaderboard() {
                 ? `Ended ${timeAgo(new Date(currentEpoch.endTime).getTime())}`
                 : `Started ${timeAgo(new Date(currentEpoch.startTime).getTime())}`}
             </p>
-          )}
-          {currentEpoch && !currentEpoch.isComplete && currentEpoch.endTime && (
-            <EpochCountdown endTime={currentEpoch.endTime} />
           )}
         </motion.div>
 
@@ -337,8 +335,22 @@ export default function Leaderboard() {
   );
 }
 
-function EpochCountdown({ endTime }: { endTime: string }) {
-  const endMs = useMemo(() => new Date(endTime).getTime(), [endTime]);
+// Returns the next Friday at 12:00 UTC (epoch flip time) strictly after `now`.
+function nextEpochFlip(now: number): number {
+  const d = new Date(now);
+  const candidate = new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 12, 0, 0, 0),
+  );
+  // 5 = Friday. Move forward to the next Friday at 12:00 UTC.
+  const daysUntilFriday = (5 - candidate.getUTCDay() + 7) % 7;
+  candidate.setUTCDate(candidate.getUTCDate() + daysUntilFriday);
+  if (candidate.getTime() <= now) {
+    candidate.setUTCDate(candidate.getUTCDate() + 7);
+  }
+  return candidate.getTime();
+}
+
+function EpochCountdown() {
   const [now, setNow] = useState<number>(() => Date.now());
 
   useEffect(() => {
@@ -346,11 +358,7 @@ function EpochCountdown({ endTime }: { endTime: string }) {
     return () => clearInterval(id);
   }, []);
 
-  // Guard against invalid dates and already-elapsed end times
-  if (!Number.isFinite(endMs) || endMs <= now) {
-    return null;
-  }
-
+  const endMs = useMemo(() => nextEpochFlip(now), [now]);
   const remaining = Math.max(0, endMs - now);
   const ended = remaining === 0;
 
