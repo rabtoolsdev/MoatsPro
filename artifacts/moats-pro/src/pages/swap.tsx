@@ -41,11 +41,15 @@ export default function Swap() {
 
   const { data: moats } = useAllMoatConfigs();
   const moatTokens = useMemo(() => deriveMoatTokens(moats), [moats]);
-  const toTokens = moatTokens;
-  const fromTokens = useMemo(
+  // Both sides accept the full token universe — base assets + moat-backed
+  // tokens. This makes the swap symmetric (e.g. buy a moat token with AVAX,
+  // or sell it back for AVAX/USDC/USDT/WAVAX/BTC.b or another moat token).
+  const allTokens = useMemo(
     () => [...BASE_TOKENS, ...moatTokens],
     [moatTokens]
   );
+  const fromTokens = allTokens;
+  const toTokens = allTokens;
   const { slippage, setSlippage } = useSlippage();
 
   const [fromToken, setFromToken] = useState<MoatToken | null>(BASE_TOKENS[0]);
@@ -162,13 +166,7 @@ export default function Swap() {
     }
   }, [approver.error]);
 
-  const canFlip = useMemo(() => {
-    if (!fromToken) return false;
-    // Flip would put the current "from" into "to" — only allowed if it is a moat-backed token.
-    return moatTokens.some(
-      (t) => t.address.toLowerCase() === fromToken.address.toLowerCase()
-    );
-  }, [fromToken, moatTokens]);
+  const canFlip = !!fromToken && !!toToken;
 
   const flip = () => {
     if (!canFlip) return;
@@ -282,7 +280,7 @@ export default function Swap() {
             Moat Swap
           </h1>
           <p className="text-sm text-muted-foreground mt-1.5">
-            Pay with AVAX, USDC, USDT, WAVAX, or any moat-backed token at the best rate.
+            Swap any way — base assets and moat-backed tokens, in either direction, at the best rate.
           </p>
         </div>
 
@@ -314,7 +312,7 @@ export default function Swap() {
               onClick={flip}
               disabled={!canFlip}
               data-testid="btn-flip-tokens"
-              title={canFlip ? "Flip tokens" : "AVAX, WAVAX, USDC, and USDT can only be paid in"}
+              title={canFlip ? "Flip tokens" : "Pick both tokens first"}
               className={`relative z-10 w-9 h-9 rounded-full border border-border bg-card transition-all duration-200 flex items-center justify-center group ${
                 canFlip
                   ? "hover:border-primary/60 hover:bg-primary/5 hover:text-primary"
@@ -411,14 +409,11 @@ export default function Swap() {
         open={pickerSide !== null}
         onClose={() => setPickerSide(null)}
         onSelect={(t) => {
+          // If the user picks the same token that's on the other side,
+          // swap them so the pair never has duplicates.
           if (pickerSide === "from") {
             if (toToken && t.address.toLowerCase() === toToken.address.toLowerCase()) {
-              const prevFromIsMoat =
-                fromToken &&
-                moatTokens.some(
-                  (m) => m.address.toLowerCase() === fromToken.address.toLowerCase()
-                );
-              setToToken(prevFromIsMoat ? fromToken : null);
+              setToToken(fromToken);
             }
             setFromToken(t);
           } else if (pickerSide === "to") {
@@ -431,13 +426,9 @@ export default function Swap() {
         tokens={pickerSide === "from" ? fromTokens : toTokens}
         excludeAddress={pickerSide === "from" ? toToken?.address : fromToken?.address}
         title={pickerSide === "from" ? "Pay with" : "Receive"}
-        balances={pickerSide === "from" ? walletBalances : undefined}
-        showBalances={pickerSide === "from"}
-        footerLabel={
-          pickerSide === "from"
-            ? `${fromTokens.length} tokens · base + moat-backed`
-            : `${toTokens.length} moat-backed tokens`
-        }
+        balances={walletBalances}
+        showBalances
+        footerLabel={`${allTokens.length} tokens · base + moat-backed`}
       />
     </div>
   );
