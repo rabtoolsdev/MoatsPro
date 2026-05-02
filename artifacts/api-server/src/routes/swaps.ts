@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, swapsTable, insertSwapSchema } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { enrichUsdValues } from "../lib/usd-pricing";
 
 const router: IRouter = Router();
 
@@ -28,6 +29,24 @@ router.post("/swaps", async (req, res) => {
       return;
     }
 
+    // Backfill USD values when the client (or its router) couldn't supply
+    // them — e.g. AVAX→BENSI through Odos. Without this, non-stable swaps
+    // would land in the DB with null fromUsd and disappear from the
+    // admin dashboard's "Volume (USD)" total.
+    const enriched = await enrichUsdValues({
+      chainId: data.chainId,
+      fromTokenSymbol: data.fromTokenSymbol,
+      fromTokenAddress: data.fromTokenAddress,
+      toTokenSymbol: data.toTokenSymbol,
+      toTokenAddress: data.toTokenAddress,
+      fromAmount: data.fromAmount,
+      toAmount: data.toAmount,
+      feeAmount: data.feeAmount ?? null,
+      fromUsd: data.fromUsd ?? null,
+      toUsd: data.toUsd ?? null,
+      feeUsd: data.feeUsd ?? null,
+    });
+
     const [row] = await db
       .insert(swapsTable)
       .values({
@@ -37,6 +56,9 @@ router.post("/swaps", async (req, res) => {
         feeTxHash: data.feeTxHash?.toLowerCase() ?? null,
         fromTokenAddress: data.fromTokenAddress.toLowerCase(),
         toTokenAddress: data.toTokenAddress.toLowerCase(),
+        fromUsd: enriched.fromUsd,
+        toUsd: enriched.toUsd,
+        feeUsd: enriched.feeUsd,
       })
       .returning();
     res.json({ ok: true, swap: row });

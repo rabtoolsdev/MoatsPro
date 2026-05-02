@@ -36,6 +36,7 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 - **WalletConnect Project ID**: `13318bff388bcd13cf50b4a10e9d7671`
 - **Supported chains**: Avalanche (primary), Ethereum, Arbitrum, Base, Optimism, Polygon
 - **API**: Live data from `https://moat-api.fortifi.network/api`
+- **Admin Volume USD**: New swaps are USD-priced server-side in `POST /swaps` via `artifacts/api-server/src/lib/usd-pricing.ts` (stablecoin → DexScreener → fee-bps cross-fill → derived feeUsd). Historical rows can be re-priced via `POST /admin/backfill-usd?afterId=N` (cursor pagination so unpriceable rows don't block progress) and the "Backfill USD" button in the admin header.
 - **Smart contract**: MoatV3 (MultiLockMoat) — stake, lock (with duration multipliers), burn, claimAllRewards, pending rewards
 - **Theme**: Deep navy (HSL 216 32% 7%) + cyan primary (HSL 195 100% 50%) matching moats.app
 

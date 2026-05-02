@@ -92,6 +92,27 @@ export function fetchUsers(range: Range, chainId: number | null, limit = 100) {
   return adminFetch<{ rows: UserRow[] }>(`/admin/users?${q.toString()}`);
 }
 
+export interface BackfillUsdResult {
+  scanned: number;
+  updated: number;
+  failed: number;
+  remaining: number;
+  nextCursor: number | null;
+  done: boolean;
+}
+
+export async function backfillUsd(
+  limit = 50,
+  afterId = 0,
+): Promise<BackfillUsdResult> {
+  const q = new URLSearchParams({ limit: String(limit), afterId: String(afterId) });
+  const res = await fetch(`${API_BASE}/admin/backfill-usd?${q.toString()}`, {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error(`Backfill failed (${res.status})`);
+  return res.json() as Promise<BackfillUsdResult>;
+}
+
 export interface RecordSwapPayload {
   walletAddress: string;
   chainId: number;

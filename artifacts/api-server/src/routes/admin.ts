@@ -1,7 +1,8 @@
 import { Router, type IRouter } from "express";
 import { db, swapsTable } from "@workspace/db";
-import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, or, sql } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { enrichUsdValues } from "../lib/usd-pricing";
 
 const router: IRouter = Router();
 
@@ -180,6 +181,85 @@ router.get("/users", async (req, res) => {
   } catch (err) {
     logger.error({ err }, "Failed to load users");
     res.status(500).json({ error: "Failed to load users" });
+  }
+});
+
+// POST /api/admin/backfill-usd
+// Walks rows that landed in the DB without USD pricing (typically non-stable
+// swaps routed through Odos) and fills in fromUsd/toUsd/feeUsd from current
+// DexScreener prices. Idempotent + safe to retry. The caller passes
+// `afterId` (the previous response's `nextCursor`) to advance through the
+// table — this guarantees forward progress even when some rows are
+// permanently unpriceable.
+router.post("/backfill-usd", async (req, res) => {
+  const limit = Math.min(Math.max(Number(req.query["limit"] ?? 50), 1), 200);
+  const afterId = Math.max(Number(req.query["afterId"] ?? 0), 0);
+  try {
+    const missingFilter = or(
+      isNull(swapsTable.fromUsd),
+      eq(swapsTable.fromUsd, 0),
+    );
+    const cursorFilter = and(missingFilter, sql`${swapsTable.id} > ${afterId}`);
+    const targets = await db
+      .select()
+      .from(swapsTable)
+      .where(cursorFilter)
+      .orderBy(swapsTable.id)
+      .limit(limit);
+
+    let updated = 0;
+    let failed = 0;
+    let lastId = afterId;
+    for (const row of targets) {
+      lastId = row.id;
+      const enriched = await enrichUsdValues({
+        chainId: row.chainId,
+        fromTokenSymbol: row.fromTokenSymbol,
+        fromTokenAddress: row.fromTokenAddress,
+        toTokenSymbol: row.toTokenSymbol,
+        toTokenAddress: row.toTokenAddress,
+        fromAmount: row.fromAmount,
+        toAmount: row.toAmount,
+        feeAmount: row.feeAmount,
+        fromUsd: null,
+        toUsd: row.toUsd,
+        feeUsd: row.feeUsd,
+      });
+      if (enriched.fromUsd != null && enriched.fromUsd > 0) {
+        await db
+          .update(swapsTable)
+          .set({
+            fromUsd: enriched.fromUsd,
+            toUsd: enriched.toUsd ?? row.toUsd,
+            feeUsd: enriched.feeUsd ?? row.feeUsd,
+          })
+          .where(eq(swapsTable.id, row.id));
+        updated++;
+      } else {
+        failed++;
+      }
+    }
+
+    const [{ remaining }] = await db
+      .select({ remaining: sql<number>`count(*)::int` })
+      .from(swapsTable)
+      .where(missingFilter);
+
+    // `done` is true once we've walked off the end of the missing-rows set.
+    // The client uses this (not `remaining===0`) to terminate the loop, so
+    // permanently-unpriceable rows don't cause an infinite poll.
+    const done = targets.length < limit;
+    res.json({
+      scanned: targets.length,
+      updated,
+      failed,
+      remaining,
+      nextCursor: done ? null : lastId,
+      done,
+    });
+  } catch (err) {
+    logger.error({ err }, "Failed to backfill USD values");
+    res.status(500).json({ error: "Failed to backfill USD values" });
   }
 });
 

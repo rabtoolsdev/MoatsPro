@@ -13,6 +13,7 @@ import {
   Loader2,
   RefreshCw,
   Search,
+  Sparkles,
   TrendingUp,
   Users as UsersIcon,
   Wallet,
@@ -27,12 +28,14 @@ import {
   fetchStats,
   fetchSwaps,
   fetchUsers,
+  backfillUsd,
   explorerTx,
   explorerAddr,
   type Range,
   type SwapRow,
   type UserRow,
 } from "@/lib/admin-api";
+import { useToast } from "@/hooks/use-toast";
 
 const RANGE_LABELS: Array<{ value: Range; label: string }> = [
   { value: "24h", label: "24h" },
@@ -44,10 +47,12 @@ const RANGE_LABELS: Array<{ value: Range; label: string }> = [
 type Tab = "transactions" | "users";
 
 export default function Admin() {
+  const { toast } = useToast();
   const [range, setRange] = useState<Range>("24h");
   const [chainFilter, setChainFilter] = useState<number | null>(null);
   const [addressFilter, setAddressFilter] = useState<string>("");
   const [tab, setTab] = useState<Tab>("transactions");
+  const [isBackfilling, setIsBackfilling] = useState(false);
 
   const stats = useQuery({
     queryKey: ["admin", "stats", range, chainFilter],
@@ -132,6 +137,63 @@ export default function Admin() {
             void swaps.refetch();
             void users.refetch();
           }}
+          isBackfilling={isBackfilling}
+          onBackfill={async () => {
+            if (isBackfilling) return;
+            setIsBackfilling(true);
+            let totalUpdated = 0;
+            let totalFailed = 0;
+            let cursor = 0;
+            let finalRemaining = 0;
+            let walkedToEnd = false;
+            try {
+              // Cursor-paginate in 50-row chunks until the server says
+              // `done` (we've walked off the end of the missing set). 40
+              // iterations = 2,000 rows of safety net; partial completion
+              // is reported below if we hit the cap.
+              for (let i = 0; i < 40; i++) {
+                const r = await backfillUsd(50, cursor);
+                totalUpdated += r.updated;
+                totalFailed += r.failed;
+                finalRemaining = r.remaining;
+                if (r.done) {
+                  walkedToEnd = true;
+                  break;
+                }
+                if (r.nextCursor == null) break;
+                cursor = r.nextCursor;
+              }
+              if (walkedToEnd) {
+                toast({
+                  title: totalUpdated > 0 ? "USD backfill complete" : "Already up to date",
+                  description:
+                    totalUpdated > 0
+                      ? `Priced ${totalUpdated} swap${totalUpdated === 1 ? "" : "s"}` +
+                        (totalFailed > 0 ? ` · ${totalFailed} unpriced (no DEX listing)` : "")
+                      : "All swaps already have USD pricing.",
+                  variant: "success",
+                });
+              } else {
+                toast({
+                  title: "Backfill paused",
+                  description:
+                    `Priced ${totalUpdated} swap${totalUpdated === 1 ? "" : "s"} · ` +
+                    `${finalRemaining} still missing. Click again to continue.`,
+                });
+              }
+              void stats.refetch();
+              void swaps.refetch();
+              void users.refetch();
+            } catch (err) {
+              toast({
+                title: "Backfill failed",
+                description: err instanceof Error ? err.message : "Try again in a moment.",
+                variant: "destructive",
+              });
+            } finally {
+              setIsBackfilling(false);
+            }
+          }}
         />
 
         <Filters
@@ -195,10 +257,14 @@ function Header({
   onRefresh,
   isFetching,
   lastUpdated,
+  onBackfill,
+  isBackfilling,
 }: {
   onRefresh: () => void;
   isFetching: boolean;
   lastUpdated: number;
+  onBackfill: () => void;
+  isBackfilling: boolean;
 }) {
   const [, force] = useState(0);
   useEffect(() => {
@@ -228,6 +294,20 @@ function Header({
         </div>
       </div>
       <div className="flex items-center gap-2">
+        <button
+          onClick={onBackfill}
+          disabled={isBackfilling}
+          data-testid="btn-admin-backfill"
+          title="Re-price any non-USDC swaps that are missing a USD volume value (uses current DexScreener prices)."
+          className="group flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-border/60 bg-card/40 hover:border-primary/60 hover:bg-card/70 hover:shadow-[0_0_24px_-8px_hsl(195_100%_50%/0.6)] disabled:opacity-60 disabled:cursor-not-allowed transition-all text-xs font-medium"
+        >
+          {isBackfilling ? (
+            <Loader2 size={12} className="animate-spin text-primary" />
+          ) : (
+            <Sparkles size={12} className="group-hover:text-primary transition-colors" />
+          )}
+          {isBackfilling ? "Backfilling…" : "Backfill USD"}
+        </button>
         <button
           onClick={onRefresh}
           data-testid="btn-admin-refresh"
