@@ -146,6 +146,27 @@ export default function Swap() {
     }
   }, [moatTokens, toToken]);
 
+  // Keep the currently-selected fromToken/toToken in sync with the latest
+  // token list. moatTokens initially contains the raw entries (no
+  // DexScreener logo yet) and rebuilds with real `logoUrl` values once
+  // useDexscreenerInfo resolves — without this re-sync the selected token
+  // would keep its stale placeholder logo until the user re-picks it from
+  // the modal. Match by address (allTokens is already chain-scoped).
+  useEffect(() => {
+    if (fromToken) {
+      const fresh = allTokens.find(
+        (t) => t.address.toLowerCase() === fromToken.address.toLowerCase(),
+      );
+      if (fresh && fresh.logoUrl !== fromToken.logoUrl) setFromToken(fresh);
+    }
+    if (toToken) {
+      const fresh = allTokens.find(
+        (t) => t.address.toLowerCase() === toToken.address.toLowerCase(),
+      );
+      if (fresh && fresh.logoUrl !== toToken.logoUrl) setToToken(fresh);
+    }
+  }, [allTokens, fromToken, toToken]);
+
   const fromBal = useSwapFromBalance(fromToken);
   const toBal = useTokenBalance(toToken?.address);
   const fromDecimals = (fromBal.decimals as number | undefined) ?? fromToken?.decimals ?? 18;
