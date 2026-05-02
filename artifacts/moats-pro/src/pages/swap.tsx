@@ -405,13 +405,6 @@ export default function Swap() {
             Quotes auto-refresh every 20s · Aggregating across 0x, ODOS, KyberSwap, ParaSwap & more via Li.Fi
           </div>
         </div>
-
-        <div className="mt-4 text-[11px] text-muted-foreground text-center">
-          Fees support Moat Protocol development · sent to{" "}
-          <span className="font-mono text-foreground/80">
-            {FEE_WALLET.slice(0, 6)}…{FEE_WALLET.slice(-4)}
-          </span>
-        </div>
       </div>
 
       <TokenSelectModal
