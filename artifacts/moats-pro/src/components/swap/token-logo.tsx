@@ -36,7 +36,16 @@ export function TokenLogo({
   className,
 }: TokenLogoProps) {
   const sources = useMemo(() => buildSources(address, hint), [address, hint]);
+  // Reset the source index whenever the token (address/hint) changes, so a
+  // newly-picked token always starts from the highest-priority source instead
+  // of inheriting the previous token's failure state.
+  const [prevKey, setPrevKey] = useState(`${address}|${hint ?? ""}`);
   const [idx, setIdx] = useState(0);
+  const currentKey = `${address}|${hint ?? ""}`;
+  if (prevKey !== currentKey) {
+    setPrevKey(currentKey);
+    setIdx(0);
+  }
 
   const currentSrc = idx < sources.length ? sources[idx] : null;
   const showFallback = currentSrc === null;
