@@ -686,16 +686,33 @@ export default function MoatDetail() {
                       value: formatPoints(userMoatPointsValue),
                       testId: "user-moat-points",
                       usd: 0,
+                      weightedPct: totalPoints > 0 ? (userMoatPointsValue / totalPoints) * 100 : 0,
                     },
-                  ].map((item) => (
-                    <div key={item.label} data-testid={item.testId}>
-                      <p className="text-xs text-muted-foreground mb-1">{item.label}</p>
-                      <p className="font-bold text-xl tabular-nums">{item.value}</p>
-                      {item.usd > 0 && (
-                        <p className="text-xs text-emerald-400 tabular-nums">{formatUSD(item.usd)}</p>
-                      )}
-                    </div>
-                  ))}
+                  ].map((item) => {
+                    const weightedPct = (item as { weightedPct?: number }).weightedPct ?? 0;
+                    return (
+                      <div key={item.label} data-testid={item.testId}>
+                        <p className="text-xs text-muted-foreground mb-1">{item.label}</p>
+                        <p className="font-bold text-xl tabular-nums">{item.value}</p>
+                        {item.usd > 0 && (
+                          <p className="text-xs text-emerald-400 tabular-nums">{formatUSD(item.usd)}</p>
+                        )}
+                        {weightedPct > 0 && (
+                          <p
+                            data-testid="user-weighted-pct"
+                            className="text-xs text-cyan-400 tabular-nums"
+                          >
+                            {weightedPct >= 1
+                              ? weightedPct.toFixed(2)
+                              : weightedPct >= 0.01
+                              ? weightedPct.toFixed(3)
+                              : weightedPct.toPrecision(2)}
+                            % of pool
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {userInfo.pendingRewards && userInfo.pendingRewards[0].length > 0 && (
