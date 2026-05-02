@@ -11,6 +11,7 @@ import Portfolio from "@/pages/portfolio";
 import MoatDetail from "@/pages/moat-detail";
 import Leaderboard from "@/pages/leaderboard";
 import Swap from "@/pages/swap";
+import Admin from "@/pages/admin";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -50,6 +51,7 @@ function Router() {
           <Route path="/moat/:address" component={MoatDetail} />
           <Route path="/leaderboard" component={Leaderboard} />
           <Route path="/swap" component={Swap} />
+          <Route path="/admin" component={Admin} />
           <Route component={NotFound} />
         </Switch>
       </motion.div>

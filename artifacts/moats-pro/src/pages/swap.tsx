@@ -32,6 +32,7 @@ import { useSwapQuote, useExecuteSwap, type FeeTransfer } from "@/hooks/use-swap
 import { useSlippage } from "@/hooks/use-slippage";
 import { useWalletAssetBalances } from "@/hooks/use-wallet-assets";
 import { useToast } from "@/hooks/use-toast";
+import { recordSwap } from "@/lib/admin-api";
 
 type Side = "from" | "to";
 
@@ -172,16 +173,60 @@ export default function Swap() {
     swapRaw > 0n &&
     allowanceRaw < swapRaw;
 
-  // Toast on swap success
+  // Toast on swap success + record to admin DB.
   useEffect(() => {
-    if (executor.isSuccess) {
-      toast({
-        title: "Swap complete",
-        description: "Your tokens have arrived in your wallet.",
+    if (!executor.isSuccess) return;
+    toast({
+      title: "Swap complete",
+      description: "Your tokens have arrived in your wallet.",
+    });
+    // Best-effort record. We capture closure values BEFORE reset() clears them.
+    if (
+      address &&
+      activeChainId &&
+      fromToken &&
+      toToken &&
+      executor.swapHash &&
+      quote.best
+    ) {
+      const fromAmtNum = parseFloat(formatUnits(amountRaw, fromDecimals));
+      const toAmtNum = parseFloat(formatUnits(BigInt(quote.best.toAmountRaw), toDecimals));
+      const feeAmtNum = parseFloat(formatUnits(feeRaw, fromDecimals));
+      const fromUsd = quote.best.fromAmountUsd;
+      // Approximate full-input USD by scaling the post-fee USD up by 1/(1-feeBps).
+      const fullFromUsd =
+        fromUsd !== undefined ? fromUsd / (1 - FEE_BPS / 10_000) : undefined;
+      const feeUsd =
+        fullFromUsd !== undefined ? fullFromUsd * (FEE_BPS / 10_000) : undefined;
+      void recordSwap({
+        walletAddress: address,
+        chainId: activeChainId,
+        network: networkKey,
+        txHash: executor.swapHash,
+        feeTxHash: executor.feeHash ?? null,
+        fromTokenSymbol: fromToken.symbol,
+        fromTokenAddress: fromToken.address,
+        fromTokenDecimals: fromDecimals,
+        toTokenSymbol: toToken.symbol,
+        toTokenAddress: toToken.address,
+        toTokenDecimals: toDecimals,
+        fromAmountRaw: amountRaw.toString(),
+        toAmountRaw: quote.best.toAmountRaw,
+        feeAmountRaw: feeRaw.toString(),
+        fromAmount: fromAmtNum,
+        toAmount: toAmtNum,
+        feeAmount: feeAmtNum,
+        fromUsd: fullFromUsd ?? null,
+        toUsd: quote.best.toAmountUsd ?? null,
+        feeUsd: feeUsd ?? null,
+        router: quote.best.router,
+        toolName: quote.best.toolName ?? null,
+        slippageBps: Math.round((slippage ?? 0.005) * 10_000),
+        status: "success",
       });
-      setAmount("");
-      executor.reset();
     }
+    setAmount("");
+    executor.reset();
   }, [executor.isSuccess]);
 
   // Toast on approve success → refetch allowance

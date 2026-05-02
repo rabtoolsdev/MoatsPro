@@ -38,3 +38,8 @@ externalPort = 3000
 [[ports]]
 localPort = 25088
 externalPort = 3001
+
+[userenv]
+
+[userenv.shared]
+ADMIN_TOKEN = "8c7c98157ce24de47d43665fd1f49ce05210958ced5cba56"

@@ -38,6 +38,8 @@ export interface SwapQuote {
   toAmountRaw: string;
   toAmountMinRaw: string;
   estimatedGasUsd?: number;
+  fromAmountUsd?: number;
+  toAmountUsd?: number;
   feeAmountRaw?: string;
   approveTo: `0x${string}`;
   tx: {
@@ -59,7 +61,9 @@ interface LiFiQuoteResponse {
   estimate: {
     approvalAddress?: string;
     fromAmount: string;
+    fromAmountUSD?: string;
     toAmount: string;
+    toAmountUSD?: string;
     toAmountMin: string;
     gasCosts?: Array<{ amountUSD?: string }>;
     feeCosts?: Array<{ amount?: string; token?: { address?: string } }>;
@@ -101,6 +105,8 @@ export async function getLifiQuote(req: QuoteRequest): Promise<QuoteResult> {
     const approveTo = (data.estimate.approvalAddress ?? data.transactionRequest.to) as `0x${string}`;
     const feeAmount = data.estimate.feeCosts?.[0]?.amount;
     const gasUsd = parseFloat(data.estimate.gasCosts?.[0]?.amountUSD ?? "0");
+    const fromUsd = parseFloat(data.estimate.fromAmountUSD ?? "0");
+    const toUsd = parseFloat(data.estimate.toAmountUSD ?? "0");
     return {
       router: "lifi",
       ok: true,
@@ -111,6 +117,8 @@ export async function getLifiQuote(req: QuoteRequest): Promise<QuoteResult> {
         toAmountRaw: data.estimate.toAmount,
         toAmountMinRaw: data.estimate.toAmountMin,
         estimatedGasUsd: Number.isFinite(gasUsd) && gasUsd > 0 ? gasUsd : undefined,
+        fromAmountUsd: Number.isFinite(fromUsd) && fromUsd > 0 ? fromUsd : undefined,
+        toAmountUsd: Number.isFinite(toUsd) && toUsd > 0 ? toUsd : undefined,
         feeAmountRaw: feeAmount,
         approveTo,
         tx: {
