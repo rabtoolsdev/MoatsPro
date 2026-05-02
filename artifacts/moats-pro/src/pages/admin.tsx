@@ -608,10 +608,16 @@ function shortAddr(a: string): string {
 function formatUsd(v: number | null | undefined): string {
   if (v == null || !Number.isFinite(v)) return "—";
   if (v === 0) return "$0";
-  if (v < 0.01) return "<$0.01";
-  if (v < 1000) return `$${v.toFixed(2)}`;
-  if (v < 1_000_000) return `$${v.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
-  if (v < 1_000_000_000) return `$${(v / 1_000).toFixed(1)}K`;
+  const abs = Math.abs(v);
+  if (abs < 0.01) {
+    // Show extra precision for sub-cent amounts (fees on tiny swaps).
+    if (abs < 0.0001) return `$${v.toFixed(6).replace(/0+$/, "").replace(/\.$/, "")}`;
+    return `$${v.toFixed(5).replace(/0+$/, "").replace(/\.$/, "")}`;
+  }
+  if (abs < 1) return `$${v.toFixed(4).replace(/0+$/, "").replace(/\.$/, "")}`;
+  if (abs < 1000) return `$${v.toFixed(2)}`;
+  if (abs < 1_000_000) return `$${v.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+  if (abs < 1_000_000_000) return `$${(v / 1_000).toFixed(1)}K`;
   return `$${(v / 1_000_000).toFixed(2)}M`;
 }
 

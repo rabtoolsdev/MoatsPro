@@ -192,10 +192,34 @@ export default function Swap() {
       const fromAmtNum = parseFloat(formatUnits(amountRaw, fromDecimals));
       const toAmtNum = parseFloat(formatUnits(BigInt(quote.best.toAmountRaw), toDecimals));
       const feeAmtNum = parseFloat(formatUnits(feeRaw, fromDecimals));
-      const fromUsd = quote.best.fromAmountUsd;
-      // Approximate full-input USD by scaling the post-fee USD up by 1/(1-feeBps).
+
+      // Stablecoin fallback: if the router didn't return USD pricing (Odos),
+      // derive it from whichever side is a known dollar-pegged token.
+      const STABLES = new Set([
+        "USDC", "USDT", "DAI", "BUSD", "FRAX", "LUSD",
+        "USDC.E", "USDT.E", "USDBC", "PYUSD", "USDS",
+      ]);
+      const fromIsStable = STABLES.has(fromToken.symbol.toUpperCase());
+      const toIsStable = STABLES.has(toToken.symbol.toUpperCase());
+
+      let postFeeFromUsd = quote.best.fromAmountUsd;
+      let toUsd = quote.best.toAmountUsd;
+      if (postFeeFromUsd === undefined && fromIsStable) {
+        // Post-fee input AVAX→USD: amountRaw - feeRaw, in stablecoin units = USD.
+        postFeeFromUsd = fromAmtNum - feeAmtNum;
+      }
+      if (toUsd === undefined && toIsStable) {
+        toUsd = toAmtNum;
+      }
+      // If we still don't have post-fee USD but we know the output USD, use it
+      // as a proxy (≈ post-fee input minus slippage; close enough for accounting).
+      if (postFeeFromUsd === undefined && toUsd !== undefined) {
+        postFeeFromUsd = toUsd;
+      }
+
+      // Scale post-fee USD up by 1/(1-feeBps) to recover the full-input USD.
       const fullFromUsd =
-        fromUsd !== undefined ? fromUsd / (1 - FEE_BPS / 10_000) : undefined;
+        postFeeFromUsd !== undefined ? postFeeFromUsd / (1 - FEE_BPS / 10_000) : undefined;
       const feeUsd =
         fullFromUsd !== undefined ? fullFromUsd * (FEE_BPS / 10_000) : undefined;
       void recordSwap({
@@ -217,7 +241,7 @@ export default function Swap() {
         toAmount: toAmtNum,
         feeAmount: feeAmtNum,
         fromUsd: fullFromUsd ?? null,
-        toUsd: quote.best.toAmountUsd ?? null,
+        toUsd: toUsd ?? null,
         feeUsd: feeUsd ?? null,
         router: quote.best.router,
         toolName: quote.best.toolName ?? null,
