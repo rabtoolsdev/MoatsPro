@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useAccount } from "wagmi";
 import { useAppKit, useAppKitNetwork } from "@reown/appkit/react";
 import { formatUnits, parseUnits } from "viem";
-import { ArrowDownUp, ChevronDown, Loader2, Settings, Wallet } from "lucide-react";
+import { ArrowDownUp, ChevronDown, Loader2, Wallet } from "lucide-react";
 import { Navbar } from "@/components/navbar";
 import { TokenSelectModal } from "@/components/swap/token-select-modal";
 import { TokenLogo } from "@/components/swap/token-logo";
+import { SlippageSettings } from "@/components/swap/slippage-settings";
 import { deriveMoatTokens, type MoatToken } from "@/lib/moat-tokens";
 import {
   AVALANCHE_CHAIN_ID,
@@ -16,6 +17,7 @@ import { networks } from "@/lib/wagmi-config";
 import { useAllMoatConfigs } from "@/hooks/use-moats-api";
 import { useTokenAllowance, useTokenBalance, useApproveToken } from "@/hooks/use-moat-contract";
 import { useSwapQuote, useExecuteSwap } from "@/hooks/use-swap";
+import { useSlippage } from "@/hooks/use-slippage";
 import { useToast } from "@/hooks/use-toast";
 
 type Side = "from" | "to";
@@ -28,6 +30,7 @@ export default function Swap() {
 
   const { data: moats } = useAllMoatConfigs();
   const tokens = useMemo(() => deriveMoatTokens(moats), [moats]);
+  const { slippage, setSlippage } = useSlippage();
 
   const [fromToken, setFromToken] = useState<MoatToken | null>(null);
   const [toToken, setToToken] = useState<MoatToken | null>(null);
@@ -54,6 +57,7 @@ export default function Swap() {
     toTokenAddress: toToken?.address,
     fromAmount: amount,
     fromDecimals,
+    slippage,
     enabled: onAvalanche && isConnected,
   });
 
@@ -224,10 +228,7 @@ export default function Swap() {
             <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
               You pay
             </div>
-            <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-              <Settings size={11} />
-              {Math.round(0.005 * 100 * 10) / 10}% slippage
-            </div>
+            <SlippageSettings slippage={slippage} onChange={setSlippage} />
           </div>
 
           <TokenInput
