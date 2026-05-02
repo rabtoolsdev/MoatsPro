@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { getAddress } from "viem";
 
 interface TokenLogoProps {
   address: string;
@@ -30,17 +31,6 @@ const TRUSTWALLET_FOLDER: Record<string, string> = {
   bsc: "smartchain",
 };
 
-// DexScreener token logo CDN; covers most actively-traded ERC20s.
-const DEXSCREENER_CHAIN: Record<string, string> = {
-  avalanche: "avalanche",
-  ethereum: "ethereum",
-  base: "base",
-  optimism: "optimism",
-  arbitrum: "arbitrum",
-  polygon: "polygon",
-  bsc: "bsc",
-};
-
 // CoinGecko fallback for the most common native tokens. URLs taken from the
 // public CoinGecko coin pages (large variant). These cover the chains Moats
 // currently supports.
@@ -59,9 +49,40 @@ const NATIVE_COINGECKO: Record<string, string> = {
   bsc: "https://assets.coingecko.com/coins/images/825/large/bnb-icon2_2x.png",
 };
 
+// Brand logos for the major stablecoins / wrapped natives, keyed by uppercase
+// symbol. Used as a high-priority source so popular tokens always render even
+// when DexScreener / Trust Wallet don't have them indexed. URLs are CoinGecko
+// (stable, well-cached).
+const SYMBOL_LOGOS: Record<string, string> = {
+  USDC: "https://assets.coingecko.com/coins/images/6319/large/usdc.png",
+  "USDC.E": "https://assets.coingecko.com/coins/images/6319/large/usdc.png",
+  USDBC: "https://assets.coingecko.com/coins/images/6319/large/usdc.png",
+  USDT: "https://assets.coingecko.com/coins/images/325/large/Tether.png",
+  "USDT.E": "https://assets.coingecko.com/coins/images/325/large/Tether.png",
+  DAI: "https://assets.coingecko.com/coins/images/9956/large/Badge_Dai.png",
+  BUSD: "https://assets.coingecko.com/coins/images/9576/large/BUSD.png",
+  FRAX: "https://assets.coingecko.com/coins/images/13422/large/FRAX_icon.png",
+  LUSD: "https://assets.coingecko.com/coins/images/14666/large/Group_3.png",
+  PYUSD: "https://assets.coingecko.com/coins/images/31212/large/PYUSD_Logo_%282%29.png",
+  USDS: "https://assets.coingecko.com/coins/images/39926/large/usds.webp",
+  WETH: "https://assets.coingecko.com/coins/images/2518/large/weth.png",
+  WAVAX:
+    "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/avalanchec/assets/0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7/logo.png",
+  WBTC: "https://assets.coingecko.com/coins/images/7598/large/wrapped_bitcoin_wbtc.png",
+};
+
+function safeChecksum(address: string): string | null {
+  try {
+    return getAddress(address);
+  } catch {
+    return null;
+  }
+}
+
 function buildSources(
   address: string,
   network: string,
+  symbol: string,
   hint?: string,
 ): string[] {
   const sources: string[] = [];
@@ -70,7 +91,12 @@ function buildSources(
   const lower = address.toLowerCase();
   const isNative = NATIVE_SENTINELS.has(lower);
   const tw = TRUSTWALLET_FOLDER[network];
-  const ds = DEXSCREENER_CHAIN[network];
+
+  // Symbol-based brand logo (USDC, USDT, DAI, …) — highest signal for popular
+  // assets and works regardless of which chain-specific path actually has the
+  // asset indexed.
+  const symKey = symbol.toUpperCase();
+  if (SYMBOL_LOGOS[symKey]) sources.push(SYMBOL_LOGOS[symKey]);
 
   if (isNative) {
     // Trust Wallet keeps the native coin logo at <chain>/info/logo.png.
@@ -79,25 +105,20 @@ function buildSources(
         `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/${tw}/info/logo.png`,
       );
     }
-    // CoinGecko fallback for native tokens — almost always reachable.
     const cg = NATIVE_COINGECKO[network];
     if (cg) sources.push(cg);
-  } else {
-    // ERC20 token: prefer DexScreener (usually has a logo), then Trust Wallet
-    // (uses the original-case address). We also try the lowercase variant in
-    // case the input was already checksum-cased.
-    if (ds) sources.push(`https://dd.dexscreener.com/ds-data/tokens/${ds}/${lower}.png`);
-    if (tw) {
+  } else if (tw) {
+    // ERC20: Trust Wallet requires EIP-55 checksum casing for the asset path.
+    const checksum = safeChecksum(address);
+    if (checksum) {
       sources.push(
-        `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/${tw}/assets/${address}/logo.png`,
+        `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/${tw}/assets/${checksum}/logo.png`,
       );
-      // Also try the address as-stored (not always checksum-cased).
-      if (address !== lower) {
-        sources.push(
-          `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/${tw}/assets/${lower}/logo.png`,
-        );
-      }
     }
+    // As a last-ditch try, the lowercase path (rarely works but cheap).
+    sources.push(
+      `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/${tw}/assets/${lower}/logo.png`,
+    );
   }
 
   return Array.from(new Set(sources.filter(Boolean)));
@@ -119,13 +140,10 @@ export function TokenLogo({
   className,
 }: TokenLogoProps) {
   const sources = useMemo(
-    () => buildSources(address, network, hint),
-    [address, network, hint],
+    () => buildSources(address, network, symbol, hint),
+    [address, network, symbol, hint],
   );
-  // Reset the source index whenever the token (address/hint/network) changes,
-  // so a newly-picked token always starts from the highest-priority source
-  // instead of inheriting the previous token's failure state.
-  const cacheKey = `${address}|${network}|${hint ?? ""}`;
+  const cacheKey = `${address}|${network}|${symbol}|${hint ?? ""}`;
   const [prevKey, setPrevKey] = useState(cacheKey);
   const [idx, setIdx] = useState(0);
   if (prevKey !== cacheKey) {
