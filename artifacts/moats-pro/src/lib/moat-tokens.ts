@@ -1,5 +1,6 @@
 import type { MoatConfig } from "./moats-api";
 import { MOAT_METADATA, getMoatMeta, getTokenLogoUrl } from "./moat-metadata";
+import btcbLogo from "@assets/logobtc_1777735570322.png";
 
 export interface MoatToken {
   address: `0x${string}`;
@@ -58,7 +59,7 @@ export const BASE_TOKENS: MoatToken[] = [
     address: "0x152b9d0FdC40C096757F570A51E494bd4b943E50",
     symbol: "BTC.b",
     name: "Bitcoin (Bridged)",
-    logoUrl: TW_AVAX_LOGO("0x152b9d0FdC40C096757F570A51E494bd4b943E50"),
+    logoUrl: btcbLogo,
     decimals: 8,
     moatContractAddresses: [],
   },
