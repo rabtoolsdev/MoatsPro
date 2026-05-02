@@ -281,9 +281,6 @@ export default function Swap() {
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-br from-foreground to-primary/80 bg-clip-text text-transparent">
             Moat Swap
           </h1>
-          <p className="text-sm text-muted-foreground mt-1.5">
-            Swap any way — base assets and moat-backed tokens, in either direction, at the best rate.
-          </p>
         </div>
 
         <div className="relative">
