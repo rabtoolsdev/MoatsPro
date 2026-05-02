@@ -56,6 +56,7 @@ export default function Swap() {
   const [toToken, setToToken] = useState<MoatToken | null>(null);
   const [amount, setAmount] = useState("");
   const [pickerSide, setPickerSide] = useState<Side | null>(null);
+  const [flipCount, setFlipCount] = useState(0);
 
   // Pre-select first moat token for "to" side once loaded
   useEffect(() => {
@@ -174,6 +175,7 @@ export default function Swap() {
     setFromToken(toToken);
     setToToken(a);
     setAmount("");
+    setFlipCount((c) => c + 1);
   };
 
   const setMax = () => {
@@ -284,10 +286,12 @@ export default function Swap() {
           </p>
         </div>
 
-        <div
-          className="rounded-2xl border border-border/60 bg-card/60 backdrop-blur-xl shadow-2xl shadow-black/30 p-4 sm:p-5"
-          data-testid="swap-card"
-        >
+        <div className="relative">
+          <div className="swap-halo" aria-hidden />
+          <div
+            className="relative z-10 rounded-2xl border border-border/60 bg-card/60 backdrop-blur-xl shadow-2xl shadow-black/30 p-4 sm:p-5 card-glow"
+            data-testid="swap-card"
+          >
           <div className="flex items-center justify-between mb-3 px-1">
             <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
               You pay
@@ -315,14 +319,15 @@ export default function Swap() {
               title={canFlip ? "Flip tokens" : "Pick both tokens first"}
               className={`relative z-10 w-9 h-9 rounded-full border border-border bg-card transition-all duration-200 flex items-center justify-center group ${
                 canFlip
-                  ? "hover:border-primary/60 hover:bg-primary/5 hover:text-primary"
+                  ? "hover:border-primary/60 hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_18px_rgba(0,212,255,0.35)] active:scale-90"
                   : "opacity-40 cursor-not-allowed"
               }`}
               aria-label="Flip tokens"
             >
               <ArrowDownUp
                 size={14}
-                className={`text-muted-foreground transition-colors ${canFlip ? "group-hover:text-primary" : ""}`}
+                style={{ transform: `rotate(${flipCount * 180}deg)` }}
+                className={`text-muted-foreground transition-transform duration-300 ease-out ${canFlip ? "group-hover:text-primary" : ""}`}
               />
             </button>
           </div>
@@ -342,7 +347,10 @@ export default function Swap() {
           />
 
           {/* Quote details */}
-          <div className="mt-4 px-1 space-y-1.5">
+          <div
+            key={quote.best ? quote.best.toAmountRaw : "no-quote"}
+            className={`mt-4 px-1 space-y-1.5 ${quote.best ? "fade-rise" : ""}`}
+          >
             {quote.best && rate && fromToken && toToken && (
               <Row
                 label="Rate"
@@ -367,7 +375,8 @@ export default function Swap() {
                 label="Routed via"
                 value={
                   <span className="flex items-center gap-1.5">
-                    <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-semibold uppercase tracking-wide">
+                    <span className="relative flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-semibold uppercase tracking-wide">
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary live-dot" aria-hidden />
                       {quote.best.router === "lifi" ? "Li.Fi" : quote.best.router}
                     </span>
                     <span className="text-muted-foreground/80 truncate max-w-[140px]">
@@ -399,8 +408,10 @@ export default function Swap() {
             {buttonState.label}
           </button>
 
-          <div className="mt-3 text-[10px] text-muted-foreground/70 text-center">
-            Quotes auto-refresh every 20s · Aggregating across 0x, ODOS, KyberSwap, ParaSwap & more via Li.Fi
+          <div className="mt-3 text-[10px] text-muted-foreground/70 text-center flex items-center justify-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary/80 live-dot" aria-hidden />
+            <span>Quotes auto-refresh every 20s · Aggregating across 0x, ODOS, KyberSwap, ParaSwap &amp; more via Li.Fi</span>
+          </div>
           </div>
         </div>
       </div>
@@ -459,7 +470,7 @@ function TokenInput({
 }) {
   return (
     <div
-      className={`rounded-xl border p-3.5 transition-colors ${
+      className={`swap-input-glow rounded-xl border p-3.5 transition-all duration-200 ${
         isInsufficient
           ? "border-rose-500/40 bg-rose-500/5"
           : "border-border/40 bg-muted/10 hover:border-border/60"

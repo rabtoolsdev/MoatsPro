@@ -240,6 +240,16 @@
   to { opacity: 1; transform: translateX(0); }
 }
 
+@keyframes swap-halo-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.55; }
+  50% { transform: translate(8px, -6px) scale(1.04); opacity: 0.75; }
+}
+
+@keyframes fade-rise {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* ─── Base layer ───────────────────────────────────────────────── */
 
 @layer base {
@@ -447,6 +457,26 @@
   }
   .card-glow:hover {
     box-shadow: 0 0 0 1px rgba(0,212,255,0.3), 0 4px 32px rgba(0,212,255,0.08), 0 1px 4px rgba(0,0,0,0.4);
+  }
+
+  /* ── Swap card ── */
+  .swap-halo {
+    position: absolute;
+    inset: -28px;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(60% 50% at 30% 20%, rgba(0, 212, 255, 0.16), transparent 70%),
+      radial-gradient(55% 45% at 75% 85%, rgba(120, 90, 255, 0.10), transparent 70%);
+    filter: blur(28px);
+    animation: swap-halo-drift 9s ease-in-out infinite;
+  }
+  .fade-rise {
+    animation: fade-rise 0.35s ease-out both;
+  }
+  .swap-input-glow:focus-within {
+    border-color: rgba(0, 212, 255, 0.55) !important;
+    box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.35), 0 0 24px rgba(0, 212, 255, 0.08);
   }
 
   /* ── Gold / silver / bronze podium borders ── */
