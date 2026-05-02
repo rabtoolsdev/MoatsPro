@@ -1,4 +1,4 @@
-// Thin client for the admin API. No auth — the dashboard is open access.
+// Thin client for the admin API. No auth — `/admin` is open.
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "/api";
 
@@ -86,11 +86,7 @@ export function fetchSwaps(
   );
 }
 
-export function fetchUsers(
-  range: Range,
-  chainId: number | null,
-  limit = 100,
-) {
+export function fetchUsers(range: Range, chainId: number | null, limit = 100) {
   const q = new URLSearchParams({ range, limit: String(limit) });
   if (chainId !== null) q.set("chainId", String(chainId));
   return adminFetch<{ rows: UserRow[] }>(`/admin/users?${q.toString()}`);
