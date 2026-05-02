@@ -267,6 +267,7 @@ export default function Swap() {
     toast({
       title: "Swap complete",
       description: "Your tokens have arrived in your wallet.",
+      variant: "success",
     });
     // Best-effort record. We capture closure values BEFORE reset() clears them.
     if (
@@ -344,7 +345,11 @@ export default function Swap() {
   // Toast on approve success → refetch allowance
   useEffect(() => {
     if (approver.isSuccess) {
-      toast({ title: "Approval confirmed", description: "You can now run the swap." });
+      toast({
+        title: "Approval confirmed",
+        description: "You can now run the swap.",
+        variant: "success",
+      });
       void allowance.refetch();
     }
   }, [approver.isSuccess]);
