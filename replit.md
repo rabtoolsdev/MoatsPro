@@ -57,3 +57,15 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 - APY/TVL/fees endpoints do not exist in the real Moats API (/api/tvl → 404)
 - Yield metrics are derived from rewardTokens data: tokenAmount (daily rate), totalRewardsDeposited, totalRewardsClaimed
 - MAPS score uses `mapScore` field (not `points`) — normalized in useMapsLeaderboard hook
+
+#### Production Deployment (Hetzner)
+- **Server IP**: `128.140.98.252` (resolves from `pro.moats.app`)
+- **GitHub repo**: `rabtoolsdev/MoatsPro` (private)
+- **Auto-deploy**: GitHub Actions on push to `main` → SSHes to Hetzner → runs `deploy/deploy.sh`
+- **Manual deploy** (proper command per user — login as root, run script as `moats` user):
+  ```bash
+  ssh root@128.140.98.252
+  sudo -u moats bash /var/www/moats-pro/deploy/deploy.sh
+  ```
+  Do NOT `ssh moats@...` directly — the user logs in as root and `sudo -u moats` to run the deploy script.
+- **GitHub push from Replit**: `git push` is sandbox-blocked; push via Replit Git pane (uses GitHub OAuth) OR use `GITHUB_TOKEN` secret + smart-HTTP protocol via curl (see commit log for Task #15)
