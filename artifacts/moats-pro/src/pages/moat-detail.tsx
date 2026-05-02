@@ -41,19 +41,16 @@ const networkExplorerTx: Record<string, string> = {
 };
 
 const lockMultiplierInfo = [
-  { days: 30, multiplier: "2x", numeric: 2, label: "1 Month" },
-  { days: 90, multiplier: "2.5x", numeric: 2.5, label: "3 Months" },
-  { days: 180, multiplier: "3x", numeric: 3, label: "6 Months" },
-  { days: 365, multiplier: "4x", numeric: 4, label: "1 Year" },
-  { days: 730, multiplier: "5x", numeric: 5, label: "2 Years" },
+  { days: 30, multiplier: "2x", label: "1 Month" },
+  { days: 90, multiplier: "2.5x", label: "3 Months" },
+  { days: 180, multiplier: "3x", label: "6 Months" },
+  { days: 365, multiplier: "4x", label: "1 Year" },
+  { days: 730, multiplier: "5x", label: "2 Years" },
 ];
 
-// MoatV3 standard burn multiplier — burned tokens earn 2x bonus points
-const BURN_POINTS_MULTIPLIER = 2;
-
-function getLockMultiplierNumeric(days: number): number {
+function getLockMultiplierLabel(days: number): string {
   const match = lockMultiplierInfo.find((o) => o.days === days);
-  return match?.numeric ?? 1;
+  return match?.multiplier ?? "1x";
 }
 
 function getLockDurationLabel(originalDurationSecs: bigint): string {
@@ -1067,7 +1064,7 @@ export default function MoatDetail() {
                             </button>
                           </div>
                         </div>
-                        <div className="text-xs text-muted-foreground p-3 rounded-xl bg-muted/20 border border-border/30 space-y-1.5">
+                        <div className="text-xs text-muted-foreground p-3 rounded-xl bg-muted/20 border border-border/30 space-y-1">
                           <p className="flex justify-between">
                             <span>Points per token</span>
                             <span className="font-medium text-foreground">1x</span>
@@ -1080,20 +1077,6 @@ export default function MoatDetail() {
                                 : "5%"}
                             </span>
                           </p>
-                          <div className="border-t border-border/40 pt-1.5 mt-0.5 flex justify-between items-center">
-                            <span className="flex items-center gap-1.5">
-                              <Zap size={11} className="text-cyan-400" />
-                              <span>You&apos;ll earn</span>
-                            </span>
-                            <span
-                              className="font-bold text-cyan-400 tabular-nums"
-                              data-testid="estimate-stake-points"
-                            >
-                              {stakeAmount && parseFloat(stakeAmount) > 0
-                                ? `≈ ${formatPoints(parseFloat(stakeAmount))} pts`
-                                : "—"}
-                            </span>
-                          </div>
                         </div>
                         <button
                           onClick={handleStake}
@@ -1184,27 +1167,11 @@ export default function MoatDetail() {
                             ))}
                           </div>
                         </div>
-                        <div className="text-xs text-muted-foreground p-3 rounded-xl bg-cyan-500/5 border border-cyan-500/20 space-y-1.5">
-                          <p className="flex justify-between">
-                            <span>Lock multiplier</span>
-                            <span className="font-medium text-cyan-400">
-                              {getLockMultiplierNumeric(lockDays)}x
-                            </span>
-                          </p>
-                          <div className="border-t border-cyan-500/20 pt-1.5 flex justify-between items-center">
-                            <span className="flex items-center gap-1.5">
-                              <Zap size={11} className="text-cyan-400" />
-                              <span>You&apos;ll earn</span>
-                            </span>
-                            <span
-                              className="font-bold text-cyan-400 tabular-nums"
-                              data-testid="estimate-lock-points"
-                            >
-                              {lockAmount && parseFloat(lockAmount) > 0
-                                ? `≈ ${formatPoints(parseFloat(lockAmount) * getLockMultiplierNumeric(lockDays))} pts`
-                                : "—"}
-                            </span>
-                          </div>
+                        <div className="text-xs text-muted-foreground p-3 rounded-xl bg-cyan-500/5 border border-cyan-500/20 flex justify-between items-center">
+                          <span>Selected multiplier</span>
+                          <span className="font-medium text-cyan-400" data-testid="lock-multiplier-display">
+                            {getLockMultiplierLabel(lockDays)}
+                          </span>
                         </div>
                         <button
                           onClick={handleLock}
@@ -1334,26 +1301,6 @@ export default function MoatDetail() {
                             >
                               MAX
                             </button>
-                          </div>
-                        </div>
-                        <div className="text-xs text-muted-foreground p-3 rounded-xl bg-rose-500/5 border border-rose-500/20 space-y-1.5">
-                          <p className="flex justify-between">
-                            <span>Burn bonus</span>
-                            <span className="font-medium text-rose-400">{BURN_POINTS_MULTIPLIER}x</span>
-                          </p>
-                          <div className="border-t border-rose-500/20 pt-1.5 flex justify-between items-center">
-                            <span className="flex items-center gap-1.5">
-                              <Zap size={11} className="text-rose-400" />
-                              <span>You&apos;ll earn</span>
-                            </span>
-                            <span
-                              className="font-bold text-rose-400 tabular-nums"
-                              data-testid="estimate-burn-points"
-                            >
-                              {burnAmount && parseFloat(burnAmount) > 0
-                                ? `≈ ${formatPoints(parseFloat(burnAmount) * BURN_POINTS_MULTIPLIER)} pts`
-                                : "—"}
-                            </span>
                           </div>
                         </div>
                         <button
