@@ -382,29 +382,29 @@ function EpochCountdown() {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.1 }}
-      className="mt-4 rounded-xl border border-cyan-500/20 bg-gradient-to-br from-cyan-500/5 via-background to-background p-4 sm:p-5 max-w-xl"
+      className="mt-4 rounded-lg border border-cyan-500/20 bg-gradient-to-br from-cyan-500/5 via-background to-background p-2.5 sm:p-3 max-w-sm"
       data-testid="epoch-countdown"
       role="timer"
       aria-live="off"
       aria-label={`Epoch ends in ${days} days, ${hours} hours, ${minutes} minutes, ${seconds} seconds`}
     >
-      <div className="flex items-center gap-2 mb-3">
-        <Clock size={14} className="text-cyan-400" />
-        <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+      <div className="flex items-center gap-1.5 mb-2">
+        <Clock size={11} className="text-cyan-400" />
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
           {ended ? "Epoch ended" : "Epoch ends in"}
         </span>
       </div>
-      <div className="grid grid-cols-4 gap-2 sm:gap-3">
+      <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
         {blocks.map((b) => (
           <div
             key={b.label}
-            className="rounded-lg bg-card/50 border border-border/40 px-2 py-3 text-center"
+            className="rounded-md bg-card/50 border border-border/40 px-1.5 py-2 text-center"
             data-testid={`epoch-countdown-${b.label.toLowerCase()}`}
           >
-            <div className="font-mono font-bold text-2xl sm:text-3xl text-cyan-300 tabular-nums leading-none">
+            <div className="font-mono font-bold text-base sm:text-xl text-cyan-300 tabular-nums leading-none">
               {b.value}
             </div>
-            <div className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground mt-1.5">
+            <div className="text-[8px] sm:text-[10px] uppercase tracking-wider text-muted-foreground mt-1">
               {b.label}
             </div>
           </div>
