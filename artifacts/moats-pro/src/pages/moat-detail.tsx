@@ -571,19 +571,6 @@ export default function MoatDetail() {
                   const daysRemaining = dailyAmt > 0 && remainingAmt > 0
                     ? Math.max(0, Math.round(remainingAmt / dailyAmt))
                     : null;
-                  // % of the *total* reward pool that users have actually claimed.
-                  // Total = already claimed + sitting in the moat contract (distributed
-                  // but unclaimed) + still in the reward wallet (yet to be distributed).
-                  // → If users claim, the % goes up.
-                  // → If users don't claim, distributed-but-unclaimed counts against them
-                  //   (the % stays low), but the denominator doesn't shrink as the wallet
-                  //   pushes funds into the contract.
-                  const inContract = getContractBalance(token.tokenAddress);
-                  const inWallet = getPoolBalance(token.tokenAddress);
-                  const totalPool = token.totalRewardsClaimed + inContract + inWallet;
-                  const claimedPct = totalPool > 0
-                    ? Math.round((token.totalRewardsClaimed / totalPool) * 100)
-                    : 0;
                   const fmtAmt = (n: number) =>
                     n >= 1_000_000 ? `${(n / 1_000_000).toFixed(2)}M`
                     : n >= 1_000 ? `${(n / 1_000).toFixed(0)}K`
@@ -592,7 +579,7 @@ export default function MoatDetail() {
                     : "0";
                   return (
                     <div
-                      className="grid grid-cols-2 gap-3 p-4 rounded-xl border border-transparent"
+                      className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-xl border border-transparent"
                       style={{
                         background: "linear-gradient(hsl(var(--card) / 0.5), hsl(var(--card) / 0.5)) padding-box, linear-gradient(135deg, rgba(52,211,153,0.5) 0%, rgba(52,211,153,0.1) 100%) border-box",
                         boxShadow: "0 0 18px rgba(52,211,153,0.07)",
@@ -611,10 +598,6 @@ export default function MoatDetail() {
                         <p className="font-bold text-emerald-400 mt-0.5">
                           {daysRemaining != null ? `~${daysRemaining} days left` : "Ongoing"}
                         </p>
-                      </div>
-                      <div className="text-xs">
-                        <p className="text-muted-foreground">Distributed</p>
-                        <p className="font-bold text-foreground mt-0.5 tabular-nums">{claimedPct}% claimed</p>
                       </div>
                       <div className="text-xs">
                         <p className="text-muted-foreground">Total Pool</p>
