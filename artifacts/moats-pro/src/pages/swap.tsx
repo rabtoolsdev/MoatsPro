@@ -3,7 +3,7 @@ import { useAccount } from "wagmi";
 import { useAppKit, useAppKitNetwork } from "@reown/appkit/react";
 import { formatUnits, parseUnits } from "viem";
 import { ArrowDownUp, ChevronDown, Loader2, Wallet } from "lucide-react";
-import moatSwapLogo from "@assets/MOATS_SWAP_LOGO_1777739164876.png";
+import moatSwapLogo from "@assets/Moats_Logo_Swap_1777739220258.png";
 import { Navbar } from "@/components/navbar";
 import { TokenSelectModal } from "@/components/swap/token-select-modal";
 import { TokenLogo } from "@/components/swap/token-logo";
