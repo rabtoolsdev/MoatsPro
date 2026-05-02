@@ -26,8 +26,9 @@ import {
   useApproveToken,
   useSwapFromBalance,
 } from "@/hooks/use-moat-contract";
-import { useSwapQuote, useExecuteSwap } from "@/hooks/use-swap";
+import { useSwapQuote, useExecuteSwap, type FeeTransfer } from "@/hooks/use-swap";
 import { useSlippage } from "@/hooks/use-slippage";
+import { useWalletAssetBalances } from "@/hooks/use-wallet-assets";
 import { useToast } from "@/hooks/use-toast";
 
 type Side = "from" | "to";
@@ -67,10 +68,37 @@ export default function Swap() {
 
   const onAvalanche = chainId === AVALANCHE_CHAIN_ID;
 
+  // Wallet balances for the "You pay" picker (auto-shows assets the user holds).
+  const { balances: walletBalances } = useWalletAssetBalances(fromTokens);
+
+  const amountRaw = useMemo(() => {
+    try {
+      if (!amount || !fromDecimals) return 0n;
+      const n = parseFloat(amount);
+      if (!Number.isFinite(n) || n <= 0) return 0n;
+      return parseUnits(amount as `${number}`, fromDecimals);
+    } catch {
+      return 0n;
+    }
+  }, [amount, fromDecimals]);
+
+  // Manual fee skim: 0.33% goes directly to FEE_WALLET; the rest gets swapped.
+  // Li.Fi can't auto-collect fees without portal registration, so we collect it
+  // ourselves via a separate ERC20 / native transfer before the swap.
+  const feeRaw = useMemo(
+    () => (amountRaw * BigInt(FEE_BPS)) / 10_000n,
+    [amountRaw],
+  );
+  const swapRaw = useMemo(() => amountRaw - feeRaw, [amountRaw, feeRaw]);
+  const swapAmountStr = useMemo(() => {
+    if (swapRaw <= 0n) return "";
+    return formatUnits(swapRaw, fromDecimals);
+  }, [swapRaw, fromDecimals]);
+
   const quote = useSwapQuote({
     fromTokenAddress: fromToken?.address,
     toTokenAddress: toToken?.address,
-    fromAmount: amount,
+    fromAmount: swapAmountStr,
     fromDecimals,
     slippage,
     enabled: onAvalanche && isConnected,
@@ -84,17 +112,6 @@ export default function Swap() {
   const approver = useApproveToken(isFromNative ? undefined : fromToken?.address);
   const executor = useExecuteSwap();
 
-  const amountRaw = useMemo(() => {
-    try {
-      if (!amount || !fromDecimals) return 0n;
-      const n = parseFloat(amount);
-      if (!Number.isFinite(n) || n <= 0) return 0n;
-      return parseUnits(amount as `${number}`, fromDecimals);
-    } catch {
-      return 0n;
-    }
-  }, [amount, fromDecimals]);
-
   const balanceRaw = (fromBal.balance as bigint | undefined) ?? 0n;
   const insufficient = amountRaw > 0n && balanceRaw < amountRaw;
 
@@ -102,8 +119,8 @@ export default function Swap() {
   const needsApproval =
     !isFromNative &&
     !!quote.best &&
-    amountRaw > 0n &&
-    allowanceRaw < amountRaw;
+    swapRaw > 0n &&
+    allowanceRaw < swapRaw;
 
   // Toast on swap success
   useEffect(() => {
@@ -167,13 +184,20 @@ export default function Swap() {
   };
 
   const handleApprove = () => {
-    if (!fromToken || !quote.best || !amount) return;
-    approver.approve(quote.best.approveTo, amount, fromDecimals);
+    if (!fromToken || !quote.best || swapRaw <= 0n) return;
+    // Approve only the amount that actually goes through Li.Fi (post-fee).
+    approver.approve(quote.best.approveTo, swapAmountStr, fromDecimals);
   };
 
   const handleSwap = () => {
-    if (!quote.best) return;
-    executor.execute(quote.best);
+    if (!quote.best || !fromToken || feeRaw <= 0n) return;
+    const fee: FeeTransfer = {
+      wallet: FEE_WALLET,
+      amount: feeRaw,
+      tokenAddress: fromToken.address,
+      isNative: isFromNative,
+    };
+    void executor.execute(quote.best, fee);
   };
 
   const toAmountFormatted = quote.best
@@ -229,8 +253,14 @@ export default function Swap() {
         primary: true,
       };
     }
-    if (executor.isPending || executor.isConfirming)
+    if (executor.step === "fee")
+      return { label: "Sending fee…", disabled: true, loading: true };
+    if (executor.step === "fee-confirming")
+      return { label: "Confirming fee…", disabled: true, loading: true };
+    if (executor.step === "swap")
       return { label: "Swapping…", disabled: true, loading: true };
+    if (executor.step === "swap-confirming")
+      return { label: "Confirming swap…", disabled: true, loading: true };
     return { label: "Swap", action: handleSwap, disabled: false, primary: true };
   })();
 
@@ -399,6 +429,8 @@ export default function Swap() {
         tokens={pickerSide === "from" ? fromTokens : toTokens}
         excludeAddress={pickerSide === "from" ? toToken?.address : fromToken?.address}
         title={pickerSide === "from" ? "Pay with" : "Receive"}
+        balances={pickerSide === "from" ? walletBalances : undefined}
+        showBalances={pickerSide === "from"}
         footerLabel={
           pickerSide === "from"
             ? `${fromTokens.length} tokens · base + moat-backed`

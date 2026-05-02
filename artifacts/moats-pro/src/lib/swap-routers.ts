@@ -3,6 +3,9 @@ import { parseUnits } from "viem";
 export const FEE_WALLET = "0x037a3b41975B44cF6038e48f1433831aB8810Af7" as const;
 export const FEE_BPS = 33;
 export const FEE_DECIMAL = FEE_BPS / 10_000;
+// Note: `integrator`/`fee` are NOT sent to Li.Fi (would require portal
+// registration on https://portal.li.fi/). We collect the 0.33% manually
+// via a direct ERC20/native transfer to FEE_WALLET before each swap.
 export const INTEGRATOR_NAME = "moats-pro";
 export const AVALANCHE_CHAIN_ID = 43114;
 export const DEFAULT_SLIPPAGE = 0.005;
@@ -70,8 +73,8 @@ export async function getLifiQuote(req: QuoteRequest): Promise<QuoteResult> {
       toToken: req.toTokenAddress,
       fromAmount: rawFromAmount,
       fromAddress: req.fromAddress,
-      integrator: INTEGRATOR_NAME,
-      fee: FEE_DECIMAL.toString(),
+      // Tracking only — `integrator`/`fee` would require Li.Fi portal
+      // registration; we skim the 0.33% manually before the swap.
       referrer: FEE_WALLET,
       slippage: slippage.toString(),
     });

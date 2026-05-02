@@ -54,6 +54,14 @@ export const BASE_TOKENS: MoatToken[] = [
     decimals: 6,
     moatContractAddresses: [],
   },
+  {
+    address: "0x152b9d0FdC40C096757F570A51E494bd4b943E50",
+    symbol: "BTC.b",
+    name: "Bitcoin (Bridged)",
+    logoUrl: TW_AVAX_LOGO("0x152b9d0FdC40C096757F570A51E494bd4b943E50"),
+    decimals: 8,
+    moatContractAddresses: [],
+  },
 ];
 
 export function deriveMoatTokens(configs: MoatConfig[] | undefined): MoatToken[] {

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, X } from "lucide-react";
+import { Search, X, Wallet } from "lucide-react";
 import type { MoatToken } from "@/lib/moat-tokens";
 import { TokenLogo } from "@/components/swap/token-logo";
+import type { WalletBalances } from "@/hooks/use-wallet-assets";
 
 interface TokenSelectModalProps {
   open: boolean;
@@ -12,6 +13,17 @@ interface TokenSelectModalProps {
   excludeAddress?: string;
   title?: string;
   footerLabel?: string;
+  balances?: WalletBalances;
+  showBalances?: boolean;
+}
+
+function formatBalance(n: number): string {
+  if (!Number.isFinite(n) || n === 0) return "0";
+  if (n < 0.0001) return n.toExponential(2);
+  if (n < 1) return n.toFixed(6).replace(/\.?0+$/, "");
+  if (n < 1000) return n.toFixed(4).replace(/\.?0+$/, "");
+  if (n < 1_000_000) return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
 }
 
 export function TokenSelectModal({
@@ -22,6 +34,8 @@ export function TokenSelectModal({
   excludeAddress,
   title = "Select a token",
   footerLabel,
+  balances,
+  showBalances = false,
 }: TokenSelectModalProps) {
   const [query, setQuery] = useState("");
 
@@ -41,7 +55,7 @@ export function TokenSelectModal({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const ex = excludeAddress?.toLowerCase();
-    return tokens.filter((t) => {
+    const list = tokens.filter((t) => {
       if (ex && t.address.toLowerCase() === ex) return false;
       if (!q) return true;
       return (
@@ -50,7 +64,31 @@ export function TokenSelectModal({
         t.address.toLowerCase().includes(q)
       );
     });
-  }, [tokens, query, excludeAddress]);
+    if (!showBalances || !balances) return list;
+    // Sort: tokens with balance > 0 first (by balance desc), then alphabetical.
+    return [...list].sort((a, b) => {
+      const ba = balances[a.address.toLowerCase()];
+      const bb = balances[b.address.toLowerCase()];
+      const ha = !!ba && ba.raw > 0n;
+      const hb = !!bb && bb.raw > 0n;
+      if (ha && !hb) return -1;
+      if (!ha && hb) return 1;
+      if (ha && hb) {
+        const fa = parseFloat(ba.formatted);
+        const fb = parseFloat(bb.formatted);
+        if (Number.isFinite(fa) && Number.isFinite(fb) && fa !== fb) return fb - fa;
+      }
+      return a.symbol.localeCompare(b.symbol);
+    });
+  }, [tokens, query, excludeAddress, balances, showBalances]);
+
+  const heldCount = useMemo(() => {
+    if (!showBalances || !balances) return 0;
+    return tokens.filter((t) => {
+      const b = balances[t.address.toLowerCase()];
+      return !!b && b.raw > 0n;
+    }).length;
+  }, [tokens, balances, showBalances]);
 
   return (
     <AnimatePresence>
@@ -109,34 +147,57 @@ export function TokenSelectModal({
                   No matching tokens found.
                 </div>
               ) : (
-                filtered.map((token) => (
-                  <button
-                    key={token.address}
-                    onClick={() => {
-                      onSelect(token);
-                      onClose();
-                    }}
-                    data-testid={`btn-select-token-${token.symbol}`}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors text-left"
-                  >
-                    <TokenLogo
-                      address={token.address}
-                      symbol={token.symbol}
-                      hint={token.logoUrl}
-                      size={36}
-                      className="border border-border/40"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold">{token.symbol}</div>
-                      <div className="text-xs text-muted-foreground truncate">{token.name}</div>
-                    </div>
-                  </button>
-                ))
+                filtered.map((token) => {
+                  const bal = balances?.[token.address.toLowerCase()];
+                  const heldNum = bal ? parseFloat(bal.formatted) : 0;
+                  const held = !!bal && bal.raw > 0n;
+                  return (
+                    <button
+                      key={token.address}
+                      onClick={() => {
+                        onSelect(token);
+                        onClose();
+                      }}
+                      data-testid={`btn-select-token-${token.symbol}`}
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors text-left"
+                    >
+                      <TokenLogo
+                        address={token.address}
+                        symbol={token.symbol}
+                        hint={token.logoUrl}
+                        size={36}
+                        className="border border-border/40"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold">{token.symbol}</div>
+                        <div className="text-xs text-muted-foreground truncate">{token.name}</div>
+                      </div>
+                      {showBalances && (
+                        <div
+                          className={`text-right shrink-0 ${held ? "text-foreground" : "text-muted-foreground/50"}`}
+                          data-testid={`text-balance-${token.symbol}`}
+                        >
+                          <div className="text-sm font-medium tabular-nums">
+                            {held ? formatBalance(heldNum) : "—"}
+                          </div>
+                          {held && (
+                            <div className="text-[10px] text-muted-foreground/70 flex items-center justify-end gap-0.5">
+                              <Wallet size={9} />
+                              <span>in wallet</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })
               )}
             </div>
 
             <div className="px-4 py-2.5 border-t border-border/40 bg-muted/10 text-[10px] uppercase tracking-wider text-muted-foreground text-center">
-              {footerLabel ?? `${tokens.length} tokens`}
+              {showBalances && heldCount > 0
+                ? `${heldCount} in wallet · ${footerLabel ?? `${tokens.length} tokens`}`
+                : footerLabel ?? `${tokens.length} tokens`}
             </div>
           </motion.div>
         </motion.div>
