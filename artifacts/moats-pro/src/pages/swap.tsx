@@ -651,7 +651,7 @@ export default function Swap() {
         title={pickerSide === "from" ? "Pay with" : "Receive"}
         balances={walletBalances}
         showBalances
-        footerLabel={`${allTokens.length} tokens · base + moat-backed`}
+        footerLabel={`${allTokens.length} tokens`}
       />
     </div>
   );
