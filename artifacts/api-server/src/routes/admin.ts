@@ -186,7 +186,7 @@ router.get("/users", async (req, res) => {
 
 // POST /api/admin/backfill-usd
 // Walks rows that landed in the DB without USD pricing (typically non-stable
-// swaps routed through Odos) and fills in fromUsd/toUsd/feeUsd from current
+// swaps routed through aggregators) and fills in fromUsd/toUsd/feeUsd from current
 // DexScreener prices. Idempotent + safe to retry. The caller passes
 // `afterId` (the previous response's `nextCursor`) to advance through the
 // table — this guarantees forward progress even when some rows are

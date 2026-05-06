@@ -1,4 +1,4 @@
-import { parseUnits } from "viem";
+import { parseUnits, type TypedDataDomain } from "viem";
 
 export const FEE_WALLET = "0xe789b6fFdd63835F0Ee64D9d3e085244515230C6" as const;
 export const FEE_BPS = 33;
@@ -19,7 +19,7 @@ const LIFI_FEE_DECIMAL = (FEE_BPS / 10_000).toString();
 export const AVALANCHE_CHAIN_ID = 43114;
 export const ETHEREUM_CHAIN_ID = 1;
 export const BASE_CHAIN_ID = 8453;
-// Chains where Li.Fi + Odos can route (others — e.g. Avalanche subnets —
+// Chains where our aggregators can route (others — e.g. Avalanche subnets —
 // don't have aggregator coverage and the swap UI gracefully disables).
 export const SWAP_SUPPORTED_CHAIN_IDS: readonly number[] = [
   AVALANCHE_CHAIN_ID,
@@ -28,7 +28,7 @@ export const SWAP_SUPPORTED_CHAIN_IDS: readonly number[] = [
 ] as const;
 export const DEFAULT_SLIPPAGE = 0.005;
 
-export type RouterId = "lifi" | "0x" | "odos" | "kyber";
+export type RouterId = "lifi" | "0x" | "kyber";
 
 export interface QuoteRequest {
   chainId: number;
@@ -45,16 +45,12 @@ export interface QuoteRequest {
   slippage?: number;
   /**
    * Integrator fee in basis points (e.g. 33 = 0.33%). When > 0:
-   *  - Routers with native fee support (KyberSwap) include feeReceiver+
-   *    feeAmount in their build call so the fee is skimmed atomically inside
-   *    the swap tx. They set feeHandling="integrated".
-   *  - Routers without (Li.Fi, 0x — would need portal registration) reduce
+   *  - Routers with native fee support (KyberSwap, 0x v2 permit2) include
+   *    fee fields in their build call so the fee is skimmed atomically
+   *    inside the swap tx. They set feeHandling="integrated".
+   *  - Routers without (Li.Fi — would need portal registration) reduce
    *    their requested input by the fee amount, so the caller must transfer
    *    the fee separately before the swap. They set feeHandling="manual".
-   *  - Odos: when VITE_ODOS_API_KEY is set, uses Odos API V3 monetization
-   *    (partnerFeePercent/feeRecipient) — fee is skimmed from output token
-   *    in-tx, 80/20 split between feeReceiver and Odos. Otherwise sends no
-   *    fee. Either way feeHandling="integrated" (single signature).
    */
   feeBps?: number;
   /** Wallet to receive the integrator fee. Required when feeBps > 0. */
@@ -89,6 +85,22 @@ export interface SwapQuote {
     data: `0x${string}`;
     value: bigint;
   };
+  /**
+   * Optional EIP-712 payload that must be signed BEFORE the swap tx is
+   * sent. Currently used only by 0x v2 permit2 for ERC20 inputs — the
+   * executor signs `eip712`, then appends `<32-byte sigLength><sig>` to
+   * `tx.data` (per 0x docs) so the swap consumes the Permit2 allowance in
+   * a single signature flow. Native sells don't need a permit so this is
+   * absent for those.
+   */
+  permit2?: {
+    eip712: {
+      domain: TypedDataDomain;
+      types: Record<string, Array<{ name: string; type: string }>>;
+      primaryType: string;
+      message: Record<string, unknown>;
+    };
+  };
 }
 
 export interface QuoteResult {
@@ -121,7 +133,7 @@ interface LiFiQuoteResponse {
 /**
  * Subtract the integrator fee from `fromAmount` and return the post-fee raw
  * amount that should be sent to aggregators which don't handle our fee
- * natively (Li.Fi, Odos, 0x). The caller (useExecuteSwap) is responsible for
+ * natively (Li.Fi). The caller (useExecuteSwap) is responsible for
  * transferring `feeRaw` to FEE_WALLET in a separate tx before the swap.
  */
 function applyManualFee(req: QuoteRequest): { rawFromAmount: string; feeRaw: bigint } {
@@ -220,19 +232,6 @@ function parseLifiError(status: number, body: string): string {
 }
 
 const ZEROX_API_KEY = (import.meta.env.VITE_0X_API_KEY as string | undefined) ?? "";
-// Odos partner-fee monetization (https://docs.odos.xyz/build/partner_code):
-// register a referral code on-chain at https://referral.odos.xyz/ on EACH
-// chain, attach a fee (bps) and a beneficiary (FEE_WALLET). Pass the
-// numeric code here; the Odos router skims the fee from the OUTPUT token
-// in-tx (single signature) and sends 80% to the beneficiary, keeps 20%.
-// When unset: no integrator fee — frontend falls back to manual 2-tx flow.
-// Codes in [2147483649, 4294967296] carry a fee; [0, 2147483648] are
-// tracking-only.
-const ODOS_REFERRAL_CODE_RAW = (import.meta.env.VITE_ODOS_REFERRAL_CODE as string | undefined) ?? "";
-// We proxy through our own api-server (`/api/odos/*`) — even though Odos
-// V2 has open CORS — so we can swap in an enterprise endpoint later
-// without touching the frontend bundle.
-const ODOS_PROXY_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "/api";
 const KYBER_CLIENT_ID =
   (import.meta.env.VITE_KYBERSWAP_CLIENT_ID as string | undefined) ?? "moats-pro";
 
@@ -245,10 +244,13 @@ function toEeeeNative(addr: `0x${string}`): string {
   return addr.toLowerCase() === NATIVE_ZERO ? NATIVE_EEEE : addr;
 }
 
-// 0x Swap API v2 (allowance-holder flow). We deliberately avoid the Permit2
-// flow because it requires an EIP-712 signature step the rest of our swap
-// pipeline doesn't support. AllowanceHolder behaves like Li.Fi/Odos:
-// approve `issues.allowance.spender`, then send the returned tx.
+// 0x Swap API v2 (Permit2 flow). Native integrator-fee support via
+// swapFeeRecipient/swapFeeBps/swapFeeToken — fee is skimmed in-tx, 100%
+// goes to the recipient (no rev share with 0x). For ERC20 sells the
+// response includes a `permit2.eip712` payload the user must sign; the
+// signature is appended to `transaction.data` (per 0x docs) so the swap
+// pulls funds via Permit2 in a single signature flow. Native sells
+// (sellToken=0xeee…) don't need a permit and the tx is sent as-is.
 const ZEROX_SUPPORTED_CHAIN_IDS = new Set<number>([
   1, 8453, 43114, 42161, 10, 137,
 ]);
@@ -269,6 +271,19 @@ interface ZeroxQuoteResponse {
     value?: string | number;
     gas?: string | number;
     gasPrice?: string;
+  };
+  permit2?: {
+    type?: string;
+    hash?: string;
+    eip712?: {
+      domain: TypedDataDomain;
+      types: Record<string, Array<{ name: string; type: string }>>;
+      primaryType: string;
+      message: Record<string, unknown>;
+    };
+  } | null;
+  fees?: {
+    integratorFee?: { amount?: string; token?: string } | null;
   };
   validationErrors?: Array<{ reason?: string; description?: string }>;
   message?: string;
@@ -292,7 +307,11 @@ export async function get0xQuote(req: QuoteRequest): Promise<QuoteResult> {
   try {
     const slippage = req.slippage ?? DEFAULT_SLIPPAGE;
     const slippageBps = Math.max(0, Math.round(slippage * 10_000));
-    const { rawFromAmount } = applyManualFee(req);
+    const feeBps = req.feeBps ?? 0;
+    const wantsFee = feeBps > 0 && !!req.feeReceiver;
+    // 0x v2 permit2 supports native integrator fees, so we always send the
+    // FULL pre-fee amount and let 0x skim the fee from the BUY token in-tx.
+    const rawFromAmount = parseUnits(req.fromAmount, req.fromDecimals).toString();
     const sellToken = toEeeeNative(req.fromTokenAddress);
     const buyToken = toEeeeNative(req.toTokenAddress);
     const params = new URLSearchParams({
@@ -303,8 +322,15 @@ export async function get0xQuote(req: QuoteRequest): Promise<QuoteResult> {
       taker: req.fromAddress,
       slippageBps: String(slippageBps),
     });
+    if (wantsFee) {
+      params.set("swapFeeRecipient", req.feeReceiver as string);
+      params.set("swapFeeBps", String(feeBps));
+      // Charge the fee in the BUY token (output) — 0x requires
+      // swapFeeToken to be either sellToken or buyToken.
+      params.set("swapFeeToken", buyToken);
+    }
     const res = await fetch(
-      `https://api.0x.org/swap/allowance-holder/quote?${params.toString()}`,
+      `https://api.0x.org/swap/permit2/quote?${params.toString()}`,
       {
         headers: {
           "0x-api-key": ZEROX_API_KEY,
@@ -330,6 +356,7 @@ export async function get0xQuote(req: QuoteRequest): Promise<QuoteResult> {
     }
     const approveTo = (data.issues?.allowance?.spender ?? tx.to) as `0x${string}`;
     const minBuyAmount = data.minBuyAmount ?? data.buyAmount;
+    const integratorFeeAmount = data.fees?.integratorFee?.amount;
     return {
       router: "0x",
       ok: true,
@@ -339,13 +366,15 @@ export async function get0xQuote(req: QuoteRequest): Promise<QuoteResult> {
         fromAmountRaw: rawFromAmount,
         toAmountRaw: data.buyAmount,
         toAmountMinRaw: minBuyAmount,
-        feeHandling: "manual",
+        feeHandling: wantsFee ? "integrated" : "manual",
+        feeAmountRaw: integratorFeeAmount,
         approveTo,
         tx: {
           to: tx.to as `0x${string}`,
           data: tx.data as `0x${string}`,
           value: BigInt(tx.value ?? "0"),
         },
+        ...(data.permit2?.eip712 ? { permit2: { eip712: data.permit2.eip712 } } : {}),
       },
     };
   } catch (e) {
@@ -567,176 +596,10 @@ function parseKyberError(status: number, body: string): string {
   return `KyberSwap quote failed (HTTP ${status})`;
 }
 
-interface OdosQuoteResponse {
-  pathId?: string;
-  outAmounts?: string[];
-  gasEstimateValue?: number;
-  detail?: string;
-  message?: string;
-}
-
-interface OdosAssembleResponse {
-  transaction?: {
-    to?: string;
-    data?: string;
-    value?: string | number;
-    gas?: number;
-  };
-  detail?: string;
-  message?: string;
-}
-
-// Odos handles tokens Li.Fi rejects (e.g. tokens with buy/sell transfer tax)
-// and is used as a complementary aggregator. `pickBestQuote` chooses whichever
-// router returns the most output.
-//
-// Fee handling: when VITE_ODOS_REFERRAL_CODE is set (and points to a code
-// registered on-chain WITH a fee on this chain — see referral.odos.xyz),
-// the Odos router skims the fee from the OUTPUT token in-tx → single
-// signature, integrated mode, send full pre-fee input. Otherwise we deduct
-// the fee from the input and the swap page transfers it separately
-// (manual mode).
-export async function getOdosQuote(req: QuoteRequest): Promise<QuoteResult> {
-  try {
-    const slippage = req.slippage ?? DEFAULT_SLIPPAGE;
-    const referralCode = ODOS_REFERRAL_CODE_RAW
-      ? Number(ODOS_REFERRAL_CODE_RAW)
-      : undefined;
-    // Codes in [2^31, 2^32) carry a fee; [0, 2^31) are tracking-only.
-    // Without a fee-bearing code we can't skim integrated, so fall back
-    // to the manual 2-tx fee flow.
-    const hasFeeBearingCode =
-      referralCode !== undefined &&
-      Number.isFinite(referralCode) &&
-      referralCode >= 2_147_483_648 &&
-      referralCode < 4_294_967_296;
-    const wantsFee = (req.feeBps ?? 0) > 0 && !!req.feeReceiver;
-    const integrated = hasFeeBearingCode && wantsFee;
-
-    const rawFromAmount = integrated
-      ? parseUnits(req.fromAmount, req.fromDecimals).toString()
-      : applyManualFee(req).rawFromAmount;
-
-    const quoteRes = await fetch(`${ODOS_PROXY_BASE}/odos/quote`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chainId: req.chainId,
-        inputTokens: [{ tokenAddress: req.fromTokenAddress, amount: rawFromAmount }],
-        outputTokens: [{ tokenAddress: req.toTokenAddress, proportion: 1 }],
-        userAddr: req.fromAddress,
-        slippageLimitPercent: slippage * 100,
-        ...(referralCode !== undefined && Number.isFinite(referralCode)
-          ? { referralCode }
-          : {}),
-        compact: true,
-      }),
-    });
-    if (!quoteRes.ok) {
-      const body = await quoteRes.text().catch(() => "");
-      return {
-        router: "odos",
-        ok: false,
-        error: parseOdosError(quoteRes.status, body),
-      };
-    }
-    const qd = (await quoteRes.json()) as OdosQuoteResponse;
-
-    if (!qd.pathId || !qd.outAmounts?.[0]) {
-      return {
-        router: "odos",
-        ok: false,
-        error: qd.detail || qd.message || "No Odos route available.",
-      };
-    }
-
-    const asmRes = await fetch(`${ODOS_PROXY_BASE}/odos/assemble`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        userAddr: req.fromAddress,
-        pathId: qd.pathId,
-        simulate: false,
-      }),
-    });
-    if (!asmRes.ok) {
-      const body = await asmRes.text().catch(() => "");
-      return {
-        router: "odos",
-        ok: false,
-        error: parseOdosError(asmRes.status, body),
-      };
-    }
-    const asm = (await asmRes.json()) as OdosAssembleResponse;
-    const tx = asm.transaction;
-    if (!tx?.to || !tx?.data) {
-      return {
-        router: "odos",
-        ok: false,
-        error: asm.detail || asm.message || "Odos returned no transaction.",
-      };
-    }
-
-    const outAmount = BigInt(qd.outAmounts[0]);
-    const slippageBps = BigInt(Math.max(0, Math.round(slippage * 10_000)));
-    const toAmountMin = outAmount - (outAmount * slippageBps) / 10_000n;
-
-    const feeHandling: FeeHandling = integrated ? "integrated" : "manual";
-
-    return {
-      router: "odos",
-      ok: true,
-      quote: {
-        router: "odos",
-        toolName: "Odos",
-        fromAmountRaw: rawFromAmount,
-        toAmountRaw: outAmount.toString(),
-        toAmountMinRaw: toAmountMin.toString(),
-        estimatedGasUsd:
-          typeof qd.gasEstimateValue === "number" && qd.gasEstimateValue > 0
-            ? qd.gasEstimateValue
-            : undefined,
-        feeHandling,
-        approveTo: tx.to as `0x${string}`,
-        tx: {
-          to: tx.to as `0x${string}`,
-          data: tx.data as `0x${string}`,
-          value: BigInt(tx.value ?? "0"),
-        },
-      },
-    };
-  } catch (e) {
-    return {
-      router: "odos",
-      ok: false,
-      error: e instanceof Error ? e.message : "Odos quote request failed",
-    };
-  }
-}
-
-function parseOdosError(status: number, body: string): string {
-  if (status === 429) return "Odos rate limit hit. Try again in a moment.";
-  if (status >= 500) return "Odos service is temporarily unavailable.";
-  try {
-    const parsed = JSON.parse(body);
-    if (typeof parsed?.detail === "string") return parsed.detail;
-    if (typeof parsed?.message === "string") return parsed.message;
-  } catch {
-    /* ignore */
-  }
-  return `Odos quote failed (HTTP ${status})`;
-}
-
 export async function getAllQuotes(req: QuoteRequest): Promise<QuoteResult[]> {
-  // 0x is intentionally excluded from the parallel comparison for now —
-  // its v2 endpoint always charges a ~0.15% volume fee on the user's output
-  // which would silently undercut the other routers when it wins "auto".
-  // Re-enable by adding `get0xQuote(req)` back to this Promise.all and
-  // restoring the conditional `{ id: "0x", label: "0x" }` entry in
-  // SELECTABLE_ROUTERS (artifacts/moats-pro/src/pages/swap.tsx).
   const results = await Promise.all([
     getLifiQuote(req),
-    getOdosQuote(req),
+    get0xQuote(req),
     getKyberQuote(req),
   ]);
   return results;

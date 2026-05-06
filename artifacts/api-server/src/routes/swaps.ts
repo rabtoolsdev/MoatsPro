@@ -30,7 +30,7 @@ router.post("/swaps", async (req, res) => {
     }
 
     // Backfill USD values when the client (or its router) couldn't supply
-    // them — e.g. AVAX→BENSI through Odos. Without this, non-stable swaps
+    // them — e.g. AVAX→BENSI through 0x. Without this, non-stable swaps
     // would land in the DB with null fromUsd and disappear from the
     // admin dashboard's "Volume (USD)" total.
     const enriched = await enrichUsdValues({

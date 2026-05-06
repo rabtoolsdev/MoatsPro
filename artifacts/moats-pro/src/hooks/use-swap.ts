@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useAccount, useSendTransaction, useWaitForTransactionReceipt } from "wagmi";
-import { encodeFunctionData, erc20Abi } from "viem";
+import {
+  useAccount,
+  useSendTransaction,
+  useSignTypedData,
+  useWaitForTransactionReceipt,
+} from "wagmi";
+import { encodeFunctionData, erc20Abi, numberToHex, size } from "viem";
 import {
   getAllQuotes,
   pickBestQuote,
@@ -39,18 +44,21 @@ export interface UseSwapQuoteResult {
   /** The quote that will actually be executed — preferred router (if it has
    *  a quote) or auto-best otherwise. */
   best: SwapQuote | null;
-  /** The auto-best quote regardless of preferredRouter — useful for showing
-   *  "Auto picks Li.Fi" hints in the router dropdown. */
+  /** The highest-output quote across all routers, regardless of preference.
+   *  Used by the UI to nudge the user toward a better route when their
+   *  manual selection isn't the best one. */
   autoBest: SwapQuote | null;
   results: QuoteResult[];
   isLoading: boolean;
   isFetching: boolean;
   error: Error | null;
-  refetch: () => void;
+  refetch: () => Promise<unknown>;
 }
 
+const STALE_MS = 8_000;
+const REFETCH_MS = 12_000;
+
 export function useSwapQuote(params: UseSwapQuoteParams): UseSwapQuoteResult {
-  const { address } = useAccount();
   const {
     chainId,
     fromTokenAddress,
@@ -61,36 +69,40 @@ export function useSwapQuote(params: UseSwapQuoteParams): UseSwapQuoteResult {
     slippage,
     feeBps,
     feeReceiver,
-    preferredRouter = "auto",
+    preferredRouter,
   } = params;
+  const { address } = useAccount();
 
-  const validAmount =
-    !!fromAmount && !Number.isNaN(parseFloat(fromAmount)) && parseFloat(fromAmount) > 0;
-
-  const queryEnabled =
-    !!enabled &&
-    !!address &&
+  const reqEnabled =
+    enabled &&
     !!chainId &&
     !!fromTokenAddress &&
     !!toTokenAddress &&
-    fromTokenAddress.toLowerCase() !== toTokenAddress.toLowerCase() &&
+    !!fromAmount &&
+    fromAmount !== "0" &&
     !!fromDecimals &&
-    validAmount;
+    !!address;
 
-  const query = useQuery({
-    queryKey: [
-      "swap-quote",
-      address,
-      chainId,
-      fromTokenAddress,
-      toTokenAddress,
-      fromAmount,
-      fromDecimals,
-      slippage,
-      feeBps,
-      feeReceiver,
-    ],
+  const queryKey = [
+    "swap-quote",
+    chainId,
+    fromTokenAddress,
+    toTokenAddress,
+    fromAmount,
+    fromDecimals,
+    address,
+    slippage,
+    feeBps,
+    feeReceiver,
+  ];
+
+  const query = useQuery<QuoteResult[]>({
+    queryKey,
+    enabled: reqEnabled,
+    staleTime: STALE_MS,
+    refetchInterval: REFETCH_MS,
     queryFn: async () => {
+      if (!reqEnabled) return [];
       const req: QuoteRequest = {
         chainId: chainId!,
         fromTokenAddress: fromTokenAddress!,
@@ -102,44 +114,29 @@ export function useSwapQuote(params: UseSwapQuoteParams): UseSwapQuoteResult {
         feeBps,
         feeReceiver,
       };
-      const results = await getAllQuotes(req);
-      const best = pickBestQuote(results);
-      return { results, best };
+      return getAllQuotes(req);
     },
-    enabled: queryEnabled,
-    refetchInterval: queryEnabled ? 20_000 : false,
-    staleTime: 10_000,
-    retry: 1,
   });
 
-  const results = query.data?.results ?? [];
-  const autoBest = query.data?.best ?? null;
-  // Resolve the user's manual router pick. If they picked a specific router
-  // and that router returned a quote, use it — even when another aggregator
-  // beats it. If their pick failed (no quote), gracefully fall back to the
-  // auto-best so the swap still works; the dropdown surfaces the warning.
-  const manualPick =
-    preferredRouter === "auto"
-      ? null
-      : results.find((r) => r.router === preferredRouter && r.ok)?.quote ?? null;
-  const best = manualPick ?? autoBest;
+  const results = query.data ?? [];
+  const auto = pickBestQuote(results);
+  let best: SwapQuote | null = auto;
+  if (preferredRouter && preferredRouter !== "auto") {
+    const picked = results.find(
+      (r) => r.router === preferredRouter && r.ok && r.quote,
+    );
+    best = picked?.quote ?? null;
+  }
 
   return {
     best,
-    autoBest,
+    autoBest: auto,
     results,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     error: query.error as Error | null,
-    refetch: () => query.refetch(),
+    refetch: query.refetch,
   };
-}
-
-export interface FeeTransfer {
-  wallet: `0x${string}`;
-  amount: bigint;
-  tokenAddress: `0x${string}`;
-  isNative: boolean;
 }
 
 export type SwapStep =
@@ -151,6 +148,14 @@ export type SwapStep =
   | "success"
   | "error";
 
+export interface FeeTransfer {
+  wallet: `0x${string}`;
+  /** ERC20 contract address (or native sentinel) of the fee asset. */
+  tokenAddress: `0x${string}`;
+  amount: bigint;
+  isNative: boolean;
+}
+
 export interface UseExecuteSwapResult {
   execute: (quote: SwapQuote, fee?: FeeTransfer | null) => Promise<void>;
   reset: () => void;
@@ -161,11 +166,6 @@ export interface UseExecuteSwapResult {
   isPending: boolean;
   isConfirming: boolean;
   isSuccess: boolean;
-  /**
-   * True when the most recent `execute()` reused a fee that the user had
-   * already paid in a prior failed/cancelled attempt — i.e. they were not
-   * charged again. Reset whenever a new `execute()` starts.
-   */
   feeReused: boolean;
   error: Error | null;
 }
@@ -192,6 +192,34 @@ function makeFeeKey(
   ].join("|");
 }
 
+/**
+ * If the quote includes a 0x v2 permit2 EIP-712 payload, sign it and append
+ * `<32-byte sigLength><sig>` to `tx.data` per 0x docs. Returns the modified
+ * tx parameters ready for sendTransaction. Native sells (no permit2) pass
+ * through unchanged.
+ */
+async function withPermit2Signature(
+  quote: SwapQuote,
+  signTypedDataAsync: ReturnType<typeof useSignTypedData>["signTypedDataAsync"],
+): Promise<{ to: `0x${string}`; data: `0x${string}`; value: bigint }> {
+  if (!quote.permit2?.eip712) {
+    return { to: quote.tx.to, data: quote.tx.data, value: quote.tx.value };
+  }
+  // wagmi's useSignTypedData has very strict generic constraints on
+  // `types`/`primaryType` derived from the literal type system; the 0x
+  // payload is fully dynamic so we cast through `unknown` to satisfy the
+  // checker without losing runtime correctness.
+  const signature = await signTypedDataAsync({
+    domain: quote.permit2.eip712.domain,
+    types: quote.permit2.eip712.types,
+    primaryType: quote.permit2.eip712.primaryType,
+    message: quote.permit2.eip712.message,
+  } as unknown as Parameters<typeof signTypedDataAsync>[0]);
+  const sigLengthHex = numberToHex(size(signature), { signed: false, size: 32 });
+  const data = (quote.tx.data + sigLengthHex.slice(2) + signature.slice(2)) as `0x${string}`;
+  return { to: quote.tx.to, data, value: quote.tx.value };
+}
+
 export function useExecuteSwap(): UseExecuteSwapResult {
   const { address, chainId } = useAccount();
   const [step, setStep] = useState<SwapStep>("idle");
@@ -207,6 +235,7 @@ export function useExecuteSwap(): UseExecuteSwapResult {
   const pendingFeeKey = useRef<string | null>(null);
 
   const { sendTransactionAsync } = useSendTransaction();
+  const { signTypedDataAsync } = useSignTypedData();
   const feeReceipt = useWaitForTransactionReceipt({ hash: feeHash });
   const swapReceipt = useWaitForTransactionReceipt({ hash: swapHash });
 
@@ -221,11 +250,8 @@ export function useExecuteSwap(): UseExecuteSwapResult {
     const quote = pendingSwap.current;
     if (!quote) return;
     setStep("swap");
-    sendTransactionAsync({
-      to: quote.tx.to,
-      data: quote.tx.data,
-      value: quote.tx.value,
-    })
+    withPermit2Signature(quote, signTypedDataAsync)
+      .then((tx) => sendTransactionAsync(tx))
       .then((hash) => {
         setSwapHash(hash);
         setStep("swap-confirming");
@@ -234,7 +260,7 @@ export function useExecuteSwap(): UseExecuteSwapResult {
         setError(e instanceof Error ? e : new Error("Swap transaction failed"));
         setStep("error");
       });
-  }, [step, feeReceipt.isSuccess, sendTransactionAsync, feeHash]);
+  }, [step, feeReceipt.isSuccess, sendTransactionAsync, signTypedDataAsync, feeHash]);
 
   // After swap confirms, mark success and burn the fee credit — the next
   // swap is a brand-new intent and should pay its own fee.
@@ -277,10 +303,11 @@ export function useExecuteSwap(): UseExecuteSwapResult {
       setFeeReused(false);
       pendingSwap.current = quote;
 
-      // Aggregator-integrated fee (KyberSwap with feeReceiver in calldata):
-      // the swap tx itself transfers the fee atomically — sending a separate
-      // fee transfer here would double-charge. The caller signals this by
-      // passing fee=null (or by the quote.feeHandling === "integrated").
+      // Aggregator-integrated fee (KyberSwap with feeReceiver in calldata,
+      // 0x v2 permit2 with swapFeeRecipient): the swap tx itself transfers
+      // the fee atomically — sending a separate fee transfer here would
+      // double-charge. The caller signals this by passing fee=null (or by
+      // the quote.feeHandling === "integrated").
       const skipManualFee = !fee || quote.feeHandling === "integrated";
 
       try {
@@ -296,11 +323,8 @@ export function useExecuteSwap(): UseExecuteSwapResult {
             setFeeHash(feeCredit.feeHash);
             setFeeReused(true);
             setStep("swap");
-            const hash = await sendTransactionAsync({
-              to: quote.tx.to,
-              data: quote.tx.data,
-              value: quote.tx.value,
-            });
+            const tx = await withPermit2Signature(quote, signTypedDataAsync);
+            const hash = await sendTransactionAsync(tx);
             setSwapHash(hash);
             setStep("swap-confirming");
             return;
@@ -328,11 +352,8 @@ export function useExecuteSwap(): UseExecuteSwapResult {
           setFeeHash(undefined);
           pendingFeeKey.current = null;
           setStep("swap");
-          const hash = await sendTransactionAsync({
-            to: quote.tx.to,
-            data: quote.tx.data,
-            value: quote.tx.value,
-          });
+          const tx = await withPermit2Signature(quote, signTypedDataAsync);
+          const hash = await sendTransactionAsync(tx);
           setSwapHash(hash);
           setStep("swap-confirming");
         }
@@ -341,7 +362,7 @@ export function useExecuteSwap(): UseExecuteSwapResult {
         setStep("error");
       }
     },
-    [sendTransactionAsync, address, chainId, feeCredit],
+    [sendTransactionAsync, signTypedDataAsync, address, chainId, feeCredit],
   );
 
   const reset = useCallback(() => {

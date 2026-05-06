@@ -74,7 +74,7 @@ export default function Swap() {
     ? CHAIN_DISPLAY[activeChainId]?.network ?? "avalanche"
     : "avalanche";
 
-  // Aggregator coverage gate. Subnets (Grotto, Blaze) aren't in Li.Fi/Odos.
+  // Aggregator coverage gate. Subnets (Grotto, Blaze) aren't in Li.Fi/0x.
   const isSwapSupported =
     !!activeChainId && SWAP_SUPPORTED_CHAIN_IDS.includes(activeChainId);
 
@@ -234,9 +234,10 @@ export default function Swap() {
   }, [swapRaw, fromDecimals]);
 
   // Quote with the FULL pre-fee amount + fee fields. Each router decides:
-  //  - KyberSwap: feeHandling="integrated" — single tx, fee skimmed in-call.
-  //  - Li.Fi/Odos/0x: feeHandling="manual" — they internally subtract the
-  //    fee and we send a separate fee tx via useExecuteSwap.
+  //  - KyberSwap, 0x v2 permit2: feeHandling="integrated" — single tx, fee
+  //    skimmed in-call.
+  //  - Li.Fi (until portal-registered): feeHandling="manual" — we send a
+  //    separate fee tx via useExecuteSwap before the swap.
   const quote = useSwapQuote({
     chainId: activeChainId,
     fromTokenAddress: fromToken?.address,
@@ -296,7 +297,7 @@ export default function Swap() {
       const toAmtNum = parseFloat(formatUnits(BigInt(quote.best.toAmountRaw), toDecimals));
       const feeAmtNum = parseFloat(formatUnits(feeRaw, fromDecimals));
 
-      // Stablecoin fallback: if the router didn't return USD pricing (Odos),
+      // Stablecoin fallback: if the router didn't return USD pricing,
       // derive it from whichever side is a known dollar-pegged token.
       const STABLES = new Set([
         "USDC", "USDT", "DAI", "BUSD", "FRAX", "LUSD",
@@ -460,7 +461,7 @@ export default function Swap() {
 
   // Surface a route error only when no router could quote at all. Prefer the
   // Li.Fi message (broadest aggregator → most informative reason), then fall
-  // back to Odos / KyberSwap.
+  // back to 0x / KyberSwap.
   const allRoutersFailed =
     !quote.isLoading &&
     !quote.best &&
@@ -470,7 +471,7 @@ export default function Swap() {
     if (!allRoutersFailed) return undefined;
     const byRouter = (id: RouterId) =>
       quote.results.find((r) => r.router === id && !r.ok)?.error;
-    return byRouter("lifi") ?? byRouter("odos") ?? byRouter("kyber");
+    return byRouter("lifi") ?? byRouter("0x") ?? byRouter("kyber");
   })();
 
   // ---------- UI ----------
@@ -798,15 +799,10 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 // Routers we expose in the manual selector. Order = display order in dropdown.
-// 0x is intentionally hidden for now (its v2 endpoint charges a ~0.15% volume
-// fee on output that would silently shrink the user's receive amount when it
-// wins). The implementation in swap-routers.ts is preserved — re-enable by
-// adding back `{ id: "0x", label: "0x" }` (gated on VITE_0X_API_KEY) and the
-// `get0xQuote(req)` call in `getAllQuotes`.
 const SELECTABLE_ROUTERS: { id: RouterId; label: string }[] = [
   { id: "lifi", label: "Li.Fi" },
   { id: "kyber", label: "KyberSwap" },
-  { id: "odos", label: "Odos" },
+  { id: "0x", label: "0x" },
 ];
 
 function routerLabel(id: RouterId): string {

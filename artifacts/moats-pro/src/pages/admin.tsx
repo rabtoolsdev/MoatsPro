@@ -1082,8 +1082,8 @@ function shortAddr(a: string): string {
 
 function prettyRouter(r: string): string {
   if (r === "lifi") return "Li.Fi";
-  if (r === "odos") return "ODOS";
   if (r === "0x") return "0x";
+  if (r === "kyber") return "KyberSwap";
   return r;
 }
 
