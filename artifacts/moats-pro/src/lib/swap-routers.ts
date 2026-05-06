@@ -3,10 +3,16 @@ import { parseUnits } from "viem";
 export const FEE_WALLET = "0xe789b6fFdd63835F0Ee64D9d3e085244515230C6" as const;
 export const FEE_BPS = 33;
 export const FEE_DECIMAL = FEE_BPS / 10_000;
-// Note: `integrator`/`fee` are NOT sent to Li.Fi (would require portal
-// registration on https://portal.li.fi/). We collect the 0.33% manually
-// via a direct ERC20/native transfer to FEE_WALLET before each swap.
+// `integrator` is always sent to Li.Fi for traffic attribution. The `fee`
+// parameter is only sent when VITE_LIFI_API_KEY is configured AND the
+// integrator has been approved on https://portal.li.fi/ with FEE_WALLET as
+// the fee collector. When that's set up, Li.Fi skims the 0.33% inside the
+// swap tx (single signature). Otherwise we fall back to the manual 2-tx
+// flow where the user transfers the fee separately.
 export const INTEGRATOR_NAME = "moats-pro";
+const LIFI_API_KEY = (import.meta.env.VITE_LIFI_API_KEY as string | undefined) ?? "";
+// 0.0033 = 33 bps, must match FEE_BPS above.
+const LIFI_FEE_DECIMAL = (FEE_BPS / 10_000).toString();
 export const AVALANCHE_CHAIN_ID = 43114;
 export const ETHEREUM_CHAIN_ID = 1;
 export const BASE_CHAIN_ID = 8453;
@@ -121,7 +127,14 @@ function applyManualFee(req: QuoteRequest): { rawFromAmount: string; feeRaw: big
 export async function getLifiQuote(req: QuoteRequest): Promise<QuoteResult> {
   try {
     const slippage = req.slippage ?? DEFAULT_SLIPPAGE;
-    const { rawFromAmount } = applyManualFee(req);
+    // Integrated-fee mode: only when an API key is present (which implies the
+    // integrator was registered on the Li.Fi portal with FEE_WALLET as the
+    // fee collector). In that mode we send the FULL pre-fee amount and let
+    // Li.Fi skim the fee inside the swap tx.
+    const integrated = !!LIFI_API_KEY && (req.feeBps ?? 0) > 0 && !!req.feeReceiver;
+    const rawFromAmount = integrated
+      ? parseUnits(req.fromAmount, req.fromDecimals).toString()
+      : applyManualFee(req).rawFromAmount;
     const params = new URLSearchParams({
       fromChain: String(req.chainId),
       toChain: String(req.chainId),
@@ -129,12 +142,14 @@ export async function getLifiQuote(req: QuoteRequest): Promise<QuoteResult> {
       toToken: req.toTokenAddress,
       fromAmount: rawFromAmount,
       fromAddress: req.fromAddress,
-      // Tracking only — `integrator`/`fee` would require Li.Fi portal
-      // registration; we skim the 0.33% manually before the swap.
+      integrator: INTEGRATOR_NAME,
       referrer: FEE_WALLET,
       slippage: slippage.toString(),
+      ...(integrated ? { fee: LIFI_FEE_DECIMAL } : {}),
     });
-    const res = await fetch(`https://li.quest/v1/quote?${params.toString()}`);
+    const res = await fetch(`https://li.quest/v1/quote?${params.toString()}`, {
+      headers: LIFI_API_KEY ? { "x-lifi-api-key": LIFI_API_KEY } : undefined,
+    });
     if (!res.ok) {
       const errBody = await res.text().catch(() => "");
       return {
@@ -162,7 +177,7 @@ export async function getLifiQuote(req: QuoteRequest): Promise<QuoteResult> {
         fromAmountUsd: Number.isFinite(fromUsd) && fromUsd > 0 ? fromUsd : undefined,
         toAmountUsd: Number.isFinite(toUsd) && toUsd > 0 ? toUsd : undefined,
         feeAmountRaw: feeAmount,
-        feeHandling: "manual",
+        feeHandling: integrated ? "integrated" : "manual",
         approveTo,
         tx: {
           to: data.transactionRequest.to as `0x${string}`,
