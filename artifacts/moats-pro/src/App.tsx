@@ -12,6 +12,7 @@ import MoatDetail from "@/pages/moat-detail";
 import Leaderboard from "@/pages/leaderboard";
 import Swap from "@/pages/swap";
 import Admin from "@/pages/admin";
+import { PasswordGate } from "@/components/password-gate";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -50,8 +51,16 @@ function Router() {
           <Route path="/portfolio" component={Portfolio} />
           <Route path="/moat/:address" component={MoatDetail} />
           <Route path="/leaderboard" component={Leaderboard} />
-          <Route path="/swap" component={Swap} />
-          <Route path="/admin" component={Admin} />
+          <Route path="/swap">
+            <PasswordGate scope="swap" title="Moat Swap" subtitle="Enter the password to access the swap interface.">
+              <Swap />
+            </PasswordGate>
+          </Route>
+          <Route path="/admin">
+            <PasswordGate scope="admin" title="Admin Console" subtitle="Enter the password to continue.">
+              <Admin />
+            </PasswordGate>
+          </Route>
           <Route component={NotFound} />
         </Switch>
       </motion.div>
