@@ -26,6 +26,23 @@ die() { echo -e "${RED}[deploy] $*${NC}" >&2; exit 1; }
 cd "$APP_DIR" || die "App directory $APP_DIR not found — run bootstrap-server.sh first"
 
 # -----------------------------------------------------------------------------
+# 0. Load production env (both build-time VITE_* vars and runtime DATABASE_URL)
+# -----------------------------------------------------------------------------
+ENV_FILE="$APP_DIR/.env.production"
+if [[ -f "$ENV_FILE" ]]; then
+  log "Loading env from $ENV_FILE"
+  # Export every KEY=VALUE line (ignoring comments + blanks) so both pnpm build
+  # (Vite bakes VITE_* into the bundle) and the api-server (DATABASE_URL) see them.
+  set -a
+  # shellcheck disable=SC1090
+  source "$ENV_FILE"
+  set +a
+else
+  warn "$ENV_FILE missing — Vite build will bake undefined for VITE_* vars and"
+  warn "the API server will have no DATABASE_URL. Create it before re-deploying."
+fi
+
+# -----------------------------------------------------------------------------
 # 1. Pull latest code
 # -----------------------------------------------------------------------------
 log "Pulling latest from origin/main..."
@@ -46,6 +63,16 @@ pnpm --filter @workspace/api-server run build
 
 log "Building moats-pro frontend..."
 pnpm --filter @workspace/moats-pro run build
+
+# -----------------------------------------------------------------------------
+# 3.5. Apply DB schema (idempotent — drizzle-kit push only emits missing DDL)
+# -----------------------------------------------------------------------------
+if [[ -n "${DATABASE_URL:-}" ]]; then
+  log "Applying DB schema (drizzle-kit push)..."
+  pnpm --filter @workspace/db run push
+else
+  warn "DATABASE_URL not set — skipping db push. Admin dashboard will be empty."
+fi
 
 # Sanity checks — fail loudly if a build silently produced nothing
 [[ -f "$APP_DIR/artifacts/api-server/dist/index.mjs" ]] \
