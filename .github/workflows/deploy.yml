@@ -1,9 +1,12 @@
-name: Deploy to Hetzner
+name: Deploy to Hetzner (manual)
+
+# Manual-only. Auto-push deploy was removed — user deploys by SSHing
+# into 128.140.98.252 and running `sudo -u moats bash deploy/deploy.sh`.
+# Kept here so it can still be triggered from the Actions tab if desired,
+# but only when the HETZNER_HOST/USER/SSH_KEY repo secrets are set.
 
 on:
-  push:
-    branches: [main]
-  workflow_dispatch: {} # allow manual runs from the Actions tab
+  workflow_dispatch: {}
 
 concurrency:
   group: deploy-production
