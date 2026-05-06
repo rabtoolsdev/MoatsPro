@@ -231,7 +231,14 @@ function parseLifiError(status: number, body: string): string {
   return `Quote failed (HTTP ${status})`;
 }
 
-const ZEROX_API_KEY = (import.meta.env.VITE_0X_API_KEY as string | undefined) ?? "";
+// Browser CANNOT call api.0x.org directly: 0x v2 requires the
+// `0x-version: v2` header, which is not in their CORS allow-list, so every
+// browser request is blocked by preflight. Instead we proxy through our
+// api-server (`/api/0x/quote`), which holds the API key and adds the
+// version header server-side. The client only needs to know the proxy
+// base URL — VITE_0X_API_KEY is no longer required in the browser bundle.
+const ZEROX_PROXY_BASE =
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "/api";
 const KYBER_CLIENT_ID =
   (import.meta.env.VITE_KYBERSWAP_CLIENT_ID as string | undefined) ?? "moats-pro";
 
@@ -290,13 +297,6 @@ interface ZeroxQuoteResponse {
 }
 
 export async function get0xQuote(req: QuoteRequest): Promise<QuoteResult> {
-  if (!ZEROX_API_KEY) {
-    return {
-      router: "0x",
-      ok: false,
-      error: "0x router not configured (VITE_0X_API_KEY missing).",
-    };
-  }
   if (!ZEROX_SUPPORTED_CHAIN_IDS.has(req.chainId)) {
     return {
       router: "0x",
@@ -329,14 +329,9 @@ export async function get0xQuote(req: QuoteRequest): Promise<QuoteResult> {
       // swapFeeToken to be either sellToken or buyToken.
       params.set("swapFeeToken", buyToken);
     }
+    // Routed through our api-server proxy (see ZEROX_PROXY_BASE comment).
     const res = await fetch(
-      `https://api.0x.org/swap/permit2/quote?${params.toString()}`,
-      {
-        headers: {
-          "0x-api-key": ZEROX_API_KEY,
-          "0x-version": "v2",
-        },
-      },
+      `${ZEROX_PROXY_BASE}/0x/quote?${params.toString()}`,
     );
     if (!res.ok) {
       const body = await res.text().catch(() => "");
