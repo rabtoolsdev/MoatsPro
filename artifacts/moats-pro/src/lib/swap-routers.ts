@@ -220,13 +220,18 @@ function parseLifiError(status: number, body: string): string {
 }
 
 const ZEROX_API_KEY = (import.meta.env.VITE_0X_API_KEY as string | undefined) ?? "";
+// Odos partner-fee monetization (https://docs.odos.xyz/build/partner_code):
+// register a referral code on-chain at https://referral.odos.xyz/ on EACH
+// chain, attach a fee (bps) and a beneficiary (FEE_WALLET). Pass the
+// numeric code here; the Odos router skims the fee from the OUTPUT token
+// in-tx (single signature) and sends 80% to the beneficiary, keeps 20%.
+// When unset: no integrator fee — frontend falls back to manual 2-tx flow.
+// Codes in [2147483649, 4294967296] carry a fee; [0, 2147483648] are
+// tracking-only.
 const ODOS_REFERRAL_CODE_RAW = (import.meta.env.VITE_ODOS_REFERRAL_CODE as string | undefined) ?? "";
-// Odos API V3 monetization (https://docs.odos.xyz/home/api-monetization).
-// We proxy through our own api-server because the V3 enterprise endpoint
-// requires `x-api-key` and Odos's CORS preflight returns 403 — direct
-// browser calls always fail with "Failed to fetch". The api-server holds
-// `ODOS_API_KEY` server-side; if set it uses V3 + partner fee, else V2.
-// Override default `/api` with VITE_API_BASE_URL when needed.
+// We proxy through our own api-server (`/api/odos/*`) — even though Odos
+// V2 has open CORS — so we can swap in an enterprise endpoint later
+// without touching the frontend bundle.
 const ODOS_PROXY_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "/api";
 const KYBER_CLIENT_ID =
   (import.meta.env.VITE_KYBERSWAP_CLIENT_ID as string | undefined) ?? "moats-pro";
@@ -583,50 +588,49 @@ interface OdosAssembleResponse {
 
 // Odos handles tokens Li.Fi rejects (e.g. tokens with buy/sell transfer tax)
 // and is used as a complementary aggregator. `pickBestQuote` chooses whichever
-// router returns the most output. Referral code is optional.
+// router returns the most output.
 //
-// IMPORTANT: We MUST proxy through our own api-server (`/api/odos/*`) instead
-// of calling Odos directly. The enterprise V3 endpoint requires `x-api-key`,
-// which triggers a CORS preflight that Odos returns 403 for — every
-// browser-side call would fail with "Failed to fetch". Proxying server-side
-// also keeps the API key out of the JS bundle (security++).
+// Fee handling: when VITE_ODOS_REFERRAL_CODE is set (and points to a code
+// registered on-chain WITH a fee on this chain — see referral.odos.xyz),
+// the Odos router skims the fee from the OUTPUT token in-tx → single
+// signature, integrated mode, send full pre-fee input. Otherwise we deduct
+// the fee from the input and the swap page transfers it separately
+// (manual mode).
 export async function getOdosQuote(req: QuoteRequest): Promise<QuoteResult> {
   try {
     const slippage = req.slippage ?? DEFAULT_SLIPPAGE;
-    const wantsFee = (req.feeBps ?? 0) > 0 && !!req.feeReceiver;
-    const partnerFeePercent = wantsFee ? (req.feeBps as number) / 10_000 : undefined;
     const referralCode = ODOS_REFERRAL_CODE_RAW
       ? Number(ODOS_REFERRAL_CODE_RAW)
       : undefined;
+    // Codes in [2^31, 2^32) carry a fee; [0, 2^31) are tracking-only.
+    // Without a fee-bearing code we can't skim integrated, so fall back
+    // to the manual 2-tx fee flow.
+    const hasFeeBearingCode =
+      referralCode !== undefined &&
+      Number.isFinite(referralCode) &&
+      referralCode >= 2_147_483_648 &&
+      referralCode < 4_294_967_296;
+    const wantsFee = (req.feeBps ?? 0) > 0 && !!req.feeReceiver;
+    const integrated = hasFeeBearingCode && wantsFee;
 
-    // Tricky: the AMOUNT we ask Odos to swap depends on whether the proxy
-    // will route to V3 (integrated fee) or V2 (no fee). We don't know up
-    // front, so we issue an optimistic V3-style quote (FULL pre-fee amount
-    // + partnerFeePercent). If the proxy reports `__moatsFeeMode: "none"`
-    // and we wanted a fee, we re-quote with the POST-fee amount so the
-    // separate manual fee transfer + swap totals the user-entered input.
-    // Without the re-quote, manual mode would over-spend by feeBps.
-    const fullRaw = parseUnits(req.fromAmount, req.fromDecimals).toString();
-    const buildBody = (rawFromAmount: string, includeFeeFields: boolean) => ({
-      chainId: req.chainId,
-      inputTokens: [{ tokenAddress: req.fromTokenAddress, amount: rawFromAmount }],
-      outputTokens: [{ tokenAddress: req.toTokenAddress, proportion: 1 }],
-      userAddr: req.fromAddress,
-      slippageLimitPercent: slippage * 100,
-      ...(referralCode !== undefined && Number.isFinite(referralCode)
-        ? { referralCode }
-        : {}),
-      ...(includeFeeFields && partnerFeePercent !== undefined
-        ? { partnerFeePercent, feeRecipient: req.feeReceiver }
-        : {}),
-      compact: true,
-    });
+    const rawFromAmount = integrated
+      ? parseUnits(req.fromAmount, req.fromDecimals).toString()
+      : applyManualFee(req).rawFromAmount;
 
-    let rawFromAmount = fullRaw;
-    let quoteRes = await fetch(`${ODOS_PROXY_BASE}/odos/quote`, {
+    const quoteRes = await fetch(`${ODOS_PROXY_BASE}/odos/quote`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(buildBody(rawFromAmount, true)),
+      body: JSON.stringify({
+        chainId: req.chainId,
+        inputTokens: [{ tokenAddress: req.fromTokenAddress, amount: rawFromAmount }],
+        outputTokens: [{ tokenAddress: req.toTokenAddress, proportion: 1 }],
+        userAddr: req.fromAddress,
+        slippageLimitPercent: slippage * 100,
+        ...(referralCode !== undefined && Number.isFinite(referralCode)
+          ? { referralCode }
+          : {}),
+        compact: true,
+      }),
     });
     if (!quoteRes.ok) {
       const body = await quoteRes.text().catch(() => "");
@@ -636,24 +640,7 @@ export async function getOdosQuote(req: QuoteRequest): Promise<QuoteResult> {
         error: parseOdosError(quoteRes.status, body),
       };
     }
-    let qd = (await quoteRes.json()) as OdosQuoteResponse & { __moatsFeeMode?: string };
-
-    // V2 fallback path: server has no Odos key, fee won't be skimmed in-tx.
-    // Re-quote with post-fee amount so the manual fee transfer + swap match
-    // the user's intended total.
-    if (qd.__moatsFeeMode !== "integrated" && wantsFee) {
-      rawFromAmount = applyManualFee(req).rawFromAmount;
-      quoteRes = await fetch(`${ODOS_PROXY_BASE}/odos/quote`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildBody(rawFromAmount, false)),
-      });
-      if (!quoteRes.ok) {
-        const body = await quoteRes.text().catch(() => "");
-        return { router: "odos", ok: false, error: parseOdosError(quoteRes.status, body) };
-      }
-      qd = (await quoteRes.json()) as OdosQuoteResponse & { __moatsFeeMode?: string };
-    }
+    const qd = (await quoteRes.json()) as OdosQuoteResponse;
 
     if (!qd.pathId || !qd.outAmounts?.[0]) {
       return {
@@ -694,12 +681,7 @@ export async function getOdosQuote(req: QuoteRequest): Promise<QuoteResult> {
     const slippageBps = BigInt(Math.max(0, Math.round(slippage * 10_000)));
     const toAmountMin = outAmount - (outAmount * slippageBps) / 10_000n;
 
-    // The proxy mixes `__moatsFeeMode` into the response: "integrated" when
-    // V3 is active (fee skimmed in-tx), "none" when V2 (no integrator fee).
-    // We map "none" → manual so the swap page collects the fee in a
-    // separate tx (against the post-fee `rawFromAmount` set above).
-    const feeHandling: FeeHandling =
-      qd.__moatsFeeMode === "integrated" ? "integrated" : "manual";
+    const feeHandling: FeeHandling = integrated ? "integrated" : "manual";
 
     return {
       router: "odos",
