@@ -7,8 +7,20 @@ import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 const port = Number(process.env.PORT ?? 3000);
 const basePath = process.env.BASE_PATH ?? "/";
 
+// Inject any VITE_* env vars from the host process (Replit secrets) into
+// import.meta.env. Vite normally only reads these from .env files in the
+// artifact dir; Replit secrets live in process.env, so we mirror them here
+// at build/dev start. Stringified per Vite's `define` contract.
+const viteSecrets: Record<string, string> = {};
+for (const [k, v] of Object.entries(process.env)) {
+  if (k.startsWith("VITE_") && typeof v === "string") {
+    viteSecrets[`import.meta.env.${k}`] = JSON.stringify(v);
+  }
+}
+
 export default defineConfig({
   base: basePath,
+  define: viteSecrets,
   plugins: [
     react(),
     tailwindcss(),
