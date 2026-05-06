@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import moatSwapLogo from "@assets/Moats_Logo_Swap_1777739220258.png";
+import lifiLogo from "@assets/logo_lifi_dark_horizontal_1778087629617.png";
 import { Navbar } from "@/components/navbar";
 import { TokenSelectModal } from "@/components/swap/token-select-modal";
 import { TokenLogo } from "@/components/swap/token-logo";
@@ -623,6 +624,18 @@ export default function Swap() {
           <div className="mt-3 text-[10px] text-muted-foreground/70 text-center flex items-center justify-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-primary/80 live-dot" aria-hidden />
             <span>Quotes auto-refresh every 20s · Comparing Li.Fi, Odos, KyberSwap for best execution</span>
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-border/30 flex items-center justify-center gap-2">
+            <span className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/60 font-medium">
+              Powered by
+            </span>
+            <img
+              src={lifiLogo}
+              alt="Li.Fi"
+              className="h-3 w-auto opacity-60 hover:opacity-90 transition-opacity"
+              draggable={false}
+            />
           </div>
           </div>
         </div>
