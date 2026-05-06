@@ -19,7 +19,10 @@ pro.moats.app {
         }
 
         # ---- API: reverse-proxy /api/* to the Node API server on localhost:3001 ----
-        handle_path /api/* {
+        # NB: use `handle` (not `handle_path`) so the `/api/` prefix is preserved
+        # — the express router mounts at `/api`, so stripping it would 404 every
+        # request and silently break the admin dashboard + swap recording.
+        handle /api/* {
                 reverse_proxy 127.0.0.1:3001 {
                         # Pass real client info upstream
                         header_up X-Real-IP {remote_host}
