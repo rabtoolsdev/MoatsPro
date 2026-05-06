@@ -48,8 +48,10 @@ export interface QuoteRequest {
    *  - Routers without (Li.Fi, 0x — would need portal registration) reduce
    *    their requested input by the fee amount, so the caller must transfer
    *    the fee separately before the swap. They set feeHandling="manual".
-   *  - Odos: skips the integrator fee entirely (no fee charged on Odos
-   *    routes) and sets feeHandling="integrated" so no separate tx is sent.
+   *  - Odos: when VITE_ODOS_API_KEY is set, uses Odos API V3 monetization
+   *    (partnerFeePercent/feeRecipient) — fee is skimmed from output token
+   *    in-tx, 80/20 split between feeReceiver and Odos. Otherwise sends no
+   *    fee. Either way feeHandling="integrated" (single signature).
    */
   feeBps?: number;
   /** Wallet to receive the integrator fee. Required when feeBps > 0. */
@@ -212,6 +214,12 @@ function parseLifiError(status: number, body: string): string {
 
 const ZEROX_API_KEY = (import.meta.env.VITE_0X_API_KEY as string | undefined) ?? "";
 const ODOS_REFERRAL_CODE_RAW = (import.meta.env.VITE_ODOS_REFERRAL_CODE as string | undefined) ?? "";
+// Odos API V3 monetization (https://docs.odos.xyz/home/api-monetization). When
+// VITE_ODOS_API_KEY is set we route quote+assemble through enterprise-api.odos.xyz
+// /v3 with partnerFeePercent + feeRecipient. Odos skims the fee from the OUTPUT
+// token in the same swap tx (single signature) and splits 80/20 (us/Odos).
+// Without the key we fall back to the public v2 SOR with no integrator fee.
+const ODOS_API_KEY = (import.meta.env.VITE_ODOS_API_KEY as string | undefined) ?? "";
 const KYBER_CLIENT_ID =
   (import.meta.env.VITE_KYBERSWAP_CLIENT_ID as string | undefined) ?? "moats-pro";
 
@@ -571,10 +579,24 @@ interface OdosAssembleResponse {
 export async function getOdosQuote(req: QuoteRequest): Promise<QuoteResult> {
   try {
     const slippage = req.slippage ?? DEFAULT_SLIPPAGE;
-    // Odos doesn't charge our integrator fee — we send the FULL pre-fee
-    // amount and skip the separate fee tx (feeHandling="integrated" below).
-    // Net effect: Odos routes are single-signature with zero integrator fee.
+    // We always send the FULL pre-fee amount to Odos — when V3 monetization
+    // is active Odos deducts the partner fee from the OUTPUT token in-tx;
+    // when it isn't, no fee is taken. Either way: single signature.
     const rawFromAmount = parseUnits(req.fromAmount, req.fromDecimals).toString();
+
+    // V3 monetization is gated on the API key being present. partnerFeePercent
+    // is a decimal (0.0033 = 33 bps). Revenue split is 80% feeRecipient / 20% Odos.
+    const useV3 = !!ODOS_API_KEY && (req.feeBps ?? 0) > 0 && !!req.feeReceiver;
+    const partnerFeePercent = useV3 ? (req.feeBps as number) / 10_000 : undefined;
+
+    const quoteUrl = useV3
+      ? "https://enterprise-api.odos.xyz/sor/quote/v3"
+      : "https://api.odos.xyz/sor/quote/v2";
+    const assembleUrl = useV3
+      ? "https://enterprise-api.odos.xyz/sor/assemble"
+      : "https://api.odos.xyz/sor/assemble";
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (ODOS_API_KEY) headers["x-api-key"] = ODOS_API_KEY;
 
     // Odos uses 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee for native, but
     // the all-zero address also works on the v2 SOR; we keep zeros for
@@ -583,9 +605,9 @@ export async function getOdosQuote(req: QuoteRequest): Promise<QuoteResult> {
       ? Number(ODOS_REFERRAL_CODE_RAW)
       : undefined;
 
-    const quoteRes = await fetch("https://api.odos.xyz/sor/quote/v2", {
+    const quoteRes = await fetch(quoteUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({
         chainId: req.chainId,
         inputTokens: [
@@ -598,6 +620,9 @@ export async function getOdosQuote(req: QuoteRequest): Promise<QuoteResult> {
         slippageLimitPercent: slippage * 100,
         ...(referralCode !== undefined && Number.isFinite(referralCode)
           ? { referralCode }
+          : {}),
+        ...(useV3
+          ? { partnerFeePercent, feeRecipient: req.feeReceiver }
           : {}),
         compact: true,
       }),
@@ -620,9 +645,9 @@ export async function getOdosQuote(req: QuoteRequest): Promise<QuoteResult> {
       };
     }
 
-    const asmRes = await fetch("https://api.odos.xyz/sor/assemble", {
+    const asmRes = await fetch(assembleUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({
         userAddr: req.fromAddress,
         pathId: qd.pathId,
