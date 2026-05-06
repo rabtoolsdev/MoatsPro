@@ -16,9 +16,8 @@ const LIFI_FEE_DECIMAL = (FEE_BPS / 10_000).toString();
 export const AVALANCHE_CHAIN_ID = 43114;
 export const ETHEREUM_CHAIN_ID = 1;
 export const BASE_CHAIN_ID = 8453;
-// Chains where our aggregators (Li.Fi + KyberSwap) can route. Others —
-// e.g. Avalanche subnets — don't have aggregator coverage and the swap UI
-// gracefully disables.
+// Chains where Li.Fi + Odos can route (others — e.g. Avalanche subnets —
+// don't have aggregator coverage and the swap UI gracefully disables).
 export const SWAP_SUPPORTED_CHAIN_IDS: readonly number[] = [
   AVALANCHE_CHAIN_ID,
   ETHEREUM_CHAIN_ID,
@@ -26,7 +25,7 @@ export const SWAP_SUPPORTED_CHAIN_IDS: readonly number[] = [
 ] as const;
 export const DEFAULT_SLIPPAGE = 0.005;
 
-export type RouterId = "lifi" | "0x" | "kyber";
+export type RouterId = "lifi" | "0x" | "odos" | "kyber";
 
 export interface QuoteRequest {
   chainId: number;
@@ -46,9 +45,9 @@ export interface QuoteRequest {
    *  - Routers with native fee support (KyberSwap) include feeReceiver+
    *    feeAmount in their build call so the fee is skimmed atomically inside
    *    the swap tx. They set feeHandling="integrated".
-   *  - Routers without (Li.Fi, 0x — would need portal registration) reduce
-   *    their requested input by the fee amount, so the caller must transfer
-   *    the fee separately before the swap. They set feeHandling="manual".
+   *  - Routers without (Li.Fi, Odos, 0x — would need portal registration)
+   *    reduce their requested input by the fee amount, so the caller must
+   *    transfer the fee separately before the swap. They set feeHandling="manual".
    */
   feeBps?: number;
   /** Wallet to receive the integrator fee. Required when feeBps > 0. */
@@ -115,9 +114,8 @@ interface LiFiQuoteResponse {
 /**
  * Subtract the integrator fee from `fromAmount` and return the post-fee raw
  * amount that should be sent to aggregators which don't handle our fee
- * natively (Li.Fi without portal config, 0x). The caller (useExecuteSwap) is
- * responsible for transferring `feeRaw` to FEE_WALLET in a separate tx
- * before the swap.
+ * natively (Li.Fi, Odos, 0x). The caller (useExecuteSwap) is responsible for
+ * transferring `feeRaw` to FEE_WALLET in a separate tx before the swap.
  */
 function applyManualFee(req: QuoteRequest): { rawFromAmount: string; feeRaw: bigint } {
   const fullRaw = parseUnits(req.fromAmount, req.fromDecimals);
@@ -211,6 +209,7 @@ function parseLifiError(status: number, body: string): string {
 }
 
 const ZEROX_API_KEY = (import.meta.env.VITE_0X_API_KEY as string | undefined) ?? "";
+const ODOS_REFERRAL_CODE_RAW = (import.meta.env.VITE_ODOS_REFERRAL_CODE as string | undefined) ?? "";
 const KYBER_CLIENT_ID =
   (import.meta.env.VITE_KYBERSWAP_CLIENT_ID as string | undefined) ?? "moats-pro";
 
@@ -225,7 +224,7 @@ function toEeeeNative(addr: `0x${string}`): string {
 
 // 0x Swap API v2 (allowance-holder flow). We deliberately avoid the Permit2
 // flow because it requires an EIP-712 signature step the rest of our swap
-// pipeline doesn't support. AllowanceHolder behaves like Li.Fi:
+// pipeline doesn't support. AllowanceHolder behaves like Li.Fi/Odos:
 // approve `issues.allowance.spender`, then send the returned tx.
 const ZEROX_SUPPORTED_CHAIN_IDS = new Set<number>([
   1, 8453, 43114, 42161, 10, 137,
@@ -545,6 +544,152 @@ function parseKyberError(status: number, body: string): string {
   return `KyberSwap quote failed (HTTP ${status})`;
 }
 
+interface OdosQuoteResponse {
+  pathId?: string;
+  outAmounts?: string[];
+  gasEstimateValue?: number;
+  detail?: string;
+  message?: string;
+}
+
+interface OdosAssembleResponse {
+  transaction?: {
+    to?: string;
+    data?: string;
+    value?: string | number;
+    gas?: number;
+  };
+  detail?: string;
+  message?: string;
+}
+
+// Odos handles tokens Li.Fi rejects (e.g. tokens with buy/sell transfer tax)
+// and is used as a complementary aggregator. `pickBestQuote` chooses whichever
+// router returns the most output. Referral code is optional.
+export async function getOdosQuote(req: QuoteRequest): Promise<QuoteResult> {
+  try {
+    const slippage = req.slippage ?? DEFAULT_SLIPPAGE;
+    const { rawFromAmount } = applyManualFee(req);
+
+    // Odos uses 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee for native, but
+    // the all-zero address also works on the v2 SOR; we keep zeros for
+    // consistency with Li.Fi.
+    const referralCode = ODOS_REFERRAL_CODE_RAW
+      ? Number(ODOS_REFERRAL_CODE_RAW)
+      : undefined;
+
+    const quoteRes = await fetch("https://api.odos.xyz/sor/quote/v2", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chainId: req.chainId,
+        inputTokens: [
+          { tokenAddress: req.fromTokenAddress, amount: rawFromAmount },
+        ],
+        outputTokens: [
+          { tokenAddress: req.toTokenAddress, proportion: 1 },
+        ],
+        userAddr: req.fromAddress,
+        slippageLimitPercent: slippage * 100,
+        ...(referralCode !== undefined && Number.isFinite(referralCode)
+          ? { referralCode }
+          : {}),
+        compact: true,
+      }),
+    });
+
+    if (!quoteRes.ok) {
+      const body = await quoteRes.text().catch(() => "");
+      return {
+        router: "odos",
+        ok: false,
+        error: parseOdosError(quoteRes.status, body),
+      };
+    }
+    const qd = (await quoteRes.json()) as OdosQuoteResponse;
+    if (!qd.pathId || !qd.outAmounts?.[0]) {
+      return {
+        router: "odos",
+        ok: false,
+        error: qd.detail || qd.message || "No Odos route available.",
+      };
+    }
+
+    const asmRes = await fetch("https://api.odos.xyz/sor/assemble", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userAddr: req.fromAddress,
+        pathId: qd.pathId,
+        simulate: false,
+      }),
+    });
+    if (!asmRes.ok) {
+      const body = await asmRes.text().catch(() => "");
+      return {
+        router: "odos",
+        ok: false,
+        error: parseOdosError(asmRes.status, body),
+      };
+    }
+    const asm = (await asmRes.json()) as OdosAssembleResponse;
+    const tx = asm.transaction;
+    if (!tx?.to || !tx?.data) {
+      return {
+        router: "odos",
+        ok: false,
+        error: asm.detail || asm.message || "Odos returned no transaction.",
+      };
+    }
+
+    const outAmount = BigInt(qd.outAmounts[0]);
+    const slippageBps = BigInt(Math.max(0, Math.round(slippage * 10_000)));
+    const toAmountMin = outAmount - (outAmount * slippageBps) / 10_000n;
+
+    return {
+      router: "odos",
+      ok: true,
+      quote: {
+        router: "odos",
+        toolName: "Odos",
+        fromAmountRaw: rawFromAmount,
+        toAmountRaw: outAmount.toString(),
+        toAmountMinRaw: toAmountMin.toString(),
+        estimatedGasUsd:
+          typeof qd.gasEstimateValue === "number" && qd.gasEstimateValue > 0
+            ? qd.gasEstimateValue
+            : undefined,
+        feeHandling: "manual",
+        approveTo: tx.to as `0x${string}`,
+        tx: {
+          to: tx.to as `0x${string}`,
+          data: tx.data as `0x${string}`,
+          value: BigInt(tx.value ?? "0"),
+        },
+      },
+    };
+  } catch (e) {
+    return {
+      router: "odos",
+      ok: false,
+      error: e instanceof Error ? e.message : "Odos quote request failed",
+    };
+  }
+}
+
+function parseOdosError(status: number, body: string): string {
+  if (status === 429) return "Odos rate limit hit. Try again in a moment.";
+  if (status >= 500) return "Odos service is temporarily unavailable.";
+  try {
+    const parsed = JSON.parse(body);
+    if (typeof parsed?.detail === "string") return parsed.detail;
+    if (typeof parsed?.message === "string") return parsed.message;
+  } catch {
+    /* ignore */
+  }
+  return `Odos quote failed (HTTP ${status})`;
+}
+
 export async function getAllQuotes(req: QuoteRequest): Promise<QuoteResult[]> {
   // 0x is intentionally excluded from the parallel comparison for now —
   // its v2 endpoint always charges a ~0.15% volume fee on the user's output
@@ -554,6 +699,7 @@ export async function getAllQuotes(req: QuoteRequest): Promise<QuoteResult[]> {
   // SELECTABLE_ROUTERS (artifacts/moats-pro/src/pages/swap.tsx).
   const results = await Promise.all([
     getLifiQuote(req),
+    getOdosQuote(req),
     getKyberQuote(req),
   ]);
   return results;

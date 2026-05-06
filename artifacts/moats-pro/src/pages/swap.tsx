@@ -74,7 +74,7 @@ export default function Swap() {
     ? CHAIN_DISPLAY[activeChainId]?.network ?? "avalanche"
     : "avalanche";
 
-  // Aggregator coverage gate. Subnets (Grotto, Blaze) aren't in Li.Fi/KyberSwap.
+  // Aggregator coverage gate. Subnets (Grotto, Blaze) aren't in Li.Fi/Odos.
   const isSwapSupported =
     !!activeChainId && SWAP_SUPPORTED_CHAIN_IDS.includes(activeChainId);
 
@@ -235,9 +235,8 @@ export default function Swap() {
 
   // Quote with the FULL pre-fee amount + fee fields. Each router decides:
   //  - KyberSwap: feeHandling="integrated" — single tx, fee skimmed in-call.
-  //  - Li.Fi: feeHandling="integrated" when VITE_LIFI_API_KEY is configured,
-  //    otherwise "manual" (we send a separate fee tx via useExecuteSwap).
-  //  - 0x: feeHandling="manual".
+  //  - Li.Fi/Odos/0x: feeHandling="manual" — they internally subtract the
+  //    fee and we send a separate fee tx via useExecuteSwap.
   const quote = useSwapQuote({
     chainId: activeChainId,
     fromTokenAddress: fromToken?.address,
@@ -297,7 +296,7 @@ export default function Swap() {
       const toAmtNum = parseFloat(formatUnits(BigInt(quote.best.toAmountRaw), toDecimals));
       const feeAmtNum = parseFloat(formatUnits(feeRaw, fromDecimals));
 
-      // Stablecoin fallback: if the router didn't return USD pricing,
+      // Stablecoin fallback: if the router didn't return USD pricing (Odos),
       // derive it from whichever side is a known dollar-pegged token.
       const STABLES = new Set([
         "USDC", "USDT", "DAI", "BUSD", "FRAX", "LUSD",
@@ -461,7 +460,7 @@ export default function Swap() {
 
   // Surface a route error only when no router could quote at all. Prefer the
   // Li.Fi message (broadest aggregator → most informative reason), then fall
-  // back to KyberSwap.
+  // back to Odos / KyberSwap.
   const allRoutersFailed =
     !quote.isLoading &&
     !quote.best &&
@@ -471,7 +470,7 @@ export default function Swap() {
     if (!allRoutersFailed) return undefined;
     const byRouter = (id: RouterId) =>
       quote.results.find((r) => r.router === id && !r.ok)?.error;
-    return byRouter("lifi") ?? byRouter("kyber");
+    return byRouter("lifi") ?? byRouter("odos") ?? byRouter("kyber");
   })();
 
   // ---------- UI ----------
@@ -807,6 +806,7 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 const SELECTABLE_ROUTERS: { id: RouterId; label: string }[] = [
   { id: "lifi", label: "Li.Fi" },
   { id: "kyber", label: "KyberSwap" },
+  { id: "odos", label: "Odos" },
 ];
 
 function routerLabel(id: RouterId): string {
