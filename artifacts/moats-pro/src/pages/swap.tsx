@@ -623,7 +623,7 @@ export default function Swap() {
 
           <div className="mt-3 text-[10px] text-muted-foreground/70 text-center flex items-center justify-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-primary/80 live-dot" aria-hidden />
-            <span>Quotes auto-refresh every 20s · Comparing Li.Fi, Odos, KyberSwap for best execution</span>
+            <span>Quotes auto-refresh every 20s </span>
           </div>
 
           <div className="mt-3 pt-3 border-t border-border/30 flex items-center justify-center gap-2">
@@ -640,7 +640,6 @@ export default function Swap() {
           </div>
         </div>
       </div>
-
       <TokenSelectModal
         open={pickerSide !== null}
         onClose={() => setPickerSide(null)}
@@ -743,7 +742,6 @@ function TokenInput({
           )}
         </div>
       </div>
-
       <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground px-0.5">
         <div className="flex items-center gap-1">
           <Wallet size={11} />
