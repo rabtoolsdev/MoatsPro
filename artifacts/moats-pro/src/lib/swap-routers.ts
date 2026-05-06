@@ -1,6 +1,6 @@
 import { parseUnits } from "viem";
 
-export const FEE_WALLET = "0x037a3b41975B44cF6038e48f1433831aB8810Af7" as const;
+export const FEE_WALLET = "0xe789b6fFdd63835F0Ee64D9d3e085244515230C6" as const;
 export const FEE_BPS = 33;
 export const FEE_DECIMAL = FEE_BPS / 10_000;
 // Note: `integrator`/`fee` are NOT sent to Li.Fi (would require portal
