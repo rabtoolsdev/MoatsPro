@@ -268,6 +268,14 @@ interface ZeroxQuoteResponse {
   sellAmount?: string;
   minBuyAmount?: string;
   totalNetworkFee?: string;
+  // The canonical spender the user must grant ERC20 allowance to. For
+  // /swap/permit2 this is ALWAYS the Permit2 contract
+  // (0x000…22d473030f116ddee9f6b43ac78ba3). 0x returns it on every
+  // response — whether or not the user already has allowance — so it's
+  // the safe field to use for our approveTo. (`issues.allowance` is only
+  // populated when allowance is INSUFFICIENT, so falling back to `tx.to`
+  // when it's null sends the user to approve the wrong contract.)
+  allowanceTarget?: string;
   issues?: {
     allowance?: { spender?: string } | null;
     balance?: unknown;
@@ -349,7 +357,14 @@ export async function get0xQuote(req: QuoteRequest): Promise<QuoteResult> {
         error: data.message || "0x returned no transaction.",
       };
     }
-    const approveTo = (data.issues?.allowance?.spender ?? tx.to) as `0x${string}`;
+    // For ERC20 sells, allowance must go to Permit2 (data.allowanceTarget).
+    // The 0x router/settler at tx.to pulls funds via Permit2 and does NOT
+    // need its own ERC20 allowance — falling back to tx.to here was the
+    // root cause of users being prompted for a redundant second approval
+    // after the Permit2 approval already confirmed.
+    const approveTo = (data.allowanceTarget ??
+      data.issues?.allowance?.spender ??
+      tx.to) as `0x${string}`;
     const minBuyAmount = data.minBuyAmount ?? data.buyAmount;
     const integratorFeeAmount = data.fees?.integratorFee?.amount;
     return {
