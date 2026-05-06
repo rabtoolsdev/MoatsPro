@@ -45,9 +45,11 @@ export interface QuoteRequest {
    *  - Routers with native fee support (KyberSwap) include feeReceiver+
    *    feeAmount in their build call so the fee is skimmed atomically inside
    *    the swap tx. They set feeHandling="integrated".
-   *  - Routers without (Li.Fi, Odos, 0x — would need portal registration)
-   *    reduce their requested input by the fee amount, so the caller must
-   *    transfer the fee separately before the swap. They set feeHandling="manual".
+   *  - Routers without (Li.Fi, 0x — would need portal registration) reduce
+   *    their requested input by the fee amount, so the caller must transfer
+   *    the fee separately before the swap. They set feeHandling="manual".
+   *  - Odos: skips the integrator fee entirely (no fee charged on Odos
+   *    routes) and sets feeHandling="integrated" so no separate tx is sent.
    */
   feeBps?: number;
   /** Wallet to receive the integrator fee. Required when feeBps > 0. */
@@ -569,7 +571,10 @@ interface OdosAssembleResponse {
 export async function getOdosQuote(req: QuoteRequest): Promise<QuoteResult> {
   try {
     const slippage = req.slippage ?? DEFAULT_SLIPPAGE;
-    const { rawFromAmount } = applyManualFee(req);
+    // Odos doesn't charge our integrator fee — we send the FULL pre-fee
+    // amount and skip the separate fee tx (feeHandling="integrated" below).
+    // Net effect: Odos routes are single-signature with zero integrator fee.
+    const rawFromAmount = parseUnits(req.fromAmount, req.fromDecimals).toString();
 
     // Odos uses 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee for native, but
     // the all-zero address also works on the v2 SOR; we keep zeros for
@@ -659,7 +664,7 @@ export async function getOdosQuote(req: QuoteRequest): Promise<QuoteResult> {
           typeof qd.gasEstimateValue === "number" && qd.gasEstimateValue > 0
             ? qd.gasEstimateValue
             : undefined,
-        feeHandling: "manual",
+        feeHandling: "integrated",
         approveTo: tx.to as `0x${string}`,
         tx: {
           to: tx.to as `0x${string}`,
