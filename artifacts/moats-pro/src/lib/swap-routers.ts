@@ -25,15 +25,39 @@ export interface QuoteRequest {
   chainId: number;
   fromTokenAddress: `0x${string}`;
   toTokenAddress: `0x${string}`;
+  /**
+   * Full input amount in human units (pre-fee). Each router decides whether
+   * to subtract the fee internally (manual) or pass through to the
+   * aggregator's own fee mechanism (integrated).
+   */
   fromAmount: string;
   fromDecimals: number;
   fromAddress: `0x${string}`;
   slippage?: number;
+  /**
+   * Integrator fee in basis points (e.g. 33 = 0.33%). When > 0:
+   *  - Routers with native fee support (KyberSwap) include feeReceiver+
+   *    feeAmount in their build call so the fee is skimmed atomically inside
+   *    the swap tx. They set feeHandling="integrated".
+   *  - Routers without (Li.Fi, Odos, 0x — would need portal registration)
+   *    reduce their requested input by the fee amount, so the caller must
+   *    transfer the fee separately before the swap. They set feeHandling="manual".
+   */
+  feeBps?: number;
+  /** Wallet to receive the integrator fee. Required when feeBps > 0. */
+  feeReceiver?: `0x${string}`;
 }
+
+export type FeeHandling = "manual" | "integrated";
 
 export interface SwapQuote {
   router: RouterId;
   toolName: string;
+  /**
+   * Input amount the user's wallet will be debited *by this single swap tx*.
+   *  - manual: post-fee amount (the fee was already / will be sent in a separate tx).
+   *  - integrated: full pre-fee amount (the aggregator skims the fee in-tx).
+   */
   fromAmountRaw: string;
   toAmountRaw: string;
   toAmountMinRaw: string;
@@ -41,6 +65,11 @@ export interface SwapQuote {
   fromAmountUsd?: number;
   toAmountUsd?: number;
   feeAmountRaw?: string;
+  /**
+   * How the integrator fee is collected for this quote. When "integrated"
+   * the caller MUST NOT send a separate fee transfer; when "manual" it MUST.
+   */
+  feeHandling: FeeHandling;
   approveTo: `0x${string}`;
   tx: {
     to: `0x${string}`;
@@ -76,10 +105,23 @@ interface LiFiQuoteResponse {
   };
 }
 
+/**
+ * Subtract the integrator fee from `fromAmount` and return the post-fee raw
+ * amount that should be sent to aggregators which don't handle our fee
+ * natively (Li.Fi, Odos, 0x). The caller (useExecuteSwap) is responsible for
+ * transferring `feeRaw` to FEE_WALLET in a separate tx before the swap.
+ */
+function applyManualFee(req: QuoteRequest): { rawFromAmount: string; feeRaw: bigint } {
+  const fullRaw = parseUnits(req.fromAmount, req.fromDecimals);
+  const feeBps = req.feeBps ?? 0;
+  const feeRaw = feeBps > 0 ? (fullRaw * BigInt(feeBps)) / 10_000n : 0n;
+  return { rawFromAmount: (fullRaw - feeRaw).toString(), feeRaw };
+}
+
 export async function getLifiQuote(req: QuoteRequest): Promise<QuoteResult> {
   try {
     const slippage = req.slippage ?? DEFAULT_SLIPPAGE;
-    const rawFromAmount = parseUnits(req.fromAmount, req.fromDecimals).toString();
+    const { rawFromAmount } = applyManualFee(req);
     const params = new URLSearchParams({
       fromChain: String(req.chainId),
       toChain: String(req.chainId),
@@ -120,6 +162,7 @@ export async function getLifiQuote(req: QuoteRequest): Promise<QuoteResult> {
         fromAmountUsd: Number.isFinite(fromUsd) && fromUsd > 0 ? fromUsd : undefined,
         toAmountUsd: Number.isFinite(toUsd) && toUsd > 0 ? toUsd : undefined,
         feeAmountRaw: feeAmount,
+        feeHandling: "manual",
         approveTo,
         tx: {
           to: data.transactionRequest.to as `0x${string}`,
@@ -211,7 +254,7 @@ export async function get0xQuote(req: QuoteRequest): Promise<QuoteResult> {
   try {
     const slippage = req.slippage ?? DEFAULT_SLIPPAGE;
     const slippageBps = Math.max(0, Math.round(slippage * 10_000));
-    const rawFromAmount = parseUnits(req.fromAmount, req.fromDecimals).toString();
+    const { rawFromAmount } = applyManualFee(req);
     const sellToken = toEeeeNative(req.fromTokenAddress);
     const buyToken = toEeeeNative(req.toTokenAddress);
     const params = new URLSearchParams({
@@ -258,6 +301,7 @@ export async function get0xQuote(req: QuoteRequest): Promise<QuoteResult> {
         fromAmountRaw: rawFromAmount,
         toAmountRaw: data.buyAmount,
         toAmountMinRaw: minBuyAmount,
+        feeHandling: "manual",
         approveTo,
         tx: {
           to: tx.to as `0x${string}`,
@@ -349,15 +393,33 @@ export async function getKyberQuote(req: QuoteRequest): Promise<QuoteResult> {
   try {
     const slippage = req.slippage ?? DEFAULT_SLIPPAGE;
     const slippageBps = Math.max(0, Math.round(slippage * 10_000));
+    // KyberSwap supports integrator fees natively via feeAmount/chargeFeeBy/
+    // isInBps/feeReceiver — passed to BOTH /routes (so amountOut reflects
+    // post-fee output for fair comparison) and /route/build (so the encoded
+    // tx actually skims the fee to feeReceiver inside the swap). When set,
+    // we send the FULL pre-fee amount; the router handles the rest.
+    const feeBps = req.feeBps ?? 0;
+    const feeReceiver = req.feeReceiver;
+    const integrated = feeBps > 0 && !!feeReceiver;
     const rawFromAmount = parseUnits(req.fromAmount, req.fromDecimals).toString();
     const tokenIn = toEeeeNative(req.fromTokenAddress);
     const tokenOut = toEeeeNative(req.toTokenAddress);
     const isNativeIn = tokenIn === NATIVE_EEEE;
 
+    const feeFields: Record<string, string> = integrated
+      ? {
+          feeAmount: String(feeBps),
+          chargeFeeBy: "currency_in",
+          isInBps: "true",
+          feeReceiver: feeReceiver as string,
+        }
+      : {};
+
     const routeParams = new URLSearchParams({
       tokenIn,
       tokenOut,
       amountIn: rawFromAmount,
+      ...feeFields,
     });
     const routeRes = await fetch(
       `https://aggregator-api.kyberswap.com/${slug}/api/v1/routes?${routeParams.toString()}`,
@@ -391,6 +453,14 @@ export async function getKyberQuote(req: QuoteRequest): Promise<QuoteResult> {
           recipient: req.fromAddress,
           slippageTolerance: slippageBps,
           source: KYBER_CLIENT_ID,
+          ...(integrated
+            ? {
+                feeReceiver: feeReceiver as string,
+                feeAmount: String(feeBps),
+                chargeFeeBy: "currency_in",
+                isInBps: true,
+              }
+            : {}),
         }),
       },
     );
@@ -425,6 +495,10 @@ export async function getKyberQuote(req: QuoteRequest): Promise<QuoteResult> {
         estimatedGasUsd: Number.isFinite(gasUsd) && gasUsd > 0 ? gasUsd : undefined,
         fromAmountUsd: Number.isFinite(fromUsd) && fromUsd > 0 ? fromUsd : undefined,
         toAmountUsd: Number.isFinite(toUsd) && toUsd > 0 ? toUsd : undefined,
+        feeHandling: integrated ? "integrated" : "manual",
+        feeAmountRaw: integrated
+          ? ((BigInt(rawFromAmount) * BigInt(feeBps)) / 10_000n).toString()
+          : undefined,
         approveTo: build.data.routerAddress as `0x${string}`,
         tx: {
           to: build.data.routerAddress as `0x${string}`,
@@ -480,7 +554,7 @@ interface OdosAssembleResponse {
 export async function getOdosQuote(req: QuoteRequest): Promise<QuoteResult> {
   try {
     const slippage = req.slippage ?? DEFAULT_SLIPPAGE;
-    const rawFromAmount = parseUnits(req.fromAmount, req.fromDecimals).toString();
+    const { rawFromAmount } = applyManualFee(req);
 
     // Odos uses 0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee for native, but
     // the all-zero address also works on the v2 SOR; we keep zeros for
@@ -570,6 +644,7 @@ export async function getOdosQuote(req: QuoteRequest): Promise<QuoteResult> {
           typeof qd.gasEstimateValue === "number" && qd.gasEstimateValue > 0
             ? qd.gasEstimateValue
             : undefined,
+        feeHandling: "manual",
         approveTo: tx.to as `0x${string}`,
         tx: {
           to: tx.to as `0x${string}`,

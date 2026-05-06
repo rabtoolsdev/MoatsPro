@@ -233,13 +233,19 @@ export default function Swap() {
     return formatUnits(swapRaw, fromDecimals);
   }, [swapRaw, fromDecimals]);
 
+  // Quote with the FULL pre-fee amount + fee fields. Each router decides:
+  //  - KyberSwap: feeHandling="integrated" — single tx, fee skimmed in-call.
+  //  - Li.Fi/Odos/0x: feeHandling="manual" — they internally subtract the
+  //    fee and we send a separate fee tx via useExecuteSwap.
   const quote = useSwapQuote({
     chainId: activeChainId,
     fromTokenAddress: fromToken?.address,
     toTokenAddress: toToken?.address,
-    fromAmount: swapAmountStr,
+    fromAmount: amount,
     fromDecimals,
     slippage,
+    feeBps: FEE_BPS,
+    feeReceiver: FEE_WALLET,
     preferredRouter,
     enabled: isSwapSupported && isConnected,
   });
@@ -256,11 +262,18 @@ export default function Swap() {
   const insufficient = amountRaw > 0n && balanceRaw < amountRaw;
 
   const allowanceRaw = (allowance.data as bigint | undefined) ?? 0n;
+  // Required allowance differs by fee mode:
+  //  - integrated (Kyber): user approves the FULL pre-fee amount because the
+  //    aggregator pulls it all and skims the fee inside the swap tx.
+  //  - manual: user approves only the post-fee amount that flows through the
+  //    aggregator; the fee leaves their wallet via a separate erc20.transfer.
+  const requiredAllowance =
+    quote.best?.feeHandling === "integrated" ? amountRaw : swapRaw;
   const needsApproval =
     !isFromNative &&
     !!quote.best &&
-    swapRaw > 0n &&
-    allowanceRaw < swapRaw;
+    requiredAllowance > 0n &&
+    allowanceRaw < requiredAllowance;
 
   // Toast on swap success + record to admin DB.
   useEffect(() => {
@@ -403,19 +416,30 @@ export default function Swap() {
   };
 
   const handleApprove = () => {
-    if (!fromToken || !quote.best || swapRaw <= 0n) return;
-    // Approve only the amount that actually goes through Li.Fi (post-fee).
-    approver.approve(quote.best.approveTo, swapAmountStr, fromDecimals);
+    if (!fromToken || !quote.best) return;
+    // Integrated-fee routers (Kyber) need allowance for the full pre-fee
+    // amount; manual-fee routers only need the post-fee swap amount.
+    const isIntegrated = quote.best.feeHandling === "integrated";
+    const approveAmount = isIntegrated ? amount : swapAmountStr;
+    if (!approveAmount || parseFloat(approveAmount) <= 0) return;
+    approver.approve(quote.best.approveTo, approveAmount, fromDecimals);
   };
 
   const handleSwap = () => {
-    if (!quote.best || !fromToken || feeRaw <= 0n) return;
-    const fee: FeeTransfer = {
-      wallet: FEE_WALLET,
-      amount: feeRaw,
-      tokenAddress: fromToken.address,
-      isNative: isFromNative,
-    };
+    if (!quote.best || !fromToken || amountRaw <= 0n) return;
+    // For Kyber's integrated fee the swap tx itself handles the transfer,
+    // so we pass fee=null to skip the manual fee leg in useExecuteSwap.
+    // For manual routers, only build a fee transfer if rounding left a
+    // non-zero fee — tiny inputs where 0.33% rounds to 0 still execute.
+    const fee: FeeTransfer | null =
+      quote.best.feeHandling === "integrated" || feeRaw <= 0n
+        ? null
+        : {
+            wallet: FEE_WALLET,
+            amount: feeRaw,
+            tokenAddress: fromToken.address,
+            isNative: isFromNative,
+          };
     void executor.execute(quote.best, fee);
   };
 

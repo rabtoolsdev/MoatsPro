@@ -17,10 +17,15 @@ export interface UseSwapQuoteParams {
   chainId?: number;
   fromTokenAddress?: `0x${string}`;
   toTokenAddress?: `0x${string}`;
+  /** Full pre-fee input the user wants to spend, in human units. */
   fromAmount?: string;
   fromDecimals?: number;
   enabled?: boolean;
   slippage?: number;
+  /** Integrator fee in bps (e.g. 33 = 0.33%). Forwarded to each router. */
+  feeBps?: number;
+  /** Wallet that receives the integrator fee. Required when feeBps > 0. */
+  feeReceiver?: `0x${string}`;
   /**
    * Router the user manually picked from the "Routed via" dropdown. When
    * "auto" (or omitted) we fall back to `pickBestQuote` (highest output).
@@ -54,6 +59,8 @@ export function useSwapQuote(params: UseSwapQuoteParams): UseSwapQuoteResult {
     fromDecimals,
     enabled = true,
     slippage,
+    feeBps,
+    feeReceiver,
     preferredRouter = "auto",
   } = params;
 
@@ -80,6 +87,8 @@ export function useSwapQuote(params: UseSwapQuoteParams): UseSwapQuoteResult {
       fromAmount,
       fromDecimals,
       slippage,
+      feeBps,
+      feeReceiver,
     ],
     queryFn: async () => {
       const req: QuoteRequest = {
@@ -90,6 +99,8 @@ export function useSwapQuote(params: UseSwapQuoteParams): UseSwapQuoteResult {
         fromDecimals: fromDecimals!,
         fromAddress: address!,
         slippage,
+        feeBps,
+        feeReceiver,
       };
       const results = await getAllQuotes(req);
       const best = pickBestQuote(results);
@@ -266,8 +277,14 @@ export function useExecuteSwap(): UseExecuteSwapResult {
       setFeeReused(false);
       pendingSwap.current = quote;
 
+      // Aggregator-integrated fee (KyberSwap with feeReceiver in calldata):
+      // the swap tx itself transfers the fee atomically — sending a separate
+      // fee transfer here would double-charge. The caller signals this by
+      // passing fee=null (or by the quote.feeHandling === "integrated").
+      const skipManualFee = !fee || quote.feeHandling === "integrated";
+
       try {
-        if (fee && fee.amount > 0n) {
+        if (!skipManualFee && fee && fee.amount > 0n) {
           const feeKey = makeFeeKey(address, chainId, fee);
 
           // If the user already paid this exact fee in a prior attempt that
