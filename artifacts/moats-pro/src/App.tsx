@@ -51,11 +51,7 @@ function Router() {
           <Route path="/portfolio" component={Portfolio} />
           <Route path="/moat/:address" component={MoatDetail} />
           <Route path="/leaderboard" component={Leaderboard} />
-          <Route path="/swap">
-            <PasswordGate scope="swap" title="Moat Swap" subtitle="Enter the password to access the swap interface.">
-              <Swap />
-            </PasswordGate>
-          </Route>
+          <Route path="/swap" component={Swap} />
           <Route path="/admin">
             <PasswordGate scope="admin" title="Admin Console" subtitle="Enter the password to continue.">
               <Admin />
