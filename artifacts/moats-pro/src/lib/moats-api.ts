@@ -1,11 +1,34 @@
 const BASE_URL = "https://moat-api.fortifi.network/api";
 
+// Our own backend (api-server). Used for endpoints we host ourselves
+// (swap recording, swap points, admin stats). Keep separate from the
+// Fortifi BASE_URL above — those are read-only third-party data.
+const OWN_API_BASE =
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "/api";
+
 async function apiFetch<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`);
   if (!res.ok) {
     throw new Error(`Moats API Error: ${res.status} for ${path}`);
   }
   return res.json() as Promise<T>;
+}
+
+async function ownFetch<T>(path: string): Promise<T> {
+  const res = await fetch(`${OWN_API_BASE}${path}`);
+  if (!res.ok) {
+    throw new Error(`Moats Pro API Error: ${res.status} for ${path}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+// Swap Points: lifetime USD value of every asset the user has swapped
+// through Moats Pro (1 USD swapped = 1 point). Backed by a SUM over the
+// existing `swaps` table — no separate points ledger.
+export interface SwapPointsResponse {
+  walletAddress: string;
+  points: number;
+  swapCount: number;
 }
 
 // ---- Event types ----
@@ -183,4 +206,7 @@ export const moatsApi = {
 
   getMoatConfig: (contractAddress: string) =>
     apiFetch<MoatConfig>(`/moat-config/${contractAddress}`),
+
+  getSwapPoints: (address: string) =>
+    ownFetch<SwapPointsResponse>(`/swap-points/${address.toLowerCase()}`),
 };

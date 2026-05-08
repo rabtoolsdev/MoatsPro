@@ -102,6 +102,16 @@ export function useMapsScore(address: string | undefined) {
   });
 }
 
+export function useSwapPoints(address: string | undefined) {
+  return useQuery({
+    queryKey: ["moats", "swap-points", address?.toLowerCase()],
+    queryFn: () => moatsApi.getSwapPoints(address!),
+    enabled: !!address,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+}
+
 export function useUserEvents(address: string | undefined) {
   return useQuery({
     queryKey: ["moats", "events", "user", address],

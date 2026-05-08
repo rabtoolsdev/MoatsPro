@@ -4,8 +4,8 @@ import { useAccount, useReadContracts } from "wagmi";
 import { useAppKit } from "@reown/appkit/react";
 import { formatUnits } from "viem";
 import { motion } from "framer-motion";
-import { Wallet, TrendingUp, Award, AlertCircle, ArrowDownRight, Lock, DollarSign, ArrowUpRight, Flame, Gift } from "lucide-react";
-import { useMapsScore, useAllMoatConfigs, useUserEvents } from "@/hooks/use-moats-api";
+import { Wallet, TrendingUp, Award, AlertCircle, ArrowDownRight, Lock, DollarSign, ArrowUpRight, Flame, Gift, Zap } from "lucide-react";
+import { useMapsScore, useAllMoatConfigs, useUserEvents, useSwapPoints } from "@/hooks/use-moats-api";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
 import { useDexscreenerInfo } from "@/hooks/use-dexscreener";
 import { useDailyRewardEstimates } from "@/hooks/use-daily-reward-estimates";
@@ -31,6 +31,7 @@ export default function Portfolio() {
   const { data: mapsScore, isLoading: scoreLoading } = useMapsScore(address);
   const { data: configs, isLoading: configsLoading } = useAllMoatConfigs();
   const { data: userEvents, isLoading: eventsLoading } = useUserEvents(address);
+  const { data: swapPoints, isLoading: swapPointsLoading } = useSwapPoints(address);
 
   // ── Step 1: batch userInfo(wallet) for ALL moats ──────────────────────────
   // userInfo returns: (stakedAmount, totalUserBurn, stakingPoints, burnPoints, activeLockCount)
@@ -433,6 +434,31 @@ export default function Portfolio() {
                   </div>
                 </motion.div>
               )}
+
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.18 }}
+                data-testid="stat-swap-points"
+                className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6 flex items-center gap-4"
+              >
+                <div className="p-3 rounded-xl bg-amber-400/10 shrink-0">
+                  <Zap className="w-6 h-6 text-amber-400" />
+                </div>
+                <div>
+                  <p className="text-3xl font-bold tabular-nums text-amber-400">
+                    {swapPointsLoading
+                      ? "..."
+                      : Math.floor(swapPoints?.points ?? 0).toLocaleString()}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Swap Points</p>
+                  {!swapPointsLoading && (swapPoints?.swapCount ?? 0) > 0 && (
+                    <p className="text-xs text-muted-foreground/80 mt-0.5">
+                      {swapPoints!.swapCount} swap{swapPoints!.swapCount === 1 ? "" : "s"}
+                    </p>
+                  )}
+                </div>
+              </motion.div>
 
               {totalDailyUSD > 0 && (
                 <motion.div
