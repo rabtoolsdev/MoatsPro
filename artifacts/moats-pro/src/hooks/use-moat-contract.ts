@@ -385,18 +385,35 @@ export function useUserLocks(
   userAddress: `0x${string}` | undefined,
   activeLockCount: number
 ) {
+  // The contract's userInfo.activeLockCount is the count of *currently active*
+  // locks, but lock slots are stored sparsely: a user who has exited 2 locks
+  // and then opened 1 new one will have activeLockCount=1 with the active lock
+  // at slot index 2 (slots 0,1 still exist but with active=false). So we must
+  // probe beyond activeLockCount and stop at the first revert (= no more slots).
+  // We use allowFailure so out-of-range slots return as failed entries rather
+  // than throwing the whole multicall.
+  const probeCount = useMemo(() => {
+    if (activeLockCount === 0) return 0;
+    // Headroom to cover historical exited locks. 128 covers any realistic
+    // protocol user; we also keep an 8x multiplier for power users who hold
+    // many concurrent active locks. allowFailure makes out-of-range slots
+    // free (returned as failed entries inside the multicall).
+    return Math.max(activeLockCount * 8, 128);
+  }, [activeLockCount]);
+
   const contracts = useMemo(() => {
-    if (!contractAddress || !userAddress || activeLockCount === 0) return [];
-    return Array.from({ length: activeLockCount }, (_, i) => ({
+    if (!contractAddress || !userAddress || probeCount === 0) return [];
+    return Array.from({ length: probeCount }, (_, i) => ({
       address: contractAddress,
       abi: MOAT_V3_ABI,
       functionName: "getUserLock" as const,
       args: [userAddress, BigInt(i)] as const,
     }));
-  }, [contractAddress, userAddress, activeLockCount]);
+  }, [contractAddress, userAddress, probeCount]);
 
   const { data, isLoading, refetch } = useReadContracts({
     contracts,
+    allowFailure: true,
     query: { enabled: contracts.length > 0 },
   });
 
