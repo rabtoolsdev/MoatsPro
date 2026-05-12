@@ -67,6 +67,14 @@ const BASE_TOKENS_AVALANCHE: MoatToken[] = [
     decimals: 8,
     moatContractAddresses: [],
   },
+  {
+    address: "0x297731Eb3CAB3834525fc9Ea061fd71d8f4645C9",
+    symbol: "BLAZE",
+    name: "Blaze",
+    logoUrl: "/chains/blaze.png",
+    decimals: 18,
+    moatContractAddresses: [],
+  },
 ];
 
 const BASE_TOKENS_ETHEREUM: MoatToken[] = [
