@@ -309,6 +309,40 @@ export function useNftBoostBalance(
   });
 }
 
+/**
+ * Batches balanceOf calls across every active NFT boost contract attached
+ * to a moat. Returns one entry per input contract address (in the same
+ * order). Out-of-range / non-ERC20 reads are silently treated as 0n via
+ * allowFailure so a single bad boost contract can't break the whole panel.
+ */
+export function useNftBoostBalances(
+  nftContractAddresses: readonly `0x${string}`[],
+) {
+  const { address } = useAccount();
+  const contracts = useMemo(() => {
+    if (!address || nftContractAddresses.length === 0) return [];
+    return nftContractAddresses.map((nft) => ({
+      address: nft,
+      abi: ERC20_ABI,
+      functionName: "balanceOf" as const,
+      args: [address] as const,
+    }));
+  }, [address, nftContractAddresses]);
+
+  const { data, isLoading, refetch } = useReadContracts({
+    contracts,
+    allowFailure: true,
+    query: { enabled: contracts.length > 0 },
+  });
+
+  const balances = useMemo<bigint[]>(() => {
+    if (!data) return nftContractAddresses.map(() => 0n);
+    return data.map((r) => (r.status === "success" ? (r.result as bigint) : 0n));
+  }, [data, nftContractAddresses]);
+
+  return { balances, isLoading, refetch };
+}
+
 export function useUnstakeMoat(contractAddress: MoatContractAddress | undefined) {
   const { writeContract, data: hash, isPending, error } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });

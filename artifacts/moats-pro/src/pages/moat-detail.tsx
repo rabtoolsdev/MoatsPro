@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams } from "wouter";
 import { useAccount, useReadContracts, useReadContract } from "wagmi";
 import { useAppKit } from "@reown/appkit/react";
@@ -11,9 +11,10 @@ import {
 import { Link } from "wouter";
 import { formatUnits, parseUnits } from "viem";
 import { useMoatConfig, useMoatPointsV2, useUserMoatPointsV2, useEvents } from "@/hooks/use-moats-api";
+import { getActiveBoosts, type BoostConfig } from "@/lib/moats-api";
 import {
   useMoatStats, useUserMoatInfo, useTokenBalance,
-  useTokenAllowance, useStakeMoat, useLockMoat, useClaimRewards, useApproveToken, useUnstakeMoat, useNftBoostBalance, useBurnMoat, useExitLock, useUserLocks,
+  useTokenAllowance, useStakeMoat, useLockMoat, useClaimRewards, useApproveToken, useUnstakeMoat, useNftBoostBalances, useBurnMoat, useExitLock, useUserLocks,
 } from "@/hooks/use-moat-contract";
 import type { MoatContractAddress } from "@/hooks/use-moat-contract";
 import { Navbar } from "@/components/navbar";
@@ -144,7 +145,15 @@ export default function MoatDetail() {
   const unstakeAction = useUnstakeMoat(contractAddress as MoatContractAddress | undefined);
   const burnAction = useBurnMoat(contractAddress as MoatContractAddress | undefined);
   const exitAction = useExitLock(contractAddress as MoatContractAddress | undefined);
-  const nftBoostBalance = useNftBoostBalance(moatConfig?.nftBoostContract as MoatContractAddress | undefined);
+  // Resolve every active boost NFT for this moat (multi-NFT via boostConfigs[],
+  // with legacy nftBoostContract as fallback) so pro.moats.app shows the same
+  // boosts that moats.app does.
+  const activeBoosts: BoostConfig[] = useMemo(() => getActiveBoosts(moatConfig), [moatConfig]);
+  const activeBoostAddresses = useMemo(
+    () => activeBoosts.map((b: BoostConfig) => b.contractAddress as `0x${string}`),
+    [activeBoosts],
+  );
+  const { balances: nftBoostBalances } = useNftBoostBalances(activeBoostAddresses);
 
   const activeLockCount = Number(userInfo.userInfo?.[4] ?? 0n);
   const { locks, isLoading: locksLoading, refetch: refetchLocks } = useUserLocks(
@@ -630,8 +639,14 @@ export default function MoatDetail() {
                     { label: "Moat Version", value: `v${moatConfig.moatVersion}` },
                     { label: "Auto Rewards", value: moatConfig.automatedRewards ? "Yes" : "No" },
                     { label: "Time-Weighted", value: moatConfig.timeWeightedPointsEnabled ? `${moatConfig.timeWeightPercentage}%` : "Disabled" },
-                    { label: "Boost Active", value: moatConfig.boostActive ? `${moatConfig.boostValue}x` : "None" },
-                    { label: "NFT Boost", value: moatConfig.nftBoostContract ? "Active" : "None" },
+                    {
+                      label: "NFT Boost",
+                      value: activeBoosts.length === 0
+                        ? "None"
+                        : activeBoosts.length === 1
+                          ? `Active · ${activeBoosts[0].boostValue}x`
+                          : `${activeBoosts.length} NFTs · ${activeBoosts.map((b: BoostConfig) => `${b.boostValue}x`).join(" / ")}`,
+                    },
                     { label: "Created", value: new Date(moatConfig.createdAt).toLocaleDateString() },
                   ].map((item) => (
                     <div key={item.label} className="text-xs">
@@ -743,13 +758,28 @@ export default function MoatDetail() {
                     </div>
                   </div>
                 )}
-                {moatConfig?.nftBoostContract && nftBoostBalance.data !== undefined && (
-                  <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">NFT Boost Balance</span>
-                    <span className={`text-xs font-semibold ${nftBoostBalance.data > 0n ? "text-primary" : "text-muted-foreground"}`}>
-                      {String(nftBoostBalance.data)} NFT{nftBoostBalance.data !== 1n ? "s" : ""}
-                      {nftBoostBalance.data > 0n && moatConfig.boostValue ? ` · ${moatConfig.boostValue}x boost` : ""}
-                    </span>
+                {activeBoosts.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-border/50 space-y-1.5">
+                    <p className="text-xs text-muted-foreground">NFT Boost Balance</p>
+                    {activeBoosts.map((boost: BoostConfig, i: number) => {
+                      const bal = nftBoostBalances[i] ?? 0n;
+                      const held = bal > 0n;
+                      return (
+                        <div
+                          key={boost.contractAddress}
+                          data-testid={`nft-boost-row-${boost.contractAddress.toLowerCase()}`}
+                          className="flex items-center justify-between"
+                        >
+                          <span className="text-xs text-muted-foreground font-mono">
+                            {formatAddress(boost.contractAddress)}
+                          </span>
+                          <span className={`text-xs font-semibold ${held ? "text-primary" : "text-muted-foreground"}`}>
+                            {String(bal)} NFT{bal !== 1n ? "s" : ""}
+                            {held ? ` · ${boost.boostValue}x boost` : ` · ${boost.boostValue}x available`}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

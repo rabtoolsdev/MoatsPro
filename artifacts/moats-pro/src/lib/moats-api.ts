@@ -150,6 +150,40 @@ export interface RewardToken {
   useCustomFrequency?: boolean;
 }
 
+export interface BoostTier {
+  minHolding: number;
+  maxHolding: number | null;
+  boostValue: number;
+}
+
+export interface BoostConfig {
+  contractAddress: string;
+  boostValue: number;
+  tiers: BoostTier[];
+  active: boolean;
+}
+
+/**
+ * Returns every NFT boost contract that should be considered "active" for a
+ * given moat. Honors the new `boostConfigs[]` array first (filtering by
+ * `active: true`), and falls back to the legacy `nftBoostContract` field
+ * when the array is missing/empty — which is how moats.app resolves it.
+ */
+export function getActiveBoosts(moat: MoatConfig | undefined | null): BoostConfig[] {
+  if (!moat) return [];
+  const fromConfigs = (moat.boostConfigs ?? []).filter((b) => b.active && b.contractAddress);
+  if (fromConfigs.length > 0) return fromConfigs;
+  if (moat.boostActive && moat.nftBoostContract) {
+    return [{
+      contractAddress: moat.nftBoostContract,
+      boostValue: moat.boostValue ?? 1,
+      tiers: [],
+      active: true,
+    }];
+  }
+  return [];
+}
+
 export interface MoatConfig {
   _id: string;
   contractAddress: string;
@@ -167,6 +201,13 @@ export interface MoatConfig {
   boostValue?: number;
   boostActive?: boolean;
   nftBoostContract?: string | null;
+  /**
+   * Per-NFT boost configuration (the canonical source on moats.app). A moat
+   * can have multiple boost NFTs simultaneously; only entries with
+   * `active: true` should be honored. The legacy top-level `nftBoostContract`
+   * still applies when this array is absent or empty.
+   */
+  boostConfigs?: BoostConfig[];
   voteEnabled?: boolean;
   createdAt: string;
   updatedAt: string;
