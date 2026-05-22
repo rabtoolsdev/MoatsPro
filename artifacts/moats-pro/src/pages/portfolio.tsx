@@ -4,7 +4,16 @@ import { useAccount, useReadContracts } from "wagmi";
 import { useAppKit } from "@reown/appkit/react";
 import { formatUnits } from "viem";
 import { motion } from "framer-motion";
-import { Wallet, TrendingUp, Award, AlertCircle, ArrowDownRight, Lock, DollarSign, ArrowUpRight, Flame, Gift, Zap } from "lucide-react";
+import { Wallet, TrendingUp, Award, AlertCircle, ArrowDownRight, Lock, DollarSign, ArrowUpRight, Flame, Gift, Zap, Sparkles } from "lucide-react";
+import btcbLogo from "@assets/logobtc_1777735570322.png";
+
+const USDC_LOGO_URL =
+  "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/avalanchec/assets/0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E/logo.png";
+const WAVAX_LOGO_URL =
+  "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/avalanchec/info/logo.png";
+const USDC_ADDR = "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e";
+const WAVAX_ADDR = "0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7";
+const BTCB_ADDR = "0x152b9d0fdc40c096757f570a51e494bd4b943e50";
 import { useMapsScore, useAllMoatConfigs, useUserEvents, useSwapPoints } from "@/hooks/use-moats-api";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
 import { useDexscreenerInfo } from "@/hooks/use-dexscreener";
@@ -218,6 +227,31 @@ export default function Portfolio() {
 
   const { data: priceMap } = useTokenPrices(allLlamaIds);
   const { data: dexInfoMap } = useDexscreenerInfo(uniqueStakingTokens);
+
+  // Token-meta registry built from every moat's rewardTokens[]: address ->
+  // { symbol, decimals, network }. Used to price/label RewardClaimed events.
+  const rewardTokenMeta = useMemo(() => {
+    const m = new Map<string, { symbol: string; decimals: number; network: string }>();
+    if (!configs) return m;
+    for (const c of configs) {
+      for (const t of c.rewardTokens ?? []) {
+        if (!t.tokenAddress || !t.symbol) continue;
+        const k = t.tokenAddress.toLowerCase();
+        if (!m.has(k)) {
+          m.set(k, {
+            symbol: t.symbol,
+            decimals: Number(t.decimals) || 18,
+            network: c.network || "avax",
+          });
+        }
+      }
+    }
+    return m;
+  }, [configs]);
+
+  const rewardTokenAddrs = useMemo(() => [...rewardTokenMeta.keys()], [rewardTokenMeta]);
+  const { data: rewardDexInfoMap } = useDexscreenerInfo(rewardTokenAddrs);
+
   const dailyEstimates = useDailyRewardEstimates(configs);
 
   const getPositionValueUSD = (pos: typeof activePositions[0], idx: number): number => {
@@ -301,6 +335,81 @@ export default function Portfolio() {
     });
     return m;
   }, [moatPointsResults, activePositions]);
+
+  // Aggregate this wallet's lifetime RewardClaimed events per token.
+  // Buckets: USDC, WAVAX, BTC.b are always shown (even if zero). Every other
+  // token (community asset) gets its own row, sorted by USD value desc.
+  type ClaimedRow = {
+    address: string;
+    symbol: string;
+    amount: number;
+    usd: number;
+    price: number;
+    logoUrl?: string;
+  };
+  const claimedAggregate = useMemo(() => {
+    const featured: Record<"usdc" | "wavax" | "btcb", ClaimedRow> = {
+      usdc: { address: USDC_ADDR, symbol: "USDC", amount: 0, usd: 0, price: 0, logoUrl: USDC_LOGO_URL },
+      wavax: { address: WAVAX_ADDR, symbol: "WAVAX", amount: 0, usd: 0, price: 0, logoUrl: WAVAX_LOGO_URL },
+      btcb: { address: BTCB_ADDR, symbol: "BTC.b", amount: 0, usd: 0, price: 0, logoUrl: btcbLogo },
+    };
+    const community = new Map<string, ClaimedRow>();
+    if (!userEvents || !address) {
+      return { featured, community: [] as ClaimedRow[], totalUsd: 0 };
+    }
+    const lowerAddr = address.toLowerCase();
+
+    // Sum raw wei per token from this user's RewardClaimed events
+    const perTokenWei = new Map<string, bigint>();
+    for (const ev of userEvents) {
+      if (ev.eventType !== "RewardClaimed") continue;
+      if (ev.args?.user?.toLowerCase() !== lowerAddr) continue;
+      const tok = (ev.args?.token as string | undefined)?.toLowerCase();
+      const amt = ev.args?.amount as string | undefined;
+      if (!tok || !amt) continue;
+      try {
+        perTokenWei.set(tok, (perTokenWei.get(tok) ?? 0n) + BigInt(amt));
+      } catch {
+        // skip malformed amount
+      }
+    }
+
+    let totalUsd = 0;
+    for (const [addr, wei] of perTokenWei.entries()) {
+      const meta = rewardTokenMeta.get(addr);
+      const decimals = meta?.decimals ?? 18;
+      const symbol = meta?.symbol ?? addr.slice(0, 6);
+      const network = meta?.network ?? "avax";
+      const amount = Number(wei) / 10 ** decimals;
+      if (amount <= 0) continue;
+
+      const llamaPrice = priceMap?.[getLlamaId(network, addr).toLowerCase()] ?? 0;
+      const dexPrice = rewardDexInfoMap?.[addr]?.price ?? dexInfoMap?.[addr]?.price ?? 0;
+      let price = llamaPrice || dexPrice || 0;
+      if (price === 0 && addr === USDC_ADDR) price = 1;
+      const usd = amount * price;
+      totalUsd += usd;
+
+      if (addr === USDC_ADDR) {
+        featured.usdc.amount += amount;
+        featured.usdc.usd += usd;
+        featured.usdc.price = price;
+      } else if (addr === WAVAX_ADDR) {
+        featured.wavax.amount += amount;
+        featured.wavax.usd += usd;
+        featured.wavax.price = price;
+      } else if (addr === BTCB_ADDR) {
+        featured.btcb.amount += amount;
+        featured.btcb.usd += usd;
+        featured.btcb.price = price;
+      } else {
+        community.set(addr, { address: addr, symbol, amount, usd, price });
+      }
+    }
+
+    const communitySorted = [...community.values()].sort((a, b) => b.usd - a.usd);
+    return { featured, community: communitySorted, totalUsd };
+  }, [userEvents, address, rewardTokenMeta, priceMap, rewardDexInfoMap, dexInfoMap]);
 
   // Transaction history: only this wallet's own actions
   const ownTransactions = useMemo(() => {
@@ -654,6 +763,98 @@ export default function Portfolio() {
                       </motion.div>
                     );
                   })}
+                </div>
+              )}
+            </div>
+
+            {/* Rewards Claimed — lifetime totals from on-chain RewardClaimed events */}
+            <div>
+              <div className="flex items-baseline justify-between mb-4">
+                <h2 className="text-xl font-bold">Rewards Claimed</h2>
+                {claimedAggregate.totalUsd > 0 && (
+                  <span className="text-sm text-muted-foreground">
+                    Total <span className="text-foreground font-semibold">{formatUSD(claimedAggregate.totalUsd)}</span>
+                  </span>
+                )}
+              </div>
+
+              {/* Featured tokens */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                {([
+                  { key: "usdc", row: claimedAggregate.featured.usdc, label: "Total USDC Claimed" },
+                  { key: "wavax", row: claimedAggregate.featured.wavax, label: "Total WAVAX Claimed" },
+                  { key: "btcb", row: claimedAggregate.featured.btcb, label: "Total BTC.b Claimed" },
+                ] as const).map(({ key, row, label }) => {
+                  const dust = row.symbol === "BTC.b" ? 0.0001 : 0.01;
+                  const amtStr =
+                    row.amount === 0
+                      ? "0"
+                      : row.amount < dust
+                      ? row.amount.toLocaleString("en-US", { maximumFractionDigits: 6 })
+                      : row.amount.toLocaleString("en-US", { maximumFractionDigits: 4 });
+                  return (
+                    <div
+                      key={key}
+                      data-testid={`stat-claimed-${key}`}
+                      className="rounded-2xl border border-border bg-card/30 p-5 flex items-center gap-4"
+                    >
+                      {row.logoUrl && (
+                        <img
+                          src={row.logoUrl}
+                          alt={row.symbol}
+                          className="w-10 h-10 rounded-full shrink-0"
+                          onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")}
+                        />
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-xs text-muted-foreground">{label}</p>
+                        <p className="text-2xl font-bold tabular-nums">{amtStr}</p>
+                        {row.usd > 0 && (
+                          <p className="text-xs text-muted-foreground">{formatUSD(row.usd)}</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Community tokens */}
+              {claimedAggregate.community.length === 0 ? (
+                <div className="rounded-2xl border border-border bg-card/30 p-5 text-center text-muted-foreground text-sm">
+                  No community asset rewards claimed yet.
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-border bg-card/30 overflow-hidden">
+                  <div className="px-5 py-3 border-b border-border/50 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+                    <Sparkles size={14} className="text-violet-400" />
+                    Community Assets Claimed
+                    <span className="ml-auto text-xs font-normal">
+                      {claimedAggregate.community.length} token{claimedAggregate.community.length === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                  <div className="divide-y divide-border/50">
+                    {claimedAggregate.community.map((row) => {
+                      const amtStr =
+                        row.amount < 0.01
+                          ? row.amount.toLocaleString("en-US", { maximumFractionDigits: 6 })
+                          : row.amount.toLocaleString("en-US", { maximumFractionDigits: 2 });
+                      return (
+                        <div
+                          key={row.address}
+                          data-testid={`row-claimed-${row.symbol.toLowerCase()}`}
+                          className="px-5 py-3 flex items-center justify-between gap-4"
+                        >
+                          <span className="text-sm font-semibold">Total {row.symbol} Claimed</span>
+                          <div className="flex items-center gap-4 shrink-0">
+                            <span className="text-sm font-medium tabular-nums">{amtStr}</span>
+                            <span className="text-xs text-muted-foreground tabular-nums w-20 text-right">
+                              {row.usd > 0 ? formatUSD(row.usd) : "—"}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
