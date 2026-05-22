@@ -18,6 +18,7 @@ import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { MoatCard } from "@/components/moat-card";
 import { StatsBar } from "@/components/stats-bar";
+import { RewardsBar, type RewardBucketRow } from "@/components/rewards-bar";
 import { ActivityFeed } from "@/components/activity-feed";
 
 const heroWords = ["Stake.", "Lock.", "Burn.", "Earn."];
@@ -154,6 +155,11 @@ export default function Home() {
       for (const c of configs) {
         const meta = getMoatMeta(c.contractAddress);
         if (meta.tokenAddress) addrs.add(meta.tokenAddress.toLowerCase());
+        // Include reward token addresses so Dexscreener can price them when
+        // DefiLlama is silent (community reward tokens often only have DEX data).
+        for (const t of c.rewardTokens ?? []) {
+          if (t.tokenAddress) addrs.add(t.tokenAddress.toLowerCase());
+        }
       }
     }
     stakingTokenAddrs.forEach((addr) => { if (addr) addrs.add(addr.toLowerCase()); });
@@ -161,6 +167,93 @@ export default function Home() {
   }, [configs, stakingTokenAddrs]);
 
   const { data: dexInfoMap } = useDexscreenerInfo(allTokenAddrs);
+
+  // Aggregate lifetime rewards distributed (totalRewardsDeposited) per unique
+  // reward token across all moats, then bucket into USDC / WAVAX / BTC.b /
+  // Community (everything else).
+  const rewardsAggregate = useMemo(() => {
+    const empty = {
+      usdc: { symbol: "USDC", amount: 0, usd: 0, price: 0 } as RewardBucketRow,
+      wavax: { symbol: "WAVAX", amount: 0, usd: 0, price: 0 } as RewardBucketRow,
+      btcb: { symbol: "BTC.b", amount: 0, usd: 0, price: 0 } as RewardBucketRow,
+      community: { usd: 0, tokenCount: 0 },
+    };
+    if (!configs) return empty;
+
+    // Sum deposits per unique token (key = network|address)
+    type TokenAgg = {
+      symbol: string;
+      network: string;
+      address: string;
+      amount: number;
+    };
+    const perToken = new Map<string, TokenAgg>();
+    for (const c of configs) {
+      if (!c.rewardTokens) continue;
+      for (const t of c.rewardTokens) {
+        if (!t.tokenAddress || !t.symbol) continue;
+        const deposited = Number(t.totalRewardsDeposited) || 0;
+        if (deposited <= 0) continue;
+        const key = `${(c.network || "avax").toLowerCase()}|${t.tokenAddress.toLowerCase()}`;
+        const cur = perToken.get(key);
+        if (cur) cur.amount += deposited;
+        else
+          perToken.set(key, {
+            symbol: t.symbol,
+            network: c.network || "avax",
+            address: t.tokenAddress,
+            amount: deposited,
+          });
+      }
+    }
+
+    const normSym = (s: string) => s.toLowerCase().replace(/\./g, "");
+    const isUsdc = (s: string) => normSym(s) === "usdc";
+    const isWavax = (s: string) => normSym(s) === "wavax";
+    const isBtcb = (s: string) => {
+      const n = normSym(s);
+      return n === "btcb" || n === "btc";
+    };
+
+    const out = {
+      usdc: { symbol: "USDC", amount: 0, usd: 0, price: 0 } as RewardBucketRow,
+      wavax: { symbol: "WAVAX", amount: 0, usd: 0, price: 0 } as RewardBucketRow,
+      btcb: { symbol: "BTC.b", amount: 0, usd: 0, price: 0 } as RewardBucketRow,
+      community: { usd: 0, tokenCount: 0 },
+    };
+
+    for (const tok of perToken.values()) {
+      const llamaPrice = priceMap?.[getLlamaId(tok.network, tok.address).toLowerCase()] ?? 0;
+      const dexPrice = dexInfoMap?.[tok.address.toLowerCase()]?.price ?? 0;
+      const price = llamaPrice || dexPrice || 0;
+      const usd = tok.amount * price;
+
+      if (isUsdc(tok.symbol)) {
+        out.usdc.amount += tok.amount;
+        out.usdc.usd += usd;
+        if (price > 0) out.usdc.price = price;
+      } else if (isWavax(tok.symbol)) {
+        out.wavax.amount += tok.amount;
+        out.wavax.usd += usd;
+        if (price > 0) out.wavax.price = price;
+      } else if (isBtcb(tok.symbol)) {
+        out.btcb.amount += tok.amount;
+        out.btcb.usd += usd;
+        if (price > 0) out.btcb.price = price;
+      } else {
+        out.community.usd += usd;
+        out.community.tokenCount += 1;
+      }
+    }
+
+    // USDC is ~$1 even if oracle is silent; fall back so the card never looks broken
+    if (out.usdc.price === 0 && out.usdc.amount > 0) {
+      out.usdc.price = 1;
+      out.usdc.usd = out.usdc.amount;
+    }
+
+    return out;
+  }, [configs, priceMap, dexInfoMap]);
 
   useResolveMoatMetas(
     (configs ?? []).map((c, i) => ({
@@ -391,6 +484,13 @@ export default function Home() {
         moatConfigs={configs}
         leaderboard={leaderboard}
         totalTvmUsd={Object.values(tvmMap).reduce((s, v) => s + v, 0)}
+      />
+      {/* Rewards Distributed Bar */}
+      <RewardsBar
+        usdc={rewardsAggregate.usdc}
+        wavax={rewardsAggregate.wavax}
+        btcb={rewardsAggregate.btcb}
+        community={rewardsAggregate.community}
       />
       {/* Moats Grid */}
       <section className="flex-1 px-4 py-16 max-w-7xl mx-auto w-full">
