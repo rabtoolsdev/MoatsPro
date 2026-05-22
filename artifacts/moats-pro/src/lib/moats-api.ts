@@ -214,10 +214,11 @@ export interface MoatConfig {
 }
 
 export const moatsApi = {
-  getEvents: (params?: { contractAddress?: string; eventType?: string }) => {
+  getEvents: (params?: { contractAddress?: string; eventType?: string; limit?: number }) => {
     const qs = new URLSearchParams();
     if (params?.contractAddress) qs.set("contractAddress", params.contractAddress);
     if (params?.eventType) qs.set("eventType", params.eventType);
+    if (params?.limit) qs.set("limit", String(params.limit));
     const query = qs.toString() ? `?${qs}` : "";
     return apiFetch<EventsResponse>(`/events${query}`);
   },

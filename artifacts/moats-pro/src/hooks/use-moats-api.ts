@@ -10,6 +10,22 @@ export function useEvents(contractAddress?: string) {
   });
 }
 
+/**
+ * Fetch every RewardsDeposited event ever emitted across all moats. Used to
+ * compute the canonical "total rewards distributed" per token — matches what
+ * moats.app shows, including moats that have removed a reward token from
+ * their current rewardTokens[] config but historically deposited it.
+ */
+export function useAllRewardsDeposited() {
+  return useQuery({
+    queryKey: ["moats", "events", "rewards-deposited", "all"],
+    queryFn: () =>
+      moatsApi.getEvents({ eventType: "RewardsDeposited", limit: 10000 }),
+    staleTime: 60_000,
+    refetchInterval: 120_000,
+  });
+}
+
 export function useAllMoatConfigs() {
   return useQuery({
     queryKey: ["moats", "config", "all"],

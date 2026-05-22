@@ -6,7 +6,8 @@ import { useAppKit, useAppKitNetwork } from "@reown/appkit/react";
 import { CHAIN_DISPLAY } from "@/lib/wagmi-config";
 import { Wallet, ArrowRight } from "lucide-react";
 import { formatUnits } from "viem";
-import { useAllMoatConfigs, useMapsLeaderboard, useEvents } from "@/hooks/use-moats-api";
+import { useAllMoatConfigs, useMapsLeaderboard, useEvents, useAllRewardsDeposited } from "@/hooks/use-moats-api";
+import { BASE_TOKENS_BY_CHAIN } from "@/lib/moat-tokens";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
 import { useDexscreenerInfo } from "@/hooks/use-dexscreener";
 import { MOAT_V3_ABI, ERC20_ABI, MOAT_LOGO_ABI } from "@/lib/moat-abi";
@@ -42,6 +43,7 @@ export default function Home() {
   const { data: configs, isLoading: configsLoading } = useAllMoatConfigs();
   const { data: leaderboard } = useMapsLeaderboard();
   const { data: eventsData } = useEvents();
+  const { data: rewardsDepositedEvents } = useAllRewardsDeposited();
 
   const moatOnchainContracts = useMemo(() => {
     if (!configs) return [];
@@ -174,9 +176,11 @@ export default function Home() {
 
   const { data: dexInfoMap } = useDexscreenerInfo(allTokenAddrs);
 
-  // Aggregate lifetime rewards distributed (totalRewardsDeposited) per unique
-  // reward token across all moats, then bucket into USDC / WAVAX / BTC.b /
-  // Community (everything else).
+  // Aggregate lifetime rewards distributed by summing every on-chain
+  // `RewardsDeposited` event per token address, then bucket into
+  // USDC / WAVAX / BTC.b / Community. This matches the on-chain truth
+  // moats.app uses, including moats that have historically deposited a
+  // token but no longer list it in their current rewardTokens[] config.
   const rewardsAggregate = useMemo(() => {
     const empty = {
       usdc: { symbol: "USDC", amount: 0, usd: 0, price: 0, logoUrl: USDC_LOGO_URL } as RewardBucketRow,
@@ -184,32 +188,50 @@ export default function Home() {
       btcb: { symbol: "BTC.b", amount: 0, usd: 0, price: 0, logoUrl: btcbLogo } as RewardBucketRow,
       community: { usd: 0, tokenCount: 0 },
     };
-    if (!configs) return empty;
 
-    // Sum deposits per unique token (key = network|address)
-    type TokenAgg = {
-      symbol: string;
-      network: string;
-      address: string;
-      amount: number;
-    };
-    const perToken = new Map<string, TokenAgg>();
-    for (const c of configs) {
-      if (!c.rewardTokens) continue;
-      for (const t of c.rewardTokens) {
-        if (!t.tokenAddress || !t.symbol) continue;
-        const deposited = Number(t.totalRewardsDeposited) || 0;
-        if (deposited <= 0) continue;
-        const key = `${(c.network || "avax").toLowerCase()}|${t.tokenAddress.toLowerCase()}`;
-        const cur = perToken.get(key);
-        if (cur) cur.amount += deposited;
-        else
-          perToken.set(key, {
-            symbol: t.symbol,
-            network: c.network || "avax",
-            address: t.tokenAddress,
-            amount: deposited,
-          });
+    // Build a token-meta registry: address -> { symbol, decimals, network }.
+    // Source 1: every moat's rewardTokens[] (covers the long tail).
+    // Source 2: BASE_TOKENS_BY_CHAIN (covers tokens removed from configs).
+    type TokenMeta = { symbol: string; decimals: number; network: string };
+    const tokenMeta = new Map<string, TokenMeta>();
+    if (configs) {
+      for (const c of configs) {
+        for (const t of c.rewardTokens ?? []) {
+          if (!t.tokenAddress || !t.symbol) continue;
+          const k = t.tokenAddress.toLowerCase();
+          if (!tokenMeta.has(k)) {
+            tokenMeta.set(k, {
+              symbol: t.symbol,
+              decimals: Number(t.decimals) || 18,
+              network: c.network || "avax",
+            });
+          }
+        }
+      }
+    }
+    for (const tokens of Object.values(BASE_TOKENS_BY_CHAIN)) {
+      for (const t of tokens) {
+        const k = t.address.toLowerCase();
+        if (!tokenMeta.has(k)) {
+          tokenMeta.set(k, { symbol: t.symbol, decimals: t.decimals, network: "avax" });
+        }
+      }
+    }
+
+    const events = rewardsDepositedEvents?.results ?? [];
+    if (!configs || events.length === 0) return empty;
+
+    // Sum raw wei per token from RewardsDeposited events
+    const perTokenWei = new Map<string, bigint>();
+    for (const e of events) {
+      const tok = (e.args?.token as string | undefined)?.toLowerCase();
+      const amt = e.args?.amount as string | undefined;
+      if (!tok || !amt) continue;
+      try {
+        const cur = perTokenWei.get(tok) ?? 0n;
+        perTokenWei.set(tok, cur + BigInt(amt));
+      } catch {
+        // skip malformed amount
       }
     }
 
@@ -228,22 +250,34 @@ export default function Home() {
       community: { usd: 0, tokenCount: 0 },
     };
 
-    for (const tok of perToken.values()) {
-      const llamaPrice = priceMap?.[getLlamaId(tok.network, tok.address).toLowerCase()] ?? 0;
-      const dexPrice = dexInfoMap?.[tok.address.toLowerCase()]?.price ?? 0;
-      const price = llamaPrice || dexPrice || 0;
-      const usd = tok.amount * price;
+    for (const [addr, wei] of perTokenWei.entries()) {
+      const meta = tokenMeta.get(addr);
+      if (!meta) {
+        // Unknown token (no config or registry entry) — treat as community
+        // with 18 decimals so we at least count something; no USD though.
+        out.community.tokenCount += 1;
+        continue;
+      }
+      // Convert wei -> human units
+      const divisor = 10 ** meta.decimals;
+      const amount = Number(wei) / divisor;
+      if (amount <= 0) continue;
 
-      if (isUsdc(tok.symbol)) {
-        out.usdc.amount += tok.amount;
+      const llamaPrice = priceMap?.[getLlamaId(meta.network, addr).toLowerCase()] ?? 0;
+      const dexPrice = dexInfoMap?.[addr]?.price ?? 0;
+      const price = llamaPrice || dexPrice || 0;
+      const usd = amount * price;
+
+      if (isUsdc(meta.symbol)) {
+        out.usdc.amount += amount;
         out.usdc.usd += usd;
         if (price > 0) out.usdc.price = price;
-      } else if (isWavax(tok.symbol)) {
-        out.wavax.amount += tok.amount;
+      } else if (isWavax(meta.symbol)) {
+        out.wavax.amount += amount;
         out.wavax.usd += usd;
         if (price > 0) out.wavax.price = price;
-      } else if (isBtcb(tok.symbol)) {
-        out.btcb.amount += tok.amount;
+      } else if (isBtcb(meta.symbol)) {
+        out.btcb.amount += amount;
         out.btcb.usd += usd;
         if (price > 0) out.btcb.price = price;
       } else {
@@ -259,7 +293,7 @@ export default function Home() {
     }
 
     return out;
-  }, [configs, priceMap, dexInfoMap]);
+  }, [configs, rewardsDepositedEvents, priceMap, dexInfoMap]);
 
   useResolveMoatMetas(
     (configs ?? []).map((c, i) => ({
