@@ -159,6 +159,34 @@ export function MoatCard({ moat, tvlUSD, supplyPct, logoUrl, dexLiquidityUSD, de
             </p>
           )}
 
+          {moat.tags && moat.tags.length > 0 && (
+            <div
+              className="flex flex-wrap gap-1.5 mb-4"
+              data-testid={`tags-moat-${moat.contractAddress}`}
+            >
+              {moat.tags.slice(0, 4).map((t) => (
+                <span
+                  key={t._id ?? t.name}
+                  data-testid={`tag-${t.name}`}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-card/60 border border-border/60 text-muted-foreground"
+                >
+                  {t.color && (
+                    <span
+                      className="w-1.5 h-1.5 rounded-full shrink-0"
+                      style={{ backgroundColor: t.color }}
+                    />
+                  )}
+                  {t.name}
+                </span>
+              ))}
+              {moat.tags.length > 4 && (
+                <span className="text-[10px] text-muted-foreground/70 px-1.5 py-0.5">
+                  +{moat.tags.length - 4}
+                </span>
+              )}
+            </div>
+          )}
+
           {activeRewardTokens.length > 0 && (
             <div className="mb-4">
               <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
