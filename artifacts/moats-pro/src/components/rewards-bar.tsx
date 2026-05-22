@@ -7,6 +7,7 @@ export interface RewardBucketRow {
   amount: number;
   usd: number;
   price: number;
+  logoUrl?: string;
 }
 
 interface RewardsBarProps {
@@ -125,9 +126,20 @@ export function RewardsBar({ usdc, wavax, btcb, community }: RewardsBarProps) {
             >
               <div className="flex items-start gap-3">
                 <div
-                  className={`p-2 rounded-xl ${card.bg} shrink-0 transition-all duration-300 ${card.glow}`}
+                  className={`p-2 rounded-xl ${card.bg} shrink-0 transition-all duration-300 ${card.glow} flex items-center justify-center`}
                 >
-                  <card.icon className={`w-5 h-5 ${card.color}`} />
+                  {card.bucket.logoUrl ? (
+                    <img
+                      src={card.bucket.logoUrl}
+                      alt={card.bucket.symbol}
+                      className="w-5 h-5 rounded-full object-contain"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                  ) : (
+                    <card.icon className={`w-5 h-5 ${card.color}`} />
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-xs text-muted-foreground truncate">{card.label}</p>

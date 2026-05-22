@@ -20,6 +20,12 @@ import { MoatCard } from "@/components/moat-card";
 import { StatsBar } from "@/components/stats-bar";
 import { RewardsBar, type RewardBucketRow } from "@/components/rewards-bar";
 import { ActivityFeed } from "@/components/activity-feed";
+import btcbLogo from "@assets/logobtc_1777735570322.png";
+
+const USDC_LOGO_URL =
+  "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/avalanchec/assets/0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E/logo.png";
+const WAVAX_LOGO_URL =
+  "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/avalanchec/info/logo.png";
 
 const heroWords = ["Stake.", "Lock.", "Burn.", "Earn."];
 
@@ -173,9 +179,9 @@ export default function Home() {
   // Community (everything else).
   const rewardsAggregate = useMemo(() => {
     const empty = {
-      usdc: { symbol: "USDC", amount: 0, usd: 0, price: 0 } as RewardBucketRow,
-      wavax: { symbol: "WAVAX", amount: 0, usd: 0, price: 0 } as RewardBucketRow,
-      btcb: { symbol: "BTC.b", amount: 0, usd: 0, price: 0 } as RewardBucketRow,
+      usdc: { symbol: "USDC", amount: 0, usd: 0, price: 0, logoUrl: USDC_LOGO_URL } as RewardBucketRow,
+      wavax: { symbol: "WAVAX", amount: 0, usd: 0, price: 0, logoUrl: WAVAX_LOGO_URL } as RewardBucketRow,
+      btcb: { symbol: "BTC.b", amount: 0, usd: 0, price: 0, logoUrl: btcbLogo } as RewardBucketRow,
       community: { usd: 0, tokenCount: 0 },
     };
     if (!configs) return empty;
@@ -216,9 +222,9 @@ export default function Home() {
     };
 
     const out = {
-      usdc: { symbol: "USDC", amount: 0, usd: 0, price: 0 } as RewardBucketRow,
-      wavax: { symbol: "WAVAX", amount: 0, usd: 0, price: 0 } as RewardBucketRow,
-      btcb: { symbol: "BTC.b", amount: 0, usd: 0, price: 0 } as RewardBucketRow,
+      usdc: { symbol: "USDC", amount: 0, usd: 0, price: 0, logoUrl: USDC_LOGO_URL } as RewardBucketRow,
+      wavax: { symbol: "WAVAX", amount: 0, usd: 0, price: 0, logoUrl: WAVAX_LOGO_URL } as RewardBucketRow,
+      btcb: { symbol: "BTC.b", amount: 0, usd: 0, price: 0, logoUrl: btcbLogo } as RewardBucketRow,
       community: { usd: 0, tokenCount: 0 },
     };
 
