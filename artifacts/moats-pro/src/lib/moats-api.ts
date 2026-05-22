@@ -240,8 +240,21 @@ export const moatsApi = {
   getMapsScore: (address: string) =>
     apiFetch<MapsScore>(`/maps/score/${address}`),
 
-  getEventsByUser: (userAddress: string, limit = 100) =>
-    apiFetch<EventsResponse>(`/events?userAddress=${userAddress}&limit=${limit}`),
+  getEventsByUser: async (userAddress: string, maxEvents = 10000): Promise<MoatEvent[]> => {
+    // API hard-caps each request at 1000 results; paginate with `skip` until
+    // either the server returns a short page (end of data) or we hit maxEvents.
+    const PAGE = 1000;
+    const all: MoatEvent[] = [];
+    for (let skip = 0; skip < maxEvents; skip += PAGE) {
+      const res = await apiFetch<EventsResponse>(
+        `/events?userAddress=${userAddress}&limit=${PAGE}&skip=${skip}`
+      );
+      const batch = res.results ?? [];
+      all.push(...batch);
+      if (batch.length < PAGE) break;
+    }
+    return all;
+  },
 
   getAllMoatConfigs: () =>
     apiFetch<MoatConfig[]>("/moat-config"),

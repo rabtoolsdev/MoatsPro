@@ -131,9 +131,10 @@ export function useSwapPoints(address: string | undefined) {
 export function useUserEvents(address: string | undefined) {
   return useQuery({
     queryKey: ["moats", "events", "user", address],
-    queryFn: () => moatsApi.getEventsByUser(address!, 500),
+    // getEventsByUser paginates internally (API caps at 1000 / request) and
+    // returns the full MoatEvent[] up to maxEvents.
+    queryFn: () => moatsApi.getEventsByUser(address!, 10000),
     enabled: !!address,
     staleTime: 60_000,
-    select: (data) => data?.results ?? [],
   });
 }
