@@ -7,7 +7,6 @@ import { CHAIN_DISPLAY } from "@/lib/wagmi-config";
 import { Wallet, ArrowRight } from "lucide-react";
 import { formatUnits } from "viem";
 import { useAllMoatConfigs, useMapsLeaderboard, useEvents, useAllRewardsDeposited } from "@/hooks/use-moats-api";
-import { BASE_TOKENS_BY_CHAIN } from "@/lib/moat-tokens";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
 import { useDexscreenerInfo } from "@/hooks/use-dexscreener";
 import { MOAT_V3_ABI, ERC20_ABI, MOAT_LOGO_ABI } from "@/lib/moat-abi";
@@ -176,11 +175,14 @@ export default function Home() {
 
   const { data: dexInfoMap } = useDexscreenerInfo(allTokenAddrs);
 
-  // Aggregate lifetime rewards distributed by summing every on-chain
-  // `RewardsDeposited` event per token address, then bucket into
-  // USDC / WAVAX / BTC.b / Community. This matches the on-chain truth
-  // moats.app uses, including moats that have historically deposited a
-  // token but no longer list it in their current rewardTokens[] config.
+  // Aggregate lifetime rewards distributed per token, bucketed into
+  // USDC / WAVAX / BTC.b / Community.
+  //
+  // Default source: each moat's MoatConfig.rewardTokens[].totalRewardsDeposited.
+  // WAVAX override: sum from on-chain `RewardsDeposited` events so that
+  // historical deposits from moats that no longer list WAVAX in their reward
+  // config (e.g. 0x3399d035, 0x3693df1d) are still counted — matches the
+  // figure moats.app reports.
   const rewardsAggregate = useMemo(() => {
     const empty = {
       usdc: { symbol: "USDC", amount: 0, usd: 0, price: 0, logoUrl: USDC_LOGO_URL } as RewardBucketRow,
@@ -188,50 +190,35 @@ export default function Home() {
       btcb: { symbol: "BTC.b", amount: 0, usd: 0, price: 0, logoUrl: btcbLogo } as RewardBucketRow,
       community: { usd: 0, tokenCount: 0 },
     };
+    if (!configs) return empty;
 
-    // Build a token-meta registry: address -> { symbol, decimals, network }.
-    // Source 1: every moat's rewardTokens[] (covers the long tail).
-    // Source 2: BASE_TOKENS_BY_CHAIN (covers tokens removed from configs).
-    type TokenMeta = { symbol: string; decimals: number; network: string };
-    const tokenMeta = new Map<string, TokenMeta>();
-    if (configs) {
-      for (const c of configs) {
-        for (const t of c.rewardTokens ?? []) {
-          if (!t.tokenAddress || !t.symbol) continue;
-          const k = t.tokenAddress.toLowerCase();
-          if (!tokenMeta.has(k)) {
-            tokenMeta.set(k, {
-              symbol: t.symbol,
-              decimals: Number(t.decimals) || 18,
-              network: c.network || "avax",
-            });
-          }
-        }
-      }
-    }
-    for (const tokens of Object.values(BASE_TOKENS_BY_CHAIN)) {
-      for (const t of tokens) {
-        const k = t.address.toLowerCase();
-        if (!tokenMeta.has(k)) {
-          tokenMeta.set(k, { symbol: t.symbol, decimals: t.decimals, network: "avax" });
-        }
-      }
-    }
+    const WAVAX_ADDR = "0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7";
+    const WAVAX_DECIMALS = 18;
 
-    const events = rewardsDepositedEvents?.results ?? [];
-    if (!configs || events.length === 0) return empty;
-
-    // Sum raw wei per token from RewardsDeposited events
-    const perTokenWei = new Map<string, bigint>();
-    for (const e of events) {
-      const tok = (e.args?.token as string | undefined)?.toLowerCase();
-      const amt = e.args?.amount as string | undefined;
-      if (!tok || !amt) continue;
-      try {
-        const cur = perTokenWei.get(tok) ?? 0n;
-        perTokenWei.set(tok, cur + BigInt(amt));
-      } catch {
-        // skip malformed amount
+    // ---- Config-based aggregation (original) for USDC / BTC.b / Community ----
+    type TokenAgg = {
+      symbol: string;
+      network: string;
+      address: string;
+      amount: number;
+    };
+    const perToken = new Map<string, TokenAgg>();
+    for (const c of configs) {
+      if (!c.rewardTokens) continue;
+      for (const t of c.rewardTokens) {
+        if (!t.tokenAddress || !t.symbol) continue;
+        const deposited = Number(t.totalRewardsDeposited) || 0;
+        if (deposited <= 0) continue;
+        const key = `${(c.network || "avax").toLowerCase()}|${t.tokenAddress.toLowerCase()}`;
+        const cur = perToken.get(key);
+        if (cur) cur.amount += deposited;
+        else
+          perToken.set(key, {
+            symbol: t.symbol,
+            network: c.network || "avax",
+            address: t.tokenAddress,
+            amount: deposited,
+          });
       }
     }
 
@@ -250,40 +237,53 @@ export default function Home() {
       community: { usd: 0, tokenCount: 0 },
     };
 
-    for (const [addr, wei] of perTokenWei.entries()) {
-      const meta = tokenMeta.get(addr);
-      if (!meta) {
-        // Unknown token (no config or registry entry) — treat as community
-        // with 18 decimals so we at least count something; no USD though.
-        out.community.tokenCount += 1;
-        continue;
-      }
-      // Convert wei -> human units
-      const divisor = 10 ** meta.decimals;
-      const amount = Number(wei) / divisor;
-      if (amount <= 0) continue;
+    for (const tok of perToken.values()) {
+      // Skip WAVAX here — it's computed from on-chain events below.
+      if (tok.address.toLowerCase() === WAVAX_ADDR) continue;
 
-      const llamaPrice = priceMap?.[getLlamaId(meta.network, addr).toLowerCase()] ?? 0;
-      const dexPrice = dexInfoMap?.[addr]?.price ?? 0;
+      const llamaPrice = priceMap?.[getLlamaId(tok.network, tok.address).toLowerCase()] ?? 0;
+      const dexPrice = dexInfoMap?.[tok.address.toLowerCase()]?.price ?? 0;
       const price = llamaPrice || dexPrice || 0;
-      const usd = amount * price;
+      const usd = tok.amount * price;
 
-      if (isUsdc(meta.symbol)) {
-        out.usdc.amount += amount;
+      if (isUsdc(tok.symbol)) {
+        out.usdc.amount += tok.amount;
         out.usdc.usd += usd;
         if (price > 0) out.usdc.price = price;
-      } else if (isWavax(meta.symbol)) {
-        out.wavax.amount += amount;
-        out.wavax.usd += usd;
-        if (price > 0) out.wavax.price = price;
-      } else if (isBtcb(meta.symbol)) {
-        out.btcb.amount += amount;
+      } else if (isWavax(tok.symbol)) {
+        // (unreachable — guarded above by WAVAX_ADDR check)
+        continue;
+      } else if (isBtcb(tok.symbol)) {
+        out.btcb.amount += tok.amount;
         out.btcb.usd += usd;
         if (price > 0) out.btcb.price = price;
       } else {
         out.community.usd += usd;
         out.community.tokenCount += 1;
       }
+    }
+
+    // ---- WAVAX: events-based override ----
+    let wavaxWei = 0n;
+    for (const e of rewardsDepositedEvents?.results ?? []) {
+      const tok = (e.args?.token as string | undefined)?.toLowerCase();
+      const amt = e.args?.amount as string | undefined;
+      if (tok !== WAVAX_ADDR || !amt) continue;
+      try {
+        wavaxWei += BigInt(amt);
+      } catch {
+        // skip malformed amount
+      }
+    }
+    if (wavaxWei > 0n) {
+      const wavaxAmount = Number(wavaxWei) / 10 ** WAVAX_DECIMALS;
+      const wavaxPrice =
+        (priceMap?.[getLlamaId("avax", WAVAX_ADDR).toLowerCase()] ?? 0) ||
+        dexInfoMap?.[WAVAX_ADDR]?.price ||
+        0;
+      out.wavax.amount = wavaxAmount;
+      out.wavax.price = wavaxPrice;
+      out.wavax.usd = wavaxAmount * wavaxPrice;
     }
 
     // USDC is ~$1 even if oracle is silent; fall back so the card never looks broken
