@@ -31,6 +31,7 @@ const heroWords = ["Stake.", "Lock.", "Burn.", "Earn."];
 
 export default function Home() {
   const [statusFilter, setStatusFilter] = useState<string>("Verified");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const { isConnected, address } = useAccount();
   const { open } = useAppKit();
   const { chainId } = useAppKitNetwork();
@@ -416,15 +417,46 @@ export default function Home() {
       )
     : moatsWithMeta;
 
-  const filteredMoats = (
+  const statusFilteredMoats =
     statusFilter === "all"
       ? networkFiltered
-      : networkFiltered.filter((c) => c.status === statusFilter)
+      : networkFiltered.filter((c) => c.status === statusFilter);
+
+  // Tag options: derived from the status-filtered set so counts reflect
+  // what's currently visible. Sorted by descending count, then name.
+  const tagOptions = useMemo(() => {
+    const counts = new Map<string, { name: string; color?: string; count: number }>();
+    for (const c of statusFilteredMoats) {
+      for (const t of c.tags ?? []) {
+        if (!t?.name) continue;
+        const cur = counts.get(t.name);
+        if (cur) cur.count += 1;
+        else counts.set(t.name, { name: t.name, color: t.color, count: 1 });
+      }
+    }
+    return [...counts.values()].sort(
+      (a, b) => b.count - a.count || a.name.localeCompare(b.name),
+    );
+  }, [statusFilteredMoats]);
+
+  const filteredMoats = (
+    selectedTags.length === 0
+      ? statusFilteredMoats
+      : statusFilteredMoats.filter((c) => {
+          const names = new Set((c.tags ?? []).map((t) => t.name));
+          // OR semantics: show moat if it carries ANY of the selected tags.
+          return selectedTags.some((t) => names.has(t));
+        })
   ).sort((a, b) => {
     const tvmA = tvmMap[a.contractAddress.toLowerCase()] ?? 0;
     const tvmB = tvmMap[b.contractAddress.toLowerCase()] ?? 0;
     return tvmB - tvmA;
   });
+
+  const toggleTag = (name: string) =>
+    setSelectedTags((cur) =>
+      cur.includes(name) ? cur.filter((t) => t !== name) : [...cur, name],
+    );
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -532,6 +564,53 @@ export default function Home() {
         btcb={rewardsAggregate.btcb}
         community={rewardsAggregate.community}
       />
+      {/* Tag Filters — sit between Rewards Distributed and Active Moats */}
+      {tagOptions.length > 0 && (
+        <section className="px-4 pt-10 max-w-7xl mx-auto w-full">
+          <div className="flex items-center gap-3 mb-3 flex-wrap">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+              Filter by Tag
+            </h3>
+            {selectedTags.length > 0 && (
+              <button
+                onClick={() => setSelectedTags([])}
+                data-testid="btn-clear-tags"
+                className="text-xs text-primary hover:text-primary/80 underline-offset-2 hover:underline"
+              >
+                Clear ({selectedTags.length})
+              </button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2" data-testid="tag-filters">
+            {tagOptions.map((t) => {
+              const active = selectedTags.includes(t.name);
+              return (
+                <button
+                  key={t.name}
+                  onClick={() => toggleTag(t.name)}
+                  data-testid={`tag-${t.name}`}
+                  className={`group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                    active
+                      ? "bg-primary/15 border-primary/60 text-foreground shadow-[0_0_10px_rgba(0,212,255,0.15)]"
+                      : "bg-card/30 border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                  }`}
+                >
+                  {t.color && (
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{ backgroundColor: t.color }}
+                    />
+                  )}
+                  <span>{t.name}</span>
+                  <span className={`tabular-nums ${active ? "text-primary" : "text-muted-foreground/70"}`}>
+                    {t.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
       {/* Moats Grid */}
       <section className="flex-1 px-4 py-16 max-w-7xl mx-auto w-full">
         <div className="flex items-center justify-between mb-8 flex-wrap gap-4">

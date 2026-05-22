@@ -184,12 +184,19 @@ export function getActiveBoosts(moat: MoatConfig | undefined | null): BoostConfi
   return [];
 }
 
+export interface MoatTag {
+  _id?: string;
+  name: string;
+  color?: string;
+}
+
 export interface MoatConfig {
   _id: string;
   contractAddress: string;
   network: string;
   moatVersion: number;
   status: "Verified" | "Community" | "Deprecated" | string;
+  tags?: MoatTag[];
   fortWeight: number;
   rewardStrategy?: string;
   owner: string;
