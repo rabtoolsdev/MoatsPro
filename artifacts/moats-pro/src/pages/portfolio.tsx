@@ -118,6 +118,21 @@ export default function Portfolio() {
   }, [userInfoResults, configs]);
 
   // ── Step 2: batch getUserLock for all active locks ─────────────────────────
+  // The contract's `activeLockCount` is the count of *currently active* locks,
+  // but lock slots are stored sparsely — exiting a lock leaves its slot in
+  // place with active=false. A user who has exited slot 2 and then opened a
+  // new lock will have a fresh active lock at slot index ≥ activeLockCount, so
+  // iterating 0..activeLockCount-1 silently undercounts. We probe a wider
+  // range with allowFailure (out-of-range slots come back as failed entries).
+  const lockProbePerPos = useMemo(
+    () =>
+      activePositions.map((pos) => {
+        const c = Number(pos.activeLockCount);
+        return c === 0 ? 0 : Math.max(c * 8, 128);
+      }),
+    [activePositions],
+  );
+
   const lockContracts = useMemo(() => {
     if (!address) return [];
     const calls: Array<{
@@ -126,9 +141,9 @@ export default function Portfolio() {
       functionName: "getUserLock";
       args: [`0x${string}`, bigint];
     }> = [];
-    activePositions.forEach((pos) => {
-      const count = Number(pos.activeLockCount);
-      for (let i = 0; i < count; i++) {
+    activePositions.forEach((pos, posIdx) => {
+      const probe = lockProbePerPos[posIdx] ?? 0;
+      for (let i = 0; i < probe; i++) {
         calls.push({
           address: pos.config.contractAddress as `0x${string}`,
           abi: MOAT_V3_ABI,
@@ -138,20 +153,21 @@ export default function Portfolio() {
       }
     });
     return calls;
-  }, [activePositions, address]);
+  }, [activePositions, address, lockProbePerPos]);
 
   const { data: lockResults } = useReadContracts({
     contracts: lockContracts,
+    allowFailure: true,
     query: { enabled: lockContracts.length > 0 },
   });
 
   const lockedMap = useMemo((): Record<string, bigint> => {
     const m: Record<string, bigint> = {};
     let idx = 0;
-    activePositions.forEach((pos) => {
-      const count = Number(pos.activeLockCount);
+    activePositions.forEach((pos, posIdx) => {
+      const probe = lockProbePerPos[posIdx] ?? 0;
       let total = 0n;
-      for (let i = 0; i < count; i++) {
+      for (let i = 0; i < probe; i++) {
         const r = lockResults?.[idx];
         if (r?.status === "success") {
           const [amount, , , , , active] = r.result as [bigint, bigint, bigint, bigint, bigint, boolean];
@@ -162,7 +178,7 @@ export default function Portfolio() {
       m[pos.config.contractAddress.toLowerCase()] = total;
     });
     return m;
-  }, [lockResults, activePositions]);
+  }, [lockResults, activePositions, lockProbePerPos]);
 
   // ── Step 3: staking token + decimals for token amounts ────────────────────
   const stakingTokenContracts = useMemo(() => {
