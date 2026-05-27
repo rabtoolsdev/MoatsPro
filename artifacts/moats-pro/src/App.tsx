@@ -10,6 +10,7 @@ import Home from "@/pages/home";
 import Portfolio from "@/pages/portfolio";
 import MoatDetail from "@/pages/moat-detail";
 import Leaderboard from "@/pages/leaderboard";
+import Analytics from "@/pages/analytics";
 import Swap from "@/pages/swap";
 import Admin from "@/pages/admin";
 import { PasswordGate } from "@/components/password-gate";
@@ -51,6 +52,7 @@ function Router() {
           <Route path="/portfolio" component={Portfolio} />
           <Route path="/moat/:address" component={MoatDetail} />
           <Route path="/leaderboard" component={Leaderboard} />
+          <Route path="/analytics" component={Analytics} />
           <Route path="/swap" component={Swap} />
           <Route path="/admin">
             <PasswordGate scope="admin" title="Admin Console" subtitle="Enter the password to continue.">

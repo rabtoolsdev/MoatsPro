@@ -221,13 +221,30 @@ export interface MoatConfig {
 }
 
 export const moatsApi = {
-  getEvents: (params?: { contractAddress?: string; eventType?: string; limit?: number }) => {
+  getEvents: (params?: { contractAddress?: string; eventType?: string; limit?: number; skip?: number }) => {
     const qs = new URLSearchParams();
     if (params?.contractAddress) qs.set("contractAddress", params.contractAddress);
     if (params?.eventType) qs.set("eventType", params.eventType);
     if (params?.limit) qs.set("limit", String(params.limit));
+    if (params?.skip) qs.set("skip", String(params.skip));
     const query = qs.toString() ? `?${qs}` : "";
     return apiFetch<EventsResponse>(`/events${query}`);
+  },
+
+  // Fully paginated event stream for analytics. The API caps each response at
+  // 1000 rows, so we loop until a short page is returned or maxEvents is hit.
+  getAllEvents: async (eventType: string, maxEvents = 30000): Promise<MoatEvent[]> => {
+    const PAGE = 1000;
+    const all: MoatEvent[] = [];
+    for (let skip = 0; skip < maxEvents; skip += PAGE) {
+      const res = await apiFetch<EventsResponse>(
+        `/events?eventType=${encodeURIComponent(eventType)}&limit=${PAGE}&skip=${skip}`,
+      );
+      const batch = res.results ?? [];
+      all.push(...batch);
+      if (batch.length < PAGE) break;
+    }
+    return all;
   },
 
   getAllMoatPoints: (contractAddress?: string) => {
