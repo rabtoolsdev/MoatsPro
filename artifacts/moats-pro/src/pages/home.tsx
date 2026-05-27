@@ -18,6 +18,7 @@ import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { MoatCard } from "@/components/moat-card";
 import { StatsBar } from "@/components/stats-bar";
+import { TrendingMoatsCarousel } from "@/components/trending-moats-carousel";
 import { RewardsBar, type RewardBucketRow } from "@/components/rewards-bar";
 import { ActivityFeed } from "@/components/activity-feed";
 import btcbLogo from "@assets/logobtc_1777735570322.png";
@@ -551,6 +552,8 @@ export default function Home() {
           </motion.div>
         </div>
       </section>
+      {/* Trending Moats — auto-scrolling carousel sits above the stats bar */}
+      <TrendingMoatsCarousel configs={configs} tvmMap={tvmMap} logoUrls={logoMap} />
       {/* Stats Bar */}
       <StatsBar
         moatConfigs={configs}
