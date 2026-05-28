@@ -4,7 +4,7 @@ import { moatsApi, type MoatEvent } from "@/lib/moats-api";
 const STALE = 5 * 60 * 1000;
 const REFETCH = 10 * 60 * 1000;
 
-function useEventStream(eventType: string, maxEvents = 30000) {
+function useEventStream(eventType: string, maxEvents = 100000) {
   return useQuery({
     queryKey: ["moats", "events", "all", eventType, maxEvents],
     queryFn: () => moatsApi.getAllEvents(eventType, maxEvents),

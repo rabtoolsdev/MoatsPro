@@ -132,8 +132,11 @@ export function useUserEvents(address: string | undefined) {
   return useQuery({
     queryKey: ["moats", "events", "user", address],
     // getEventsByUser paginates internally (API caps at 1000 / request) and
-    // returns the full MoatEvent[] up to maxEvents.
-    queryFn: () => moatsApi.getEventsByUser(address!, 10000),
+    // returns the full MoatEvent[] up to maxEvents. The cap must stay well
+    // above any single wallet's lifetime event count — otherwise the newest
+    // event pushes the oldest off the end of the window and lifetime totals
+    // (e.g. "total USDC claimed") appear to DECREASE after a new claim.
+    queryFn: () => moatsApi.getEventsByUser(address!, 100000),
     enabled: !!address,
     staleTime: 60_000,
   });
