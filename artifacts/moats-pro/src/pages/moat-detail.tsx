@@ -11,7 +11,7 @@ import {
 import { Link } from "wouter";
 import { formatUnits, parseUnits } from "viem";
 import { useMoatConfig, useMoatPointsV2, useUserMoatPointsV2, useEvents } from "@/hooks/use-moats-api";
-import { getActiveBoosts, type BoostConfig } from "@/lib/moats-api";
+import { getActiveBoosts, getBoostTier, getEffectiveBoostValue, getMaxBoostValue, type BoostConfig, type BoostTier } from "@/lib/moats-api";
 import {
   useMoatStats, useUserMoatInfo, useTokenBalance,
   useTokenAllowance, useStakeMoat, useLockMoat, useClaimRewards, useApproveToken, useUnstakeMoat, useNftBoostBalances, useBurnMoat, useExitLock, useUserLocks,
@@ -80,6 +80,96 @@ function PointsEstimateBox({
       <p className="text-[10px] text-muted-foreground/70 leading-tight">
         Estimated from current epoch activity — actual points accrue over time.
       </p>
+    </div>
+  );
+}
+
+function formatTierRange(tier: BoostTier): string {
+  if (tier.maxHolding == null) return `${tier.minHolding}+`;
+  if (tier.minHolding === tier.maxHolding) return `${tier.minHolding}`;
+  return `${tier.minHolding}–${tier.maxHolding}`;
+}
+
+function NftBoostTiers({
+  boosts,
+  balances,
+  isConnected,
+}: {
+  boosts: BoostConfig[];
+  balances: (bigint | undefined)[];
+  isConnected: boolean;
+}) {
+  if (boosts.length === 0) return null;
+  const multi = boosts.length > 1;
+  return (
+    <div className="rounded-2xl border border-border bg-card/30 p-6">
+      <h3 className="font-semibold mb-1 flex items-center gap-2">
+        <Zap size={16} className="text-primary" />
+        NFT Boosts
+      </h3>
+      <p className="text-xs text-muted-foreground mb-4">
+        Hold boost NFTs to multiply your Moat Points. The more you hold, the higher the tier.
+      </p>
+      <div className="space-y-4">
+        {boosts.map((boost, i) => {
+          const held = Number(balances[i] ?? 0n);
+          const tiers = boost.tiers ?? [];
+          const currentTier = getBoostTier(boost, held);
+          const effective = isConnected ? getEffectiveBoostValue(boost, held) : 0;
+          return (
+            <div
+              key={boost.contractAddress}
+              data-testid={`nft-boost-tiers-${boost.contractAddress.toLowerCase()}`}
+              className="rounded-xl border border-border/50 bg-muted/10 p-4"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-mono text-muted-foreground">
+                  {multi ? `Collection ${i + 1} · ` : ""}{formatAddress(boost.contractAddress)}
+                </span>
+                {isConnected ? (
+                  <span className={`text-xs font-semibold ${held > 0 ? "text-primary" : "text-muted-foreground"}`}>
+                    {held} held{held > 0 ? ` · ${effective}x active` : ""}
+                  </span>
+                ) : (
+                  <span className="text-xs font-semibold text-muted-foreground">
+                    up to {getMaxBoostValue(boost)}x
+                  </span>
+                )}
+              </div>
+              {tiers.length > 0 ? (
+                <div className="space-y-1.5">
+                  {tiers.map((tier) => {
+                    const active = isConnected && currentTier === tier;
+                    return (
+                      <div
+                        key={`${tier.minHolding}-${tier.maxHolding}-${tier.boostValue}`}
+                        className={`flex items-center justify-between text-xs rounded-lg px-3 py-2 ${
+                          active
+                            ? "bg-primary/10 border border-primary/30"
+                            : "bg-background/40 border border-transparent"
+                        }`}
+                      >
+                        <span className={active ? "text-primary font-medium" : "text-muted-foreground"}>
+                          {formatTierRange(tier)} NFT{tier.maxHolding === 1 ? "" : "s"}
+                          {active && " · your tier"}
+                        </span>
+                        <span className={`tabular-nums font-semibold ${active ? "text-primary" : "text-foreground"}`}>
+                          {tier.boostValue}x
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex items-center justify-between text-xs rounded-lg px-3 py-2 bg-background/40">
+                  <span className="text-muted-foreground">Any holding</span>
+                  <span className="tabular-nums font-semibold text-foreground">{boost.boostValue}x</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -703,8 +793,10 @@ export default function MoatDetail() {
                       value: activeBoosts.length === 0
                         ? "None"
                         : activeBoosts.length === 1
-                          ? `Active · ${activeBoosts[0].boostValue}x`
-                          : `${activeBoosts.length} NFTs · ${activeBoosts.map((b: BoostConfig) => `${b.boostValue}x`).join(" / ")}`,
+                          ? ((activeBoosts[0].tiers?.length ?? 0) > 0
+                              ? `Tiered · up to ${getMaxBoostValue(activeBoosts[0])}x`
+                              : `Active · ${activeBoosts[0].boostValue}x`)
+                          : `${activeBoosts.length} NFTs · up to ${activeBoosts.map((b: BoostConfig) => `${getMaxBoostValue(b)}x`).join(" / ")}`,
                     },
                     { label: "Created", value: new Date(moatConfig.createdAt).toLocaleDateString() },
                   ].map((item) => (
@@ -716,6 +808,13 @@ export default function MoatDetail() {
                 </div>
               </div>
             )}
+
+            {/* NFT Boost Tiers */}
+            <NftBoostTiers
+              boosts={activeBoosts}
+              balances={nftBoostBalances}
+              isConnected={isConnected}
+            />
 
             {/* User Position */}
             {isConnected && (
@@ -815,30 +914,6 @@ export default function MoatDetail() {
                         );
                       })}
                     </div>
-                  </div>
-                )}
-                {activeBoosts.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-border/50 space-y-1.5">
-                    <p className="text-xs text-muted-foreground">NFT Boost Balance</p>
-                    {activeBoosts.map((boost: BoostConfig, i: number) => {
-                      const bal = nftBoostBalances[i] ?? 0n;
-                      const held = bal > 0n;
-                      return (
-                        <div
-                          key={boost.contractAddress}
-                          data-testid={`nft-boost-row-${boost.contractAddress.toLowerCase()}`}
-                          className="flex items-center justify-between"
-                        >
-                          <span className="text-xs text-muted-foreground font-mono">
-                            {formatAddress(boost.contractAddress)}
-                          </span>
-                          <span className={`text-xs font-semibold ${held ? "text-primary" : "text-muted-foreground"}`}>
-                            {String(bal)} NFT{bal !== 1n ? "s" : ""}
-                            {held ? ` · ${boost.boostValue}x boost` : ` · ${boost.boostValue}x available`}
-                          </span>
-                        </div>
-                      );
-                    })}
                   </div>
                 )}
               </div>

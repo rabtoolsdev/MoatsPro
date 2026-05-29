@@ -171,7 +171,9 @@ export interface BoostConfig {
  */
 export function getActiveBoosts(moat: MoatConfig | undefined | null): BoostConfig[] {
   if (!moat) return [];
-  const fromConfigs = (moat.boostConfigs ?? []).filter((b) => b.active && b.contractAddress);
+  const fromConfigs = (moat.boostConfigs ?? [])
+    .filter((b) => b.active && b.contractAddress)
+    .map((b) => ({ ...b, tiers: b.tiers ?? [] }));
   if (fromConfigs.length > 0) return fromConfigs;
   if (moat.boostActive && moat.nftBoostContract) {
     return [{
@@ -182,6 +184,43 @@ export function getActiveBoosts(moat: MoatConfig | undefined | null): BoostConfi
     }];
   }
   return [];
+}
+
+/**
+ * Resolve the tier a holder falls into for a given boost, based on how many
+ * boost NFTs they hold. Returns null when the boost has no tier configuration.
+ */
+export function getBoostTier(boost: BoostConfig, holding: number): BoostTier | null {
+  if (!boost.tiers || boost.tiers.length === 0) return null;
+  const sorted = [...boost.tiers].sort((a, b) => (a.minHolding ?? 0) - (b.minHolding ?? 0));
+  for (const t of sorted) {
+    const min = t.minHolding ?? 0;
+    const max = t.maxHolding;
+    if (holding >= min && (max == null || holding <= max)) return t;
+  }
+  return null;
+}
+
+/**
+ * The boost multiplier that actually applies for a given holding. Honors the
+ * tier table when present (BENSI-style tiered boosts); when tiers exist but the
+ * holding matches none (e.g. below the first tier), there is no boost (1x).
+ * Untiered boosts fall back to the flat top-level `boostValue`.
+ */
+export function getEffectiveBoostValue(boost: BoostConfig, holding: number): number {
+  if (boost.tiers && boost.tiers.length > 0) {
+    const tier = getBoostTier(boost, holding);
+    return tier ? tier.boostValue : 1;
+  }
+  return boost.boostValue;
+}
+
+/** The highest multiplier any tier can grant (or the flat value when untiered). */
+export function getMaxBoostValue(boost: BoostConfig): number {
+  if (boost.tiers && boost.tiers.length > 0) {
+    return Math.max(...boost.tiers.map((t) => t.boostValue));
+  }
+  return boost.boostValue;
 }
 
 export interface MoatTag {
