@@ -186,9 +186,24 @@ export default function MoatDetail() {
   }, [claimAction.isSuccess]);
 
   const network = moatConfig?.network ?? "avalanche";
-  const rewardLlamaIds = (moatConfig?.rewardTokens ?? [])
-    .filter((t) => t.enabled && t.tokenAddress)
-    .map((t) => getLlamaId(network, t.tokenAddress));
+  // The backend config can contain duplicate reward-token entries for the same
+  // token address (same token, different _id) — e.g. MyStandard's MYST appears
+  // twice. Dedupe by token address so the UI shows each reward token once.
+  const enabledRewardTokens = useMemo(() => {
+    const seen = new Set<string>();
+    const out: NonNullable<typeof moatConfig>["rewardTokens"] = [];
+    for (const t of moatConfig?.rewardTokens ?? []) {
+      if (!t.enabled || !t.tokenAddress) continue;
+      const key = t.tokenAddress.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(t);
+    }
+    return out;
+  }, [moatConfig?.rewardTokens]);
+  const rewardLlamaIds = enabledRewardTokens.map((t) =>
+    getLlamaId(network, t.tokenAddress),
+  );
   const stakingLlamaId = stats.stakingToken ? getLlamaId(network, stats.stakingToken) : "";
   const allLlamaIds = [...new Set([...rewardLlamaIds, ...(stakingLlamaId ? [stakingLlamaId] : [])])];
   const { data: priceMap } = useTokenPrices(allLlamaIds);
@@ -505,7 +520,7 @@ export default function MoatDetail() {
                   Reward Tokens
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {moatConfig.rewardTokens.filter((t) => t.enabled).map((token) => (
+                  {enabledRewardTokens.map((token) => (
                     <div
                       key={token._id}
                       className="p-4 rounded-xl border border-transparent bg-card/40 backdrop-blur-sm transition-all duration-200"
@@ -578,8 +593,8 @@ export default function MoatDetail() {
                 </div>
 
                 {/* Derived yield metrics */}
-                {moatConfig.rewardTokens.filter((t) => t.enabled).length > 0 && (() => {
-                  const token = moatConfig.rewardTokens.filter((t) => t.enabled)[0];
+                {enabledRewardTokens.length > 0 && (() => {
+                  const token = enabledRewardTokens[0];
                   if (!token) return null;
                   const estDaily = getEstDaily(token.tokenAddress);
                   const freqH = token.frequencyHours ?? 24;
@@ -1427,7 +1442,7 @@ export default function MoatDetail() {
                   const contractReverted = !userInfo.pendingRewards && !!userInfo.pendingRewardsError;
 
                   if (contractReverted) {
-                    const enabledTokens = (moatConfig?.rewardTokens ?? []).filter((t) => t.enabled);
+                    const enabledTokens = enabledRewardTokens;
                     const ui = userInfo.userInfo;
                     const hasAnyPosition = !!ui && (ui[0] > 0n || ui[1] > 0n || ui[4] > 0n);
                     return (
