@@ -425,6 +425,17 @@ export default function MoatDetail() {
   const userLockedAmount = locks.filter((l) => l.active).reduce((sum, l) => sum + l.amount, 0n);
   const userLockedFormatted = fmtUserAmt(parseFloat(formatUnits(userLockedAmount, decimals)));
   const userMoatPointsValue = userMoatPoints?.points ?? 0;
+  // "Your Moat Weight" = the user's share of the pool. The v2 leaderboard
+  // exposes a per-wallet `weight` that already sums to 100 across the moat
+  // (the linear staked/locked/burned share), which is what moats.app shows.
+  // Points are sqrt-derived, so a points/totalPoints ratio is NOT the weight.
+  const userLeaderboardWeight = useMemo(() => {
+    if (!userAddress) return undefined;
+    const entry = leaderboard.find(
+      (e) => e.address.toLowerCase() === userAddress.toLowerCase()
+    );
+    return entry?.weight;
+  }, [leaderboard, userAddress]);
 
   // Moat Points simulation: calibrate the points model from the leaderboard so
   // we can estimate the points a stake/lock/burn would yield before the tx.
@@ -857,7 +868,9 @@ export default function MoatDetail() {
                       value: formatPoints(userMoatPointsValue),
                       testId: "user-moat-points",
                       usd: 0,
-                      weightedPct: totalPoints > 0 ? (userMoatPointsValue / totalPoints) * 100 : 0,
+                      weightedPct: userLeaderboardWeight !== undefined
+                        ? userLeaderboardWeight
+                        : (totalPoints > 0 ? (userMoatPointsValue / totalPoints) * 100 : 0),
                     },
                   ].map((item) => {
                     const weightedPct = (item as { weightedPct?: number }).weightedPct ?? 0;
