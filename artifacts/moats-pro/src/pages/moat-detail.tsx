@@ -128,11 +128,11 @@ function NftBoostTiers({
                 </span>
                 {isConnected ? (
                   <span className={`text-xs font-semibold ${held > 0 ? "text-primary" : "text-muted-foreground"}`}>
-                    {held} held{held > 0 ? ` · ${effective}x active` : ""}
+                    {held} held{held > 0 ? ` · ${effective}% active` : ""}
                   </span>
                 ) : (
                   <span className="text-xs font-semibold text-muted-foreground">
-                    up to {getMaxBoostValue(boost)}x
+                    up to {getMaxBoostValue(boost)}%
                   </span>
                 )}
               </div>
@@ -154,7 +154,7 @@ function NftBoostTiers({
                           {active && " · your tier"}
                         </span>
                         <span className={`tabular-nums font-semibold ${active ? "text-primary" : "text-foreground"}`}>
-                          {tier.boostValue}x
+                          {tier.boostValue}%
                         </span>
                       </div>
                     );
@@ -163,7 +163,7 @@ function NftBoostTiers({
               ) : (
                 <div className="flex items-center justify-between text-xs rounded-lg px-3 py-2 bg-background/40">
                   <span className="text-muted-foreground">Any holding</span>
-                  <span className="tabular-nums font-semibold text-foreground">{boost.boostValue}x</span>
+                  <span className="tabular-nums font-semibold text-foreground">{boost.boostValue}%</span>
                 </div>
               )}
             </div>
@@ -794,9 +794,9 @@ export default function MoatDetail() {
                         ? "None"
                         : activeBoosts.length === 1
                           ? ((activeBoosts[0].tiers?.length ?? 0) > 0
-                              ? `Tiered · up to ${getMaxBoostValue(activeBoosts[0])}x`
-                              : `Active · ${activeBoosts[0].boostValue}x`)
-                          : `${activeBoosts.length} NFTs · up to ${activeBoosts.map((b: BoostConfig) => `${getMaxBoostValue(b)}x`).join(" / ")}`,
+                              ? `Tiered · up to ${getMaxBoostValue(activeBoosts[0])}%`
+                              : `Active · ${activeBoosts[0].boostValue}%`)
+                          : `${activeBoosts.length} NFTs · up to ${activeBoosts.map((b: BoostConfig) => `${getMaxBoostValue(b)}%`).join(" / ")}`,
                     },
                     { label: "Created", value: new Date(moatConfig.createdAt).toLocaleDateString() },
                   ].map((item) => (
