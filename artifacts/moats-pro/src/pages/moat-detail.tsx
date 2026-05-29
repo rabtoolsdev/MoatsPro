@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Zap, Users, TrendingUp, Lock, Gift, Flame,
   AlertCircle, CheckCircle, Loader2, Coins, ExternalLink,
-  Unlock, Clock, AlertTriangle, Wallet,
+  Unlock, Clock, AlertTriangle, Wallet, Sparkles,
 } from "lucide-react";
 import { Link } from "wouter";
 import { formatUnits, parseUnits } from "viem";
@@ -28,6 +28,7 @@ import { useResolveMoatMetas } from "@/hooks/use-resolve-moat-metas";
 import { useDailyRewardEstimates } from "@/hooks/use-daily-reward-estimates";
 import { useRewardPoolBalances } from "@/hooks/use-reward-pool-balances";
 import { useContractRewardBalances } from "@/hooks/use-contract-reward-balances";
+import { useMoatPointsSim, estimateMoatPoints } from "@/hooks/use-moat-points-sim";
 import { ERC20_ABI, MOAT_LOGO_ABI } from "@/lib/moat-abi";
 
 type ActionTab = "stake" | "lock" | "claim" | "withdraw" | "burn";
@@ -52,6 +53,35 @@ const lockMultiplierInfo = [
 function getLockMultiplierLabel(days: number): string {
   const match = lockMultiplierInfo.find((o) => o.days === days);
   return match?.multiplier ?? "1x";
+}
+
+function PointsEstimateBox({
+  gained,
+  ready,
+  loading,
+  hasAmount,
+}: {
+  gained: number;
+  ready: boolean;
+  loading: boolean;
+  hasAmount: boolean;
+}) {
+  if (!hasAmount || (!ready && !loading)) return null;
+  return (
+    <div className="text-xs p-3 rounded-xl bg-primary/5 border border-primary/20 space-y-1">
+      <div className="flex justify-between items-center">
+        <span className="text-muted-foreground flex items-center gap-1.5">
+          <Sparkles size={13} className="text-primary" /> Est. Moat Points
+        </span>
+        <span className="font-semibold text-primary tabular-nums" data-testid="points-estimate">
+          {loading && !ready ? "…" : `+${formatPoints(gained)}`}
+        </span>
+      </div>
+      <p className="text-[10px] text-muted-foreground/70 leading-tight">
+        Estimated from current epoch activity — actual points accrue over time.
+      </p>
+    </div>
+  );
 }
 
 function getLockDurationLabel(originalDurationSecs: bigint): string {
@@ -305,6 +335,20 @@ export default function MoatDetail() {
   const userLockedAmount = locks.filter((l) => l.active).reduce((sum, l) => sum + l.amount, 0n);
   const userLockedFormatted = fmtUserAmt(parseFloat(formatUnits(userLockedAmount, decimals)));
   const userMoatPointsValue = userMoatPoints?.points ?? 0;
+
+  // Moat Points simulation: calibrate the points model from the leaderboard so
+  // we can estimate the points a stake/lock/burn would yield before the tx.
+  const pointsSim = useMoatPointsSim(contractAddress, leaderboard);
+  const lockWeightForDays = (days: number): number => {
+    const m = lockMultiplierInfo.find((o) => o.days === days);
+    return m ? parseFloat(m.multiplier) : 2;
+  };
+  const getEstimatedPoints = (rawAmount: string, actionWeight: number): number => {
+    if (!pointsSim.ready || pointsSim.k == null) return 0;
+    const amt = parseFloat(rawAmount);
+    if (!amt || amt <= 0) return 0;
+    return estimateMoatPoints(pointsSim.k, userMoatPointsValue, amt, actionWeight).gained;
+  };
 
   const handleStake = () => {
     if (!stakeAmount || !isConnected) return;
@@ -1123,6 +1167,12 @@ export default function MoatDetail() {
                             </span>
                           </p>
                         </div>
+                        <PointsEstimateBox
+                          gained={getEstimatedPoints(stakeAmount, 1)}
+                          ready={pointsSim.ready}
+                          loading={pointsSim.loading}
+                          hasAmount={!!stakeAmount && parseFloat(stakeAmount) > 0}
+                        />
                         <button
                           onClick={handleStake}
                           disabled={!stakeAmount || stakeAction.isPending || stakeAction.isConfirming || approveAction.isPending}
@@ -1218,6 +1268,12 @@ export default function MoatDetail() {
                             {getLockMultiplierLabel(lockDays)}
                           </span>
                         </div>
+                        <PointsEstimateBox
+                          gained={getEstimatedPoints(lockAmount, lockWeightForDays(lockDays))}
+                          ready={pointsSim.ready}
+                          loading={pointsSim.loading}
+                          hasAmount={!!lockAmount && parseFloat(lockAmount) > 0}
+                        />
                         <button
                           onClick={handleLock}
                           disabled={!lockAmount || lockAction.isPending || lockAction.isConfirming || approveAction.isPending}
@@ -1348,6 +1404,12 @@ export default function MoatDetail() {
                             </button>
                           </div>
                         </div>
+                        <PointsEstimateBox
+                          gained={getEstimatedPoints(burnAmount, 10)}
+                          ready={pointsSim.ready}
+                          loading={pointsSim.loading}
+                          hasAmount={!!burnAmount && parseFloat(burnAmount) > 0}
+                        />
                         <button
                           onClick={handleBurn}
                           disabled={!burnAmount || burnAction.isPending || burnAction.isConfirming || approveAction.isPending}
