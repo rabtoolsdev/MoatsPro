@@ -28,7 +28,7 @@ import { useResolveMoatMetas } from "@/hooks/use-resolve-moat-metas";
 import { useDailyRewardEstimates } from "@/hooks/use-daily-reward-estimates";
 import { useRewardPoolBalances } from "@/hooks/use-reward-pool-balances";
 import { useContractRewardBalances } from "@/hooks/use-contract-reward-balances";
-import { useMoatPointsSim, estimateMoatPoints } from "@/hooks/use-moat-points-sim";
+import { useMoatPointsSim, estimateMoatPoints, estimatePoolShare } from "@/hooks/use-moat-points-sim";
 import { ERC20_ABI, MOAT_LOGO_ABI } from "@/lib/moat-abi";
 
 type ActionTab = "stake" | "lock" | "claim" | "withdraw" | "burn";
@@ -55,13 +55,21 @@ function getLockMultiplierLabel(days: number): string {
   return match?.multiplier ?? "1x";
 }
 
+function formatPoolShare(pct: number): string {
+  if (pct >= 1) return pct.toFixed(2);
+  if (pct >= 0.01) return pct.toFixed(3);
+  return pct.toPrecision(2);
+}
+
 function PointsEstimateBox({
   gained,
+  poolShare,
   ready,
   loading,
   hasAmount,
 }: {
   gained: number;
+  poolShare: number | null;
   ready: boolean;
   loading: boolean;
   hasAmount: boolean;
@@ -75,6 +83,12 @@ function PointsEstimateBox({
         </span>
         <span className="font-semibold text-primary tabular-nums" data-testid="points-estimate">
           {loading && !ready ? "…" : `+${formatPoints(gained)}`}
+        </span>
+      </div>
+      <div className="flex justify-between items-center">
+        <span className="text-muted-foreground">Est. % of pool</span>
+        <span className="font-semibold text-primary tabular-nums" data-testid="pool-share-estimate">
+          {loading && !ready ? "…" : poolShare != null ? `${formatPoolShare(poolShare)}%` : "—"}
         </span>
       </div>
       <p className="text-[10px] text-muted-foreground/70 leading-tight">
@@ -429,13 +443,13 @@ export default function MoatDetail() {
   // exposes a per-wallet `weight` that already sums to 100 across the moat
   // (the linear staked/locked/burned share), which is what moats.app shows.
   // Points are sqrt-derived, so a points/totalPoints ratio is NOT the weight.
-  const userLeaderboardWeight = useMemo(() => {
+  const userLeaderboardEntry = useMemo(() => {
     if (!userAddress) return undefined;
-    const entry = leaderboard.find(
+    return leaderboard.find(
       (e) => e.address.toLowerCase() === userAddress.toLowerCase()
     );
-    return entry?.weight;
   }, [leaderboard, userAddress]);
+  const userLeaderboardWeight = userLeaderboardEntry?.weight;
 
   // Moat Points simulation: calibrate the points model from the leaderboard so
   // we can estimate the points a stake/lock/burn would yield before the tx.
@@ -449,6 +463,29 @@ export default function MoatDetail() {
     const amt = parseFloat(rawAmount);
     if (!amt || amt <= 0) return 0;
     return estimateMoatPoints(pointsSim.k, userMoatPointsValue, amt, actionWeight).gained;
+  };
+  // Pool weight ∝ basePoints^2 * boostMultiplier (verified against the v2
+  // leaderboard `weight` field). Sum that contribution across the moat so the
+  // pre-tx "% of pool" estimate accounts for NFT boosts.
+  const sumBoostedBaseSq = useMemo(
+    () =>
+      leaderboard.reduce((s, e) => {
+        const base = e.basePoints ?? e.points;
+        const mult = e.boostMultiplier && e.boostMultiplier > 0 ? e.boostMultiplier : 1;
+        return s + base * base * mult;
+      }, 0),
+    [leaderboard],
+  );
+  const getEstimatedPoolShare = (rawAmount: string, actionWeight: number): number | null => {
+    if (!pointsSim.ready || pointsSim.k == null) return null;
+    const amt = parseFloat(rawAmount);
+    if (!amt || amt <= 0) return null;
+    const userBase = userLeaderboardEntry?.basePoints ?? userLeaderboardEntry?.points ?? 0;
+    const userMult =
+      userLeaderboardEntry?.boostMultiplier && userLeaderboardEntry.boostMultiplier > 0
+        ? userLeaderboardEntry.boostMultiplier
+        : 1;
+    return estimatePoolShare(pointsSim.k, userBase, userMult, sumBoostedBaseSq, amt, actionWeight);
   };
 
   const handleStake = () => {
@@ -1257,6 +1294,7 @@ export default function MoatDetail() {
                         </div>
                         <PointsEstimateBox
                           gained={getEstimatedPoints(stakeAmount, 1)}
+                          poolShare={getEstimatedPoolShare(stakeAmount, 1)}
                           ready={pointsSim.ready}
                           loading={pointsSim.loading}
                           hasAmount={!!stakeAmount && parseFloat(stakeAmount) > 0}
@@ -1358,6 +1396,7 @@ export default function MoatDetail() {
                         </div>
                         <PointsEstimateBox
                           gained={getEstimatedPoints(lockAmount, lockWeightForDays(lockDays))}
+                          poolShare={getEstimatedPoolShare(lockAmount, lockWeightForDays(lockDays))}
                           ready={pointsSim.ready}
                           loading={pointsSim.loading}
                           hasAmount={!!lockAmount && parseFloat(lockAmount) > 0}
@@ -1494,6 +1533,7 @@ export default function MoatDetail() {
                         </div>
                         <PointsEstimateBox
                           gained={getEstimatedPoints(burnAmount, 10)}
+                          poolShare={getEstimatedPoolShare(burnAmount, 10)}
                           ready={pointsSim.ready}
                           loading={pointsSim.loading}
                           hasAmount={!!burnAmount && parseFloat(burnAmount) > 0}

@@ -100,3 +100,40 @@ export function estimateMoatPoints(
   const newTotal = Math.sqrt(k * newWeighted);
   return { gained: Math.max(0, newTotal - currentPoints), newTotal };
 }
+
+/**
+ * Estimate the wallet's resulting share of the moat ("Moat Weight" / % of
+ * pool) after a position change.
+ *
+ * Verified empirically against the Fortifi leaderboard's `weight` field: a
+ * wallet's pool weight is proportional to its BOOSTED linear position —
+ *
+ *     contribution = basePoints^2 * boostMultiplier   (∝ weighted * boost)
+ *     weight%      = contribution / Σ contribution * 100
+ *
+ * basePoints^2 = k * weighted, so adding `amount * actionWeight` to the
+ * wallet's weighted position raises its basePoints^2 by `k * amount *
+ * actionWeight`. The NFT boost multiplier is unchanged by a stake/lock/burn,
+ * so it scales the wallet's new contribution and the pool delta alike.
+ *
+ * `sumBoostedBaseSq` = Σ(basePoints^2 * boostMultiplier) over the leaderboard,
+ * and `userBasePoints` / `userBoostMultiplier` come from the wallet's
+ * leaderboard entry (base 0 / mult 1 when the wallet has no current position).
+ */
+export function estimatePoolShare(
+  k: number,
+  userBasePoints: number,
+  userBoostMultiplier: number,
+  sumBoostedBaseSq: number,
+  amount: number,
+  actionWeight: number,
+): number | null {
+  if (k <= 0 || sumBoostedBaseSq <= 0) return null;
+  const mult = userBoostMultiplier > 0 ? userBoostMultiplier : 1;
+  const userBaseSq = userBasePoints > 0 ? userBasePoints * userBasePoints : 0;
+  const deltaSq = amount > 0 ? k * amount * actionWeight : 0;
+  const newUserContrib = (userBaseSq + deltaSq) * mult;
+  const newTotalContrib = sumBoostedBaseSq + deltaSq * mult;
+  if (newTotalContrib <= 0) return null;
+  return (newUserContrib / newTotalContrib) * 100;
+}
