@@ -707,8 +707,8 @@ export default function MoatDetail() {
                       key={token._id}
                       className="p-4 rounded-xl border border-transparent bg-card/40 backdrop-blur-sm transition-all duration-200"
                       style={{
-                        background: "linear-gradient(hsl(var(--card) / 0.5), hsl(var(--card) / 0.5)) padding-box, linear-gradient(135deg, rgba(52,211,153,0.55) 0%, rgba(0,212,255,0.1) 100%) border-box",
-                        boxShadow: "0 0 16px rgba(52,211,153,0.06)",
+                        background: "linear-gradient(hsl(var(--card) / 0.5), hsl(var(--card) / 0.5)) padding-box, linear-gradient(135deg, rgba(52,211,153,0.3) 0%, rgba(0,212,255,0.08) 100%) border-box",
+                        boxShadow: "0 0 16px rgba(52,211,153,0.04)",
                       }}
                     >
                       <div className="flex items-center justify-between mb-2">

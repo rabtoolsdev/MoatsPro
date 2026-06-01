@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { useReadContracts, useAccount } from "wagmi";
 import { useAppKit, useAppKitNetwork } from "@reown/appkit/react";
 import { CHAIN_DISPLAY } from "@/lib/wagmi-config";
-import { Wallet, ArrowRight } from "lucide-react";
+import { Wallet, ArrowRight, Search, ArrowUpDown, X } from "lucide-react";
 import { formatUnits } from "viem";
 import { useAllMoatConfigs, useMapsLeaderboard, useEvents, useAllRewardsDeposited } from "@/hooks/use-moats-api";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
@@ -33,6 +33,8 @@ const heroWords = ["Stake.", "Lock.", "Burn.", "Earn."];
 export default function Home() {
   const [statusFilter, setStatusFilter] = useState<string>("Verified");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"tvm" | "name" | "supply">("tvm");
   const { isConnected, address } = useAccount();
   const { open } = useAppKit();
   const { chainId } = useAppKitNetwork();
@@ -456,11 +458,28 @@ export default function Home() {
           // OR semantics: show moat if it carries ANY of the selected tags.
           return selectedTags.some((t) => names.has(t));
         })
-  ).sort((a, b) => {
-    const tvmA = tvmMap[a.contractAddress.toLowerCase()] ?? 0;
-    const tvmB = tvmMap[b.contractAddress.toLowerCase()] ?? 0;
-    return tvmB - tvmA;
-  });
+  )
+    .filter((c) => {
+      const q = searchQuery.trim().toLowerCase();
+      if (!q) return true;
+      return (
+        c.meta.name.toLowerCase().includes(q) ||
+        (c.meta.protocol ?? "").toLowerCase().includes(q) ||
+        (c.meta.tokenSymbol ?? "").toLowerCase().includes(q) ||
+        c.contractAddress.toLowerCase().includes(q)
+      );
+    })
+    .sort((a, b) => {
+      if (sortBy === "name") return a.meta.name.localeCompare(b.meta.name);
+      if (sortBy === "supply") {
+        const sa = supplyPctMap[a.contractAddress.toLowerCase()] ?? 0;
+        const sb = supplyPctMap[b.contractAddress.toLowerCase()] ?? 0;
+        return sb - sa;
+      }
+      const tvmA = tvmMap[a.contractAddress.toLowerCase()] ?? 0;
+      const tvmB = tvmMap[b.contractAddress.toLowerCase()] ?? 0;
+      return tvmB - tvmA;
+    });
 
   const toggleTag = (name: string) =>
     setSelectedTags((cur) =>
@@ -489,7 +508,7 @@ export default function Home() {
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <Navbar />
       {/* Hero */}
-      <section className="relative pt-32 pb-24 px-4 overflow-hidden">
+      <section className="relative pt-32 pb-16 px-4 overflow-hidden">
         {/* Animated grid background */}
         <div className="absolute inset-0 bg-grid-animated opacity-60 pointer-events-none" />
         {/* Radial vignette over grid */}
@@ -523,7 +542,7 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.55 }}
-            className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10"
+            className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8"
           >Earn real yield from the most powerful DeFi liquidity positions. Premium analytics. On chain forever.</motion.p>
 
           <motion.div
@@ -651,23 +670,98 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Search + sort controls */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-8">
+          <div className="relative flex-1 sm:max-w-sm">
+            <Search
+              size={15}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+            />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search moats, tokens, protocols…"
+              data-testid="input-search-moats"
+              aria-label="Search moats, tokens, and protocols"
+              className="w-full pl-9 pr-9 py-2 rounded-lg bg-card/40 border border-border text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/30 transition-all"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                data-testid="btn-clear-search"
+                aria-label="Clear search"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          <div
+            role="group"
+            aria-label="Sort moats"
+            className="flex items-center gap-2 sm:ml-auto"
+          >
+            <ArrowUpDown size={14} className="text-muted-foreground shrink-0" />
+            <div className="flex gap-1.5 flex-wrap">
+              {([
+                ["tvm", "TVM"],
+                ["name", "Name"],
+                ["supply", "% Supply"],
+              ] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => setSortBy(key)}
+                  data-testid={`sort-${key}`}
+                  aria-pressed={sortBy === key}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    sortBy === key
+                      ? "bg-primary/15 border border-primary/60 text-foreground"
+                      : "border border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {configsLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
               <div
                 key={i}
-                className="h-72 rounded-2xl skeleton-shimmer border border-border"
+                className="h-80 rounded-2xl skeleton-shimmer border border-border"
               />
             ))}
           </div>
         ) : filteredMoats.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
-            <p className="text-lg">
-              No Moats found{activeChainLabel ? ` on ${activeChainLabel}` : ""}
-            </p>
-            <p className="text-sm mt-2">
-              Try switching networks from the chain selector at the top right.
-            </p>
+            {searchQuery ? (
+              <>
+                <p className="text-lg">No moats match "{searchQuery}"</p>
+                <p className="text-sm mt-2">
+                  Try a different search or{" "}
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="text-primary hover:underline underline-offset-2"
+                  >
+                    clear the search
+                  </button>
+                  .
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-lg">
+                  No Moats found{activeChainLabel ? ` on ${activeChainLabel}` : ""}
+                </p>
+                <p className="text-sm mt-2">
+                  Try switching networks from the chain selector at the top right.
+                </p>
+              </>
+            )}
           </div>
         ) : (
           <motion.div

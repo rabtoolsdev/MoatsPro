@@ -42,6 +42,14 @@ const statusColors: Record<string, { border: string; badge: string; text: string
   },
 };
 
+// Generic placeholder strategy copied across many Moats — adds no signal on a card.
+function isBoilerplateStrategy(s: string): boolean {
+  return s
+    .trim()
+    .toLowerCase()
+    .includes("managed and distributed independently by the team");
+}
+
 const networkLabels: Record<string, string> = {
   avalanche: "Avalanche",
   ethereum: "Ethereum",
@@ -153,7 +161,7 @@ export function MoatCard({ moat, tvlUSD, supplyPct, logoUrl, dexLiquidityUSD, de
             </div>
           </div>
 
-          {moat.rewardStrategy && (
+          {moat.rewardStrategy && !isBoilerplateStrategy(moat.rewardStrategy) && (
             <p className="text-xs text-muted-foreground mb-4 line-clamp-2 leading-relaxed">
               {moat.rewardStrategy}
             </p>
@@ -267,17 +275,6 @@ export function MoatCard({ moat, tvlUSD, supplyPct, logoUrl, dexLiquidityUSD, de
                 </div>
               );
             })()}
-            {tvlUSD !== undefined && tvlUSD > 0 && (
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">TVM</span>
-                <span
-                  data-testid={`text-tvl-${moat.contractAddress}`}
-                  className="font-bold text-foreground tabular-nums"
-                >
-                  {formatUSD(tvlUSD)}
-                </span>
-              </div>
-            )}
             {dexLiquidityUSD !== undefined && dexLiquidityUSD > 0 && (
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground inline-flex items-center gap-1">
@@ -297,20 +294,41 @@ export function MoatCard({ moat, tvlUSD, supplyPct, logoUrl, dexLiquidityUSD, de
                 </span>
               </div>
             )}
-            {supplyPct !== undefined && supplyPct > 0 && (
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">% of Supply</span>
-                <span className="font-bold text-cyan-400 tabular-nums">
-                  {supplyPct >= 0.01 ? `${supplyPct.toFixed(2)}%` : "<0.01%"}
-                </span>
+
+            {/* Headline metrics: TVM is the primary signal, % of supply secondary */}
+            {((tvlUSD !== undefined && tvlUSD > 0) ||
+              (supplyPct !== undefined && supplyPct > 0)) && (
+              <div className="flex items-end justify-between gap-3 pt-1">
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                    Total Value Moated
+                  </p>
+                  <p
+                    data-testid={`text-tvl-${moat.contractAddress}`}
+                    className="text-lg font-bold text-foreground tabular-nums leading-tight"
+                  >
+                    {tvlUSD !== undefined && tvlUSD > 0 ? formatUSD(tvlUSD) : "—"}
+                  </p>
+                </div>
+                {supplyPct !== undefined && supplyPct > 0 && (
+                  <div className="text-right shrink-0">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                      % of Supply
+                    </p>
+                    <p className="text-sm font-bold text-cyan-400 tabular-nums leading-tight">
+                      {supplyPct >= 0.01 ? `${supplyPct.toFixed(2)}%` : "<0.01%"}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
-            {/* View arrow on hover */}
-            <div className="flex justify-end -mb-1">
+            {/* View moat affordance */}
+            <div className="flex items-center justify-end gap-1 pt-1 text-xs font-medium text-muted-foreground/50 group-hover:text-primary transition-colors duration-200">
+              View moat
               <ArrowRight
-                size={14}
-                className="text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all duration-200"
+                size={13}
+                className="group-hover:translate-x-0.5 transition-transform duration-200"
               />
             </div>
           </div>
