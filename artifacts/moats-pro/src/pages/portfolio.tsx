@@ -1,10 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { useAccount, useReadContracts } from "wagmi";
 import { useAppKit } from "@reown/appkit/react";
 import { formatUnits } from "viem";
 import { motion } from "framer-motion";
-import { Wallet, TrendingUp, Award, AlertCircle, ArrowDownRight, Lock, DollarSign, ArrowUpRight, Flame, Gift, Zap, Sparkles } from "lucide-react";
+import { Wallet, TrendingUp, Award, AlertCircle, ArrowDownRight, Lock, DollarSign, ArrowUpRight, Flame, Gift, Zap, Sparkles, ArrowUpDown } from "lucide-react";
 import btcbLogo from "@assets/logobtc_1777735570322.png";
 
 const USDC_LOGO_URL =
@@ -37,6 +37,7 @@ function formatTokenAmount(raw: bigint, decimals: number = 18): string {
 export default function Portfolio() {
   const { address, isConnected } = useAccount();
   const { open } = useAppKit();
+  const [sortBy, setSortBy] = useState<"points" | "value" | "name">("points");
   const { data: mapsScore, isLoading: scoreLoading } = useMapsScore(address);
   const { data: configs, isLoading: configsLoading } = useAllMoatConfigs();
   const { data: userEvents, isLoading: eventsLoading } = useUserEvents(address);
@@ -483,7 +484,7 @@ export default function Portfolio() {
         ) : (
           <div className="space-y-8">
             {/* Stats row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -621,11 +622,39 @@ export default function Portfolio() {
 
             {/* Active Positions */}
             <div>
-              <h2 className="text-xl font-bold mb-4">My Positions</h2>
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <h2 className="text-xl font-bold">My Positions</h2>
+                {!isPositionsLoading && activePositions.length > 1 && (
+                  <div role="group" aria-label="Sort positions" className="flex items-center gap-2">
+                    <ArrowUpDown size={14} className="text-muted-foreground shrink-0" />
+                    <div className="flex gap-1.5 flex-wrap">
+                      {([
+                        ["points", "Points"],
+                        ["value", "Value"],
+                        ["name", "Name"],
+                      ] as const).map(([key, label]) => (
+                        <button
+                          key={key}
+                          onClick={() => setSortBy(key)}
+                          data-testid={`sort-positions-${key}`}
+                          aria-pressed={sortBy === key}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                            sortBy === key
+                              ? "bg-primary/15 border border-primary/60 text-foreground"
+                              : "border border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
               {isPositionsLoading ? (
                 <div className="space-y-3">
                   {[...Array(3)].map((_, i) => (
-                    <div key={i} className="h-24 rounded-2xl skeleton-shimmer border border-border" />
+                    <div key={i} className="h-32 rounded-2xl skeleton-shimmer border border-border" />
                   ))}
                 </div>
               ) : activePositions.length === 0 ? (
@@ -637,6 +666,13 @@ export default function Portfolio() {
                 <div className="space-y-3">
                   {[...activePositions.keys()]
                     .sort((a, b) => {
+                      if (sortBy === "value") {
+                        return getPositionValueUSD(activePositions[b], b) - getPositionValueUSD(activePositions[a], a);
+                      }
+                      if (sortBy === "name") {
+                        return getMoatMeta(activePositions[a].config.contractAddress).name
+                          .localeCompare(getMoatMeta(activePositions[b].config.contractAddress).name);
+                      }
                       const ptsA = moatPointsMap[activePositions[a].config.contractAddress.toLowerCase()] ?? 0;
                       const ptsB = moatPointsMap[activePositions[b].config.contractAddress.toLowerCase()] ?? 0;
                       return ptsB - ptsA;
@@ -658,8 +694,9 @@ export default function Portfolio() {
                         key={pos.config.contractAddress}
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
+                        whileHover={{ y: -2 }}
                         transition={{ delay: i * 0.04 }}
-                        className="rounded-2xl border border-border bg-card/30 p-5"
+                        className="rounded-2xl border border-border bg-card/30 p-5 hover:border-primary/30 hover:bg-card/40 transition-colors duration-200"
                       >
                         <div className="flex items-center justify-between gap-4">
                           <div className="flex items-center gap-3 min-w-0">
@@ -709,6 +746,29 @@ export default function Portfolio() {
                           </div>
                         </div>
 
+                        {(posVal > 0 || dailyUSD > 0) && (
+                          <div className="flex items-end justify-between gap-4 mt-4 pt-4 border-t border-border/40">
+                            <div className="min-w-0">
+                              <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                                Position Value
+                              </p>
+                              <p className="text-2xl font-bold text-primary tabular-nums leading-tight">
+                                {posVal > 0 ? formatUSD(posVal) : "—"}
+                              </p>
+                            </div>
+                            {dailyUSD > 0 && (
+                              <div className="text-right shrink-0">
+                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                                  Est. Rewards
+                                </p>
+                                <p className="text-sm font-bold text-emerald-400 tabular-nums leading-tight">
+                                  {formatUSD(dailyUSD)}/day
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
                         <div className="flex flex-wrap gap-x-6 gap-y-3 mt-4">
                           {pos.stakedAmount > 0n && (
                             <div className="flex items-center gap-2">
@@ -754,24 +814,6 @@ export default function Portfolio() {
                                   {formatPoints(mapsPoints)}
                                 </p>
                                 <p className="text-xs text-muted-foreground">Moat Points</p>
-                              </div>
-                            </div>
-                          )}
-                          {posVal > 0 && (
-                            <div className="flex items-center gap-2">
-                              <DollarSign size={14} className="text-primary" />
-                              <div>
-                                <p className="text-sm font-bold text-primary">{formatUSD(posVal)}</p>
-                                <p className="text-xs text-muted-foreground">Position Value</p>
-                              </div>
-                            </div>
-                          )}
-                          {dailyUSD > 0 && (
-                            <div className="flex items-center gap-2">
-                              <DollarSign size={14} className="text-emerald-400" />
-                              <div>
-                                <p className="text-sm font-bold text-emerald-400">{formatUSD(dailyUSD)}/day</p>
-                                <p className="text-xs text-muted-foreground">Est. Rewards</p>
                               </div>
                             </div>
                           )}
@@ -858,7 +900,7 @@ export default function Portfolio() {
                         <div
                           key={row.address}
                           data-testid={`row-claimed-${row.symbol.toLowerCase()}`}
-                          className="px-5 py-3 flex items-center justify-between gap-4"
+                          className="px-5 py-3 flex items-center justify-between gap-4 hover:bg-card/40 transition-colors"
                         >
                           <span className="text-sm font-semibold">Total {row.symbol} Claimed</span>
                           <div className="flex items-center gap-4 shrink-0">
@@ -891,7 +933,7 @@ export default function Portfolio() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: i * 0.02 }}
-                        className="px-5 py-3 flex items-center justify-between gap-4"
+                        className="px-5 py-3 flex items-center justify-between gap-4 hover:bg-card/40 transition-colors"
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           <span className={`text-sm font-semibold shrink-0 ${getEventTypeColor(ev.eventType)}`}>
@@ -915,6 +957,20 @@ export default function Portfolio() {
                         </div>
                       </motion.div>
                     ))}
+                    {ownTransactions.length > 20 && (
+                      <div className="px-5 py-3 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                        <span>Showing latest 20 of {ownTransactions.length} transactions</span>
+                        <a
+                          href={`${getExplorerUrl(ownTransactions[0].network)}/address/${address}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-primary/70 hover:text-primary transition-colors"
+                        >
+                          View all on explorer
+                          <ArrowDownRight size={12} />
+                        </a>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
