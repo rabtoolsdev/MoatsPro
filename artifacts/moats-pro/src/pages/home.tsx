@@ -308,7 +308,15 @@ export default function Home() {
   const dailyEstimates = useDailyRewardEstimates(configs);
   const poolBalances = useRewardPoolBalances(configs);
 
-  const getTokenPrice = (_network: string, tokenAddr: string): number => {
+  const getTokenPrice = (network: string, tokenAddr: string): number => {
+    // Prefer DefiLlama's canonical price (this is what moats.app shows). It
+    // aggregates across sources and filters outlier/illiquid pools, whereas a
+    // raw DexScreener liquidity-weighted average can be skewed by a stale or
+    // thin pool — e.g. MYST had a vapordex pool ~3x the real price that
+    // inflated the moat's TVM. Fall back to DexScreener only when DefiLlama has
+    // no price for the token.
+    const llama = priceMap?.[getLlamaId(network, tokenAddr).toLowerCase()] ?? 0;
+    if (llama > 0) return llama;
     return dexInfoMap?.[tokenAddr.toLowerCase()]?.price ?? 0;
   };
 
