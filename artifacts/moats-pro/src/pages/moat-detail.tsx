@@ -769,13 +769,25 @@ export default function MoatDetail() {
                           <span className="font-medium text-foreground">
                             {(() => {
                               const v = token.totalRewardsDeposited;
-                              if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M`;
-                              if (v >= 1_000) return `${(v / 1_000).toFixed(0)}K`;
-                              if (v >= 1) return v.toLocaleString(undefined, { maximumFractionDigits: 2 });
-                              if (v > 0) return parseFloat(v.toPrecision(8)).toString();
-                              return "0";
-                            })()}{" "}
-                            {token.symbol}
+                              const fmt =
+                                v >= 1_000_000 ? `${(v / 1_000_000).toFixed(2)}M`
+                                : v >= 1_000 ? `${(v / 1_000).toFixed(0)}K`
+                                : v >= 1 ? v.toLocaleString(undefined, { maximumFractionDigits: 2 })
+                                : v > 0 ? parseFloat(v.toPrecision(8)).toString()
+                                : "0";
+                              const usd = getRewardTokenPrice(token.tokenAddress);
+                              const totalUSD = usd && v > 0 ? v * usd : 0;
+                              return (
+                                <>
+                                  {fmt} {token.symbol}
+                                  {totalUSD > 0 && (
+                                    <span className="text-emerald-400 ml-1">
+                                      ({formatUSD(totalUSD)})
+                                    </span>
+                                  )}
+                                </>
+                              );
+                            })()}
                           </span>
                         </div>
                         {token.lastProcessed && (
