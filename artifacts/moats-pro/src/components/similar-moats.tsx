@@ -1,14 +1,15 @@
 import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
+import { useReadContracts } from "wagmi";
 import { MoatCard } from "@/components/moat-card";
 import { useAllMoatConfigs } from "@/hooks/use-moats-api";
-import { useProtocolEvents } from "@/hooks/use-protocol-events";
+import { useTrendingMoats } from "@/hooks/use-trending-moats";
 import { useDailyRewardEstimates } from "@/hooks/use-daily-reward-estimates";
 import { useRewardPoolBalances } from "@/hooks/use-reward-pool-balances";
-import type { MoatConfig, MoatEvent } from "@/lib/moats-api";
+import { MOAT_LOGO_ABI } from "@/lib/moat-abi";
+import type { MoatConfig } from "@/lib/moats-api";
 
-const SEVEN_DAYS_MS = 7 * 86400_000;
 const MAX_RESULTS = 3;
 
 function enabledRewardAddrs(c: MoatConfig): Set<string> {
@@ -35,45 +36,43 @@ function jaccard(a: Set<string>, b: Set<string>): number {
   return union === 0 ? 0 : inter / union;
 }
 
-function eventMs(e: MoatEvent): number {
-  const t = new Date(e.timestamp).getTime();
-  return isFinite(t) ? t : 0;
+// Proximity in a scalar signal: 1 when identical, →0 as the gap widens.
+// "No data on either side" (incl. while streams are still loading) is treated as
+// a neutral 0 so it never inflates the score for otherwise-unrelated moats.
+function proximity(a: number, b: number, max: number): number {
+  if (a === 0 && b === 0) return 0;
+  return Math.max(0, Math.min(1, 1 - Math.abs(a - b) / max));
 }
 
 /**
  * Discovery section shown below the activity feed on a Moat detail page.
  * Recommends related moats scored by a weighted blend of:
- *   - overlapping enabled reward tokens (reward-distribution similarity)
+ *   - overlapping enabled reward tokens (which rewards are distributed)
  *   - shared tags and matching status category (tagging system)
+ *   - proximity in 7d rewards distributed, USD (reward-distribution scale)
  *   - proximity in 7d active wallets (active users)
  *   - same network
  * Reward-token / tag / status / network signals come from config alone; the
- * active-users signal reuses the app-wide, react-query-cached event streams.
+ * rewards-scale and active-users signals reuse the same cached aggregation that
+ * powers the trending feed, so the numbers stay consistent across the app.
  */
 export function SimilarMoats({ currentMoat }: { currentMoat: MoatConfig }) {
   const { data: configs } = useAllMoatConfigs();
-  const ev = useProtocolEvents();
+  // Reuse the trending aggregation (cached protocol events + pricing) to get
+  // per-moat 7d rewards distributed (USD) and 7d active wallets for every moat.
+  const { trending } = useTrendingMoats({ configs, limit: 9999 });
 
-  // Unique active wallets over the last 7d per moat (Staked|Locked|Burned|
-  // RewardClaimed|LockExited) — same definition used by the trending feed.
+  const rewards7dUsd = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const t of trending) m[t.config.contractAddress.toLowerCase()] = t.rewards7dUsd;
+    return m;
+  }, [trending]);
+
   const activeWallets7d = useMemo(() => {
-    const sinceMs = Date.now() - SEVEN_DAYS_MS;
-    const m: Record<string, Set<string>> = {};
-    const sources = [ev.staked, ev.locked, ev.burned, ev.rewardClaimed, ev.lockExited];
-    for (const arr of sources) {
-      for (const e of arr) {
-        const ms = eventMs(e);
-        if (!ms || ms < sinceMs) continue;
-        const moat = e.contractAddress.toLowerCase();
-        const user = (e.args?.user as string | undefined)?.toLowerCase();
-        if (!user) continue;
-        (m[moat] ??= new Set<string>()).add(user);
-      }
-    }
-    const out: Record<string, number> = {};
-    for (const [k, v] of Object.entries(m)) out[k] = v.size;
-    return out;
-  }, [ev.staked, ev.locked, ev.burned, ev.rewardClaimed, ev.lockExited]);
+    const m: Record<string, number> = {};
+    for (const t of trending) m[t.config.contractAddress.toLowerCase()] = t.activeWallets7d;
+    return m;
+  }, [trending]);
 
   const similar = useMemo<MoatConfig[]>(() => {
     if (!configs) return [];
@@ -81,7 +80,9 @@ export function SimilarMoats({ currentMoat }: { currentMoat: MoatConfig }) {
     const curRewards = enabledRewardAddrs(currentMoat);
     const curTags = tagNames(currentMoat);
     const curActive = activeWallets7d[currentKey] ?? 0;
+    const curRewUsd = rewards7dUsd[currentKey] ?? 0;
     const maxActive = Math.max(1, ...Object.values(activeWallets7d));
+    const maxRewUsd = Math.max(1, ...Object.values(rewards7dUsd));
 
     const scored = configs
       .filter(
@@ -90,6 +91,7 @@ export function SimilarMoats({ currentMoat }: { currentMoat: MoatConfig }) {
           c.status !== "Deprecated",
       )
       .map((c) => {
+        const key = c.contractAddress.toLowerCase();
         const rewardSim = jaccard(curRewards, enabledRewardAddrs(c));
         const tagSim = jaccard(curTags, tagNames(c));
         const sameStatus = c.status === currentMoat.status ? 1 : 0;
@@ -98,39 +100,64 @@ export function SimilarMoats({ currentMoat }: { currentMoat: MoatConfig }) {
           (currentMoat.network ?? "").toLowerCase()
             ? 1
             : 0;
-        const other = activeWallets7d[c.contractAddress.toLowerCase()] ?? 0;
-        // Proximity in active users: 1 when identical, →0 as the gap widens.
-        // Treat "no activity on either side" (including while the event streams
-        // are still loading) as a neutral 0 so it never inflates the score for
-        // otherwise-unrelated moats.
-        const activeSim =
-          curActive === 0 && other === 0
-            ? 0
-            : Math.max(0, Math.min(1, 1 - Math.abs(curActive - other) / maxActive));
+        const activeSim = proximity(curActive, activeWallets7d[key] ?? 0, maxActive);
+        const rewardScaleSim = proximity(curRewUsd, rewards7dUsd[key] ?? 0, maxRewUsd);
 
         const score =
           rewardSim * 5 +
           tagSim * 3 +
+          rewardScaleSim * 2 +
           activeSim * 2 +
           sameStatus * 1 +
           sameNetwork * 1;
 
         return { config: c, score };
       })
-      // Keep meaningfully related moats: real reward/tag overlap, or at least
-      // the same network so the list stays relevant rather than random.
-      .filter((r) => r.score > 1)
+      // Require genuine relatedness: same network + same status alone (=2) is not
+      // enough — a result needs real reward/tag/scale/activity overlap on top.
+      .filter((r) => r.score > 2)
       .sort((a, b) => b.score - a.score)
       .slice(0, MAX_RESULTS)
       .map((r) => r.config);
 
     return scored;
-  }, [configs, currentMoat, activeWallets7d]);
+  }, [configs, currentMoat, activeWallets7d, rewards7dUsd]);
 
   // Light on-chain reads (balanceOf) only for the few recommended moats, so
   // their reward labels and "Total Pool" render the same as on Explore.
   const dailyEstimates = useDailyRewardEstimates(similar);
   const poolBalances = useRewardPoolBalances(similar);
+
+  // On-chain getLogoURL() for just the recommended moats, so the cards show the
+  // real moat logos (matching Explore) instead of falling back to initials.
+  const logoContracts = useMemo(
+    () =>
+      similar.map((c) => ({
+        address: c.contractAddress as `0x${string}`,
+        abi: MOAT_LOGO_ABI,
+        functionName: "getLogoURL" as const,
+      })),
+    [similar],
+  );
+  const { data: logoData } = useReadContracts({
+    contracts: logoContracts,
+    query: {
+      enabled: logoContracts.length > 0,
+      staleTime: 5 * 60 * 1000,
+      gcTime: 30 * 60 * 1000,
+    },
+  });
+  const logoMap = useMemo((): Record<string, string> => {
+    const m: Record<string, string> = {};
+    if (!logoData) return m;
+    similar.forEach((c, i) => {
+      const r = logoData[i];
+      if (r?.status === "success" && typeof r.result === "string" && r.result.length > 0) {
+        m[c.contractAddress.toLowerCase()] = r.result;
+      }
+    });
+    return m;
+  }, [logoData, similar]);
 
   if (!configs) {
     return (
@@ -174,6 +201,7 @@ export function SimilarMoats({ currentMoat }: { currentMoat: MoatConfig }) {
           <MoatCard
             key={moat.contractAddress}
             moat={moat}
+            logoUrl={logoMap[moat.contractAddress.toLowerCase()]}
             dailyEstimates={dailyEstimates}
             poolBalances={poolBalances}
           />
