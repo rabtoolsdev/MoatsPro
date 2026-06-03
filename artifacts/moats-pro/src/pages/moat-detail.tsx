@@ -341,7 +341,18 @@ export default function MoatDetail() {
   const stakingLlamaId = stats.stakingToken ? getLlamaId(network, stats.stakingToken) : "";
   const allLlamaIds = [...new Set([...rewardLlamaIds, ...(stakingLlamaId ? [stakingLlamaId] : [])])];
   const { data: priceMap } = useTokenPrices(allLlamaIds);
-  const { data: dexInfoMap } = useDexscreenerInfo(stats.stakingToken ? [stats.stakingToken] : []);
+  // Query DexScreener for the staking token AND every enabled reward token so
+  // we can show a USD value for reward tokens that aren't listed on DefiLlama
+  // (e.g. HEFE), falling back to DexScreener's liquidity-weighted price.
+  const dexLookupAddrs = useMemo(() => {
+    const addrs = new Set<string>();
+    if (stats.stakingToken) addrs.add(stats.stakingToken);
+    for (const t of enabledRewardTokens) {
+      if (t.tokenAddress) addrs.add(t.tokenAddress);
+    }
+    return [...addrs];
+  }, [stats.stakingToken, enabledRewardTokens]);
+  const { data: dexInfoMap } = useDexscreenerInfo(dexLookupAddrs);
   useResolveMoatMetas(
     contractAddress
       ? [{ contractAddress, stakingToken: stats.stakingToken ?? undefined, network }]
@@ -360,6 +371,12 @@ export default function MoatDetail() {
   const stakingTokenPrice = stats.stakingToken
     ? (dexInfoMap?.[stats.stakingToken.toLowerCase()]?.price ?? 0)
     : 0;
+  // Unified USD price for a reward token: prefer DefiLlama, fall back to
+  // DexScreener so reward tokens missing from Llama still show a dollar value.
+  const getRewardTokenPrice = (tokenAddr: string): number => {
+    const id = getLlamaId(network, tokenAddr);
+    return priceMap?.[id] ?? dexInfoMap?.[tokenAddr.toLowerCase()]?.price ?? 0;
+  };
 
   const pendingRewardTokenAddrs = userInfo.pendingRewards?.[0] ?? [];
   const { data: pendingRewardDecimals } = useReadContracts({
@@ -943,8 +960,7 @@ export default function MoatDetail() {
                       {userInfo.pendingRewards[0].map((token, i) => {
                         const rewardDec = getPendingRewardDecimals(i);
                         const amount = parseFloat(formatUnits(userInfo.pendingRewards![1][i], rewardDec));
-                        const llamaId = getLlamaId(network, token);
-                        const price = priceMap?.[llamaId] ?? 0;
+                        const price = getRewardTokenPrice(token);
                         const usdVal = amount * price;
                         const rewardConfig = moatConfig?.rewardTokens.find(
                           (t) => t.tokenAddress?.toLowerCase() === token.toLowerCase()
@@ -1692,8 +1708,7 @@ export default function MoatDetail() {
                     const cfg = moatConfig?.rewardTokens.find(
                       (t) => t.tokenAddress?.toLowerCase() === token.toLowerCase()
                     );
-                    const llamaId = getLlamaId(network, token);
-                    const usd = amt * (priceMap?.[llamaId] ?? 0);
+                    const usd = amt * getRewardTokenPrice(token);
                     return { token, amt, cfg, usd };
                   }).filter((r) => r.amt > 0);
 
