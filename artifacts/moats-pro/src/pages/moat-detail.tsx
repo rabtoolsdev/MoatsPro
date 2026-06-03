@@ -21,6 +21,7 @@ import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { ActivityFeed } from "@/components/activity-feed";
 import { MoatLogo } from "@/components/moat-card";
+import { SimilarMoats } from "@/components/similar-moats";
 import { formatAddress, formatPoints, timeAgo, getMoatMeta, formatUSD } from "@/lib/moat-metadata";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
 import { useDexscreenerInfo } from "@/hooks/use-dexscreener";
@@ -1210,6 +1211,9 @@ export default function MoatDetail() {
                 <ActivityFeed events={eventsData.results.slice(0, 8)} moatConfigs={moatConfig ? [moatConfig] : undefined} />
               </div>
             )}
+
+            {/* Similar Moats — discovery section based on shared rewards, tags & activity */}
+            {moatConfig && <SimilarMoats currentMoat={moatConfig} />}
           </div>
 
           {/* Right: Action Panel */}
