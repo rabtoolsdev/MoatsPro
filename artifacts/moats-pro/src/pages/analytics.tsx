@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
-import { motion, useInView } from "framer-motion";
+import { motion, AnimatePresence, useInView } from "framer-motion";
 import { useReadContracts } from "wagmi";
 import { formatUnits } from "viem";
 import {
@@ -28,6 +28,9 @@ import {
   Gift,
   Flame,
   Lock as LockIcon,
+  TrendingUp,
+  ChevronDown,
+  Search,
 } from "lucide-react";
 import { useAllMoatConfigs } from "@/hooks/use-moats-api";
 import { useProtocolEvents } from "@/hooks/use-protocol-events";
@@ -204,12 +207,164 @@ function ChartCard({
   );
 }
 
+// ---- searchable Moat selector ----
+function MoatSelect({
+  options,
+  value,
+  onChange,
+}: {
+  options: { address: string; name: string }[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const selectedLabel =
+    value === "ALL"
+      ? "All Moats"
+      : options.find((o) => o.address.toLowerCase() === value.toLowerCase())?.name ?? "Unknown Moat";
+  const filtered = q
+    ? options.filter((o) => o.name.toLowerCase().includes(q.toLowerCase()))
+    : options;
+
+  const pick = (v: string) => {
+    onChange(v);
+    setOpen(false);
+    setQ("");
+  };
+
+  return (
+    <div ref={ref} className="relative" data-testid="moat-select">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        data-testid="moat-select-trigger"
+        className="inline-flex items-center justify-between gap-2 rounded-lg border border-border bg-card/40 px-3 py-1.5 text-xs font-medium hover:border-primary/40 transition-colors min-w-[150px] max-w-[220px]"
+      >
+        <span className="truncate">{selectedLabel}</span>
+        <ChevronDown
+          size={14}
+          className={`shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.15 }}
+            className="absolute right-0 z-50 mt-2 w-64 rounded-xl border border-border bg-card/95 backdrop-blur-xl shadow-2xl shadow-black/50 overflow-hidden"
+          >
+            <div className="p-2 border-b border-border/50">
+              <div className="relative">
+                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  autoFocus
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="Search Moats…"
+                  data-testid="moat-select-search"
+                  className="w-full rounded-lg bg-background/60 border border-border/60 pl-8 pr-2 py-1.5 text-xs outline-none focus:border-primary/50"
+                />
+              </div>
+            </div>
+            <div className="max-h-64 overflow-y-auto py-1">
+              <button
+                onClick={() => pick("ALL")}
+                data-testid="moat-option-all"
+                className={`w-full text-left px-3 py-2 text-xs hover:bg-muted/30 transition-colors ${
+                  value === "ALL" ? "text-primary font-medium" : ""
+                }`}
+              >
+                All Moats
+              </button>
+              {filtered.map((o) => (
+                <button
+                  key={o.address}
+                  onClick={() => pick(o.address)}
+                  data-testid={`moat-option-${o.address.toLowerCase()}`}
+                  className={`w-full text-left px-3 py-2 text-xs hover:bg-muted/30 transition-colors truncate ${
+                    value.toLowerCase() === o.address.toLowerCase() ? "text-primary font-medium" : ""
+                  }`}
+                >
+                  {o.name}
+                </button>
+              ))}
+              {filtered.length === 0 && (
+                <p className="px-3 py-3 text-xs text-muted-foreground">No Moats found.</p>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export default function Analytics() {
   const [tf, setTf] = useState<Timeframe>("30D");
+  const [selectedMoat, setSelectedMoat] = useState<string>("ALL");
   const startMs = timeframeStart(tf);
 
   const { data: configs } = useAllMoatConfigs();
-  const ev = useProtocolEvents();
+  const rawEv = useProtocolEvents();
+
+  // When a single Moat is selected, filter every event stream at the source so
+  // all downstream daily-bucket / totals / token-mix memos automatically
+  // re-scope to that Moat (DO NOT OVERKILL — one filter, no per-memo changes).
+  const singleMoat = selectedMoat !== "ALL";
+  const ev = useMemo(() => {
+    if (!singleMoat) return rawEv;
+    const sel = selectedMoat.toLowerCase();
+    const f = (arr: MoatEvent[]) =>
+      arr.filter((e) => e.contractAddress.toLowerCase() === sel);
+    return {
+      rewardsDeposited: f(rawEv.rewardsDeposited),
+      staked: f(rawEv.staked),
+      locked: f(rawEv.locked),
+      burned: f(rawEv.burned),
+      withdrawn: f(rawEv.withdrawn),
+      rewardClaimed: f(rawEv.rewardClaimed),
+      lockExited: f(rawEv.lockExited),
+      isLoading: rawEv.isLoading,
+    };
+    // Depend on the individual (react-query-stable) arrays rather than the
+    // freshly-built `rawEv` object so filtered arrays only recompute when the
+    // underlying data actually changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    singleMoat,
+    selectedMoat,
+    rawEv.rewardsDeposited,
+    rawEv.staked,
+    rawEv.locked,
+    rawEv.burned,
+    rawEv.withdrawn,
+    rawEv.rewardClaimed,
+    rawEv.lockExited,
+    rawEv.isLoading,
+  ]);
+
+  // If the selected Moat is no longer present in configs (e.g. deprecated),
+  // fall back to "All Moats" so we never show a confusing empty scoped view.
+  useEffect(() => {
+    if (selectedMoat === "ALL" || !configs) return;
+    const exists = configs.some(
+      (c) => c.contractAddress.toLowerCase() === selectedMoat.toLowerCase(),
+    );
+    if (!exists) setSelectedMoat("ALL");
+  }, [configs, selectedMoat]);
 
   // ---- on-chain enrichment (staking tokens for activity USD valuation) ----
   const onchainContracts = useMemo(() => {
@@ -669,11 +824,35 @@ export default function Analytics() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ev.rewardsDeposited, rewardTokenInfo, priceMap, dexInfoMap]);
 
+  // ---- moat options for the selector (sorted by display name) ----
+  const moatOptions = useMemo(
+    () =>
+      (configs ?? [])
+        .map((c) => ({
+          address: c.contractAddress,
+          name: getMoatMeta(c.contractAddress).name,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [configs],
+  );
+
   // ---- KPI strip ----
   const activeMoats = (configs ?? []).filter(
     (c) => c.status === "Verified" || c.status === "Community",
   ).length;
   const lifetimeRewardsUsd = tokenMix.total;
+
+  // Stakes count in timeframe — replaces the protocol-only "Active Moats" /
+  // "Moats w/ Active Locks" KPIs when a single Moat is selected.
+  const stakesInTf = useMemo(() => {
+    if (!singleMoat) return 0;
+    let n = 0;
+    for (const e of ev.staked) {
+      const ms = eventMs(e);
+      if (ms && ms >= startMs) n += 1;
+    }
+    return n;
+  }, [singleMoat, ev.staked, startMs]);
 
   const kpis = [
     {
@@ -694,15 +873,25 @@ export default function Analytics() {
       fmt: fmtNum,
       testId: "kpi-wallets-tf",
     },
-    {
-      label: "Active Moats",
-      value: activeMoats,
-      icon: Activity,
-      color: "text-primary",
-      bg: "bg-primary/10",
-      fmt: fmtNum,
-      testId: "kpi-moats",
-    },
+    singleMoat
+      ? {
+          label: "Lifetime Wallets",
+          value: lifetimeUniqueWallets,
+          icon: Users,
+          color: "text-primary",
+          bg: "bg-primary/10",
+          fmt: fmtNum,
+          testId: "kpi-moats",
+        }
+      : {
+          label: "Active Moats",
+          value: activeMoats,
+          icon: Activity,
+          color: "text-primary",
+          bg: "bg-primary/10",
+          fmt: fmtNum,
+          testId: "kpi-moats",
+        },
     {
       label: "Lifetime Rewards",
       value: lifetimeRewardsUsd,
@@ -721,15 +910,25 @@ export default function Analytics() {
       fmt: fmtUsd,
       testId: "kpi-burned",
     },
-    {
-      label: "Moats w/ Active Locks",
-      value: activeLocksTotal,
-      icon: LockIcon,
-      color: "text-cyan-400",
-      bg: "bg-cyan-400/10",
-      fmt: fmtNum,
-      testId: "kpi-active-locks",
-    },
+    singleMoat
+      ? {
+          label: `Stakes (${tf})`,
+          value: stakesInTf,
+          icon: TrendingUp,
+          color: "text-cyan-400",
+          bg: "bg-cyan-400/10",
+          fmt: fmtNum,
+          testId: "kpi-active-locks",
+        }
+      : {
+          label: "Moats w/ Active Locks",
+          value: activeLocksTotal,
+          icon: LockIcon,
+          color: "text-cyan-400",
+          bg: "bg-cyan-400/10",
+          fmt: fmtNum,
+          testId: "kpi-active-locks",
+        },
   ];
 
   const isLoading = ev.isLoading;
@@ -752,7 +951,13 @@ export default function Analytics() {
             <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Analytics</h1>
           </div>
           <p className="text-muted-foreground text-sm max-w-2xl">
-            Protocol-wide trends across every Moat. Toggle the timeframe to scope the charts below.
+            {singleMoat
+              ? `Scoped to ${
+                  moatOptions.find(
+                    (o) => o.address.toLowerCase() === selectedMoat.toLowerCase(),
+                  )?.name ?? "this Moat"
+                }. Pick a Moat or timeframe to re-scope the charts below.`
+              : "Protocol-wide trends across every Moat. Pick a Moat or timeframe to scope the charts below."}
           </p>
         </motion.div>
 
@@ -810,6 +1015,10 @@ export default function Analytics() {
           {isLoading && (
             <span className="text-xs text-muted-foreground ml-3">Loading event history…</span>
           )}
+          <div className="ml-auto flex items-center gap-2">
+            <span className="hidden sm:inline text-xs text-muted-foreground uppercase tracking-wider">Moat</span>
+            <MoatSelect options={moatOptions} value={selectedMoat} onChange={setSelectedMoat} />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-5">
@@ -973,7 +1182,9 @@ export default function Analytics() {
             </div>
           </ChartCard>
 
-          {/* Top Moats */}
+          {/* Protocol-only sections — hidden when a single Moat is selected */}
+          {!singleMoat && (
+          <>
           <ChartCard
             title={`Top Moats by Rewards Paid (${tf})`}
             subtitle="Click a row to open the Moat detail page"
@@ -1124,11 +1335,15 @@ export default function Analytics() {
               </div>
             </ChartCard>
           </div>
+          </>
+          )}
 
           {/* Reward Token Mix */}
           <ChartCard
             title="Reward Token Mix (Lifetime)"
-            subtitle={`Share of total USD rewards distributed across all Moats — ${fmtUsd(tokenMix.total)} all-time`}
+            subtitle={`Share of total USD rewards distributed ${
+              singleMoat ? "by this Moat" : "across all Moats"
+            } — ${fmtUsd(tokenMix.total)} all-time`}
             testId="chart-token-mix"
           >
             <div className="h-24">
