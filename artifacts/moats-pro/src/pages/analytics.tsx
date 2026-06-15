@@ -936,7 +936,7 @@ export default function Analytics() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <Navbar />
-      <main className="pt-28 pb-16 px-4 max-w-7xl mx-auto w-full flex-1">
+      <main className="pt-24 sm:pt-28 pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full flex-1">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}

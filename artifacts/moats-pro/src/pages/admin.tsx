@@ -128,7 +128,7 @@ export default function Admin() {
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,hsl(195_100%_50%/0.10),transparent_70%)]" />
       <div className="pointer-events-none absolute -left-32 top-1/3 h-[420px] w-[420px] rounded-full bg-primary/5 blur-3xl" />
       <Navbar />
-      <div className="relative pt-24 sm:pt-28 pb-24 px-4 max-w-7xl mx-auto" data-testid="admin-page">
+      <div className="relative pt-24 sm:pt-28 pb-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto" data-testid="admin-page">
         <Header
           isFetching={isFetching}
           lastUpdated={lastUpdated}

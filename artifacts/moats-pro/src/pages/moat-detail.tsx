@@ -585,7 +585,7 @@ export default function MoatDetail() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <Navbar />
-      <main className="flex-1 max-w-6xl mx-auto w-full px-4 pt-28 pb-16">
+      <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-24 sm:pt-28 pb-16">
         {/* Back */}
         <Link
           href="/"

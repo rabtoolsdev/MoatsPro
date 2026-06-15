@@ -508,7 +508,7 @@ export default function Home() {
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <Navbar />
       {/* Hero */}
-      <section className="relative pt-32 pb-16 px-4 overflow-hidden">
+      <section className="relative pt-32 pb-16 px-4 sm:px-6 lg:px-8 overflow-hidden">
         {/* Animated grid background */}
         <div className="absolute inset-0 bg-grid-animated opacity-60 pointer-events-none" />
         {/* Radial vignette over grid */}
@@ -596,7 +596,7 @@ export default function Home() {
       />
       {/* Tag Filters — sit between Rewards Distributed and Active Moats */}
       {tagOptions.length > 0 && (
-        <section className="px-4 pt-10 max-w-7xl mx-auto w-full">
+        <section className="px-4 sm:px-6 lg:px-8 pt-10 max-w-7xl mx-auto w-full">
           <div className="flex items-center gap-3 mb-3 flex-wrap">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
               Filter by Tag
@@ -642,7 +642,7 @@ export default function Home() {
         </section>
       )}
       {/* Moats Grid */}
-      <section className="flex-1 px-4 py-16 max-w-7xl mx-auto w-full">
+      <section className="flex-1 px-4 sm:px-6 lg:px-8 py-16 max-w-7xl mx-auto w-full">
         <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
           <div>
             <h2 className="text-2xl font-bold" data-testid="section-moats">Active Moats</h2>
@@ -789,7 +789,7 @@ export default function Home() {
       </section>
       {/* Activity Feed */}
       {eventsData && eventsData.results.length > 0 && (
-        <section className="px-4 py-12 max-w-7xl mx-auto w-full">
+        <section className="px-4 sm:px-6 lg:px-8 py-12 max-w-7xl mx-auto w-full">
           <div className="flex items-center justify-between mb-6">
             <div />
             <span className="text-sm text-muted-foreground">

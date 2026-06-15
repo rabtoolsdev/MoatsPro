@@ -520,7 +520,7 @@ export default function Swap() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
-      <div className="pt-28 sm:pt-32 pb-24 px-4 max-w-xl mx-auto">
+      <div className="pt-24 sm:pt-28 pb-24 px-4 sm:px-6 max-w-xl mx-auto">
         <div className="mb-6 flex justify-center">
           <img
             src={moatSwapLogo}
