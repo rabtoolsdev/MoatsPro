@@ -252,6 +252,7 @@ export default function MoatDetail() {
 
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [burnAmount, setBurnAmount] = useState("");
+  const [showBurnConfirm, setShowBurnConfirm] = useState(false);
 
   const fmtAmt = (raw: string): string => {
     if (!raw) return "";
@@ -534,8 +535,15 @@ export default function MoatDetail() {
     if (!hasAllowanceForBurn) {
       approveAction.approve(contractAddress as MoatContractAddress, burnAmount, decimals);
     } else {
-      burnAction.burn(burnAmount, decimals);
+      // Require explicit confirmation before the irreversible burn.
+      setShowBurnConfirm(true);
     }
+  };
+
+  const confirmBurn = () => {
+    setShowBurnConfirm(false);
+    if (!burnAmount || !isConnected || !hasAllowanceForBurn) return;
+    burnAction.burn(burnAmount, decimals);
   };
 
   const TxStatus = ({
@@ -1802,6 +1810,68 @@ export default function MoatDetail() {
           </div>
         </div>
       </main>
+
+      {/* Burn confirmation */}
+      <AnimatePresence>
+        {showBurnConfirm && (
+          <motion.div
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+          >
+            <div
+              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+              onClick={() => setShowBurnConfirm(false)}
+            />
+            <motion.div
+              className="relative z-10 w-full max-w-md rounded-2xl border border-rose-500/30 bg-card shadow-2xl shadow-black/50 overflow-hidden"
+              initial={{ opacity: 0, scale: 0.95, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 12 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              data-testid="modal-burn-confirm"
+            >
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-500/15 border border-rose-500/30">
+                    <Flame size={20} className="text-rose-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-foreground">Confirm Permanent Burn</h3>
+                    <p className="text-xs text-rose-400 font-medium">This action cannot be undone</p>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Burning permanently removes{" "}
+                  <span className="font-semibold text-foreground">
+                    {burnAmount || "0"} {tokenBalance.symbol}
+                  </span>{" "}
+                  from circulation. These tokens cannot be recovered. Do you want to continue?
+                </p>
+                <div className="mt-6 flex gap-3">
+                  <button
+                    onClick={() => setShowBurnConfirm(false)}
+                    data-testid="btn-burn-cancel"
+                    className="flex-1 py-3 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmBurn}
+                    data-testid="btn-burn-confirm"
+                    className="flex-1 py-3 rounded-xl bg-rose-500 text-white text-sm font-semibold hover:opacity-95 hover:shadow-[0_0_20px_rgba(239,68,68,0.35)] transition-all flex items-center justify-center gap-2"
+                  >
+                    <Flame size={14} />Burn Tokens
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <Footer />
     </div>
   );
