@@ -57,12 +57,15 @@ export default function Home() {
 
   const moatOnchainContracts = useMemo(() => {
     if (!configs) return [];
-    return configs.flatMap((c) => [
-      { address: c.contractAddress as `0x${string}`, abi: MOAT_V3_ABI, functionName: "totalStaked" as const },
-      { address: c.contractAddress as `0x${string}`, abi: MOAT_V3_ABI, functionName: "stakingToken" as const },
-      { address: c.contractAddress as `0x${string}`, abi: MOAT_V3_ABI, functionName: "totalLocked" as const },
-      { address: c.contractAddress as `0x${string}`, abi: MOAT_V3_ABI, functionName: "totalBurned" as const },
-    ]);
+    return configs.flatMap((c) => {
+      const chainId = NETWORK_TO_CHAIN_ID[(c.network ?? "").toLowerCase()];
+      return [
+        { address: c.contractAddress as `0x${string}`, abi: MOAT_V3_ABI, functionName: "totalStaked" as const, chainId },
+        { address: c.contractAddress as `0x${string}`, abi: MOAT_V3_ABI, functionName: "stakingToken" as const, chainId },
+        { address: c.contractAddress as `0x${string}`, abi: MOAT_V3_ABI, functionName: "totalLocked" as const, chainId },
+        { address: c.contractAddress as `0x${string}`, abi: MOAT_V3_ABI, functionName: "totalBurned" as const, chainId },
+      ];
+    });
   }, [configs]);
 
   const { data: moatOnchainData } = useReadContracts({
@@ -78,43 +81,57 @@ export default function Home() {
     });
   }, [moatOnchainData, configs]);
 
-  const uniqueStakingTokens = useMemo(
-    () => [...new Set(stakingTokenAddrs.filter(Boolean))],
-    [stakingTokenAddrs]
-  );
+  // Dedupe staking tokens by address while keeping each token's own chainId so
+  // ERC20 reads target the right chain (not the wallet's connected one).
+  const uniqueStakingTokens = useMemo(() => {
+    const m = new Map<string, { address: string; chainId?: number }>();
+    stakingTokenAddrs.forEach((addr, i) => {
+      if (!addr) return;
+      const key = addr.toLowerCase();
+      if (!m.has(key)) {
+        m.set(key, {
+          address: addr,
+          chainId: NETWORK_TO_CHAIN_ID[(configs?.[i]?.network ?? "").toLowerCase()],
+        });
+      }
+    });
+    return [...m.values()];
+  }, [stakingTokenAddrs, configs]);
 
   const { data: decimalsData } = useReadContracts({
-    contracts: uniqueStakingTokens.map((addr) => ({
-      address: addr as `0x${string}`,
+    contracts: uniqueStakingTokens.map((t) => ({
+      address: t.address as `0x${string}`,
       abi: ERC20_ABI,
       functionName: "decimals" as const,
+      chainId: t.chainId,
     })),
     query: { enabled: uniqueStakingTokens.length > 0 },
   });
 
   const { data: totalSupplyData } = useReadContracts({
-    contracts: uniqueStakingTokens.map((addr) => ({
-      address: addr as `0x${string}`,
+    contracts: uniqueStakingTokens.map((t) => ({
+      address: t.address as `0x${string}`,
       abi: ERC20_ABI,
       functionName: "totalSupply" as const,
+      chainId: t.chainId,
     })),
     query: { enabled: uniqueStakingTokens.length > 0 },
   });
 
   const decimalsMap = useMemo((): Record<string, number> => {
     const m: Record<string, number> = {};
-    uniqueStakingTokens.forEach((addr, i) => {
+    uniqueStakingTokens.forEach((t, i) => {
       const r = decimalsData?.[i];
-      m[addr.toLowerCase()] = r?.status === "success" ? Number(r.result) : 18;
+      m[t.address.toLowerCase()] = r?.status === "success" ? Number(r.result) : 18;
     });
     return m;
   }, [uniqueStakingTokens, decimalsData]);
 
   const totalSupplyMap = useMemo((): Record<string, bigint> => {
     const m: Record<string, bigint> = {};
-    uniqueStakingTokens.forEach((addr, i) => {
+    uniqueStakingTokens.forEach((t, i) => {
       const r = totalSupplyData?.[i];
-      if (r?.status === "success") m[addr.toLowerCase()] = r.result as unknown as bigint;
+      if (r?.status === "success") m[t.address.toLowerCase()] = r.result as unknown as bigint;
     });
     return m;
   }, [uniqueStakingTokens, totalSupplyData]);
