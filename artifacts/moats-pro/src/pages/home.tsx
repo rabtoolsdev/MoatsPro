@@ -30,6 +30,13 @@ const WAVAX_LOGO_URL =
 
 const heroWords = ["Stake.", "Lock.", "Burn.", "Earn."];
 
+// Reverse of CHAIN_DISPLAY: API network slug -> numeric chain id, so each
+// Moat's on-chain reads target its OWN chain rather than the wallet's
+// currently-connected chain (otherwise cross-chain reads silently fail).
+const NETWORK_TO_CHAIN_ID: Record<string, number> = Object.fromEntries(
+  Object.entries(CHAIN_DISPLAY).map(([id, d]) => [d.network.toLowerCase(), Number(id)]),
+);
+
 export default function Home() {
   const [statusFilter, setStatusFilter] = useState<string>("Verified");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -118,6 +125,7 @@ export default function Home() {
       address: c.contractAddress as `0x${string}`,
       abi: MOAT_LOGO_ABI,
       functionName: "getLogoURL" as const,
+      chainId: NETWORK_TO_CHAIN_ID[(c.network ?? "").toLowerCase()],
     }));
   }, [configs]);
 
