@@ -19,6 +19,7 @@ export function Footer() {
           <Link href="/" className="hover:text-foreground hover:text-primary transition-colors">Explore</Link>
           <Link href="/portfolio" className="hover:text-foreground hover:text-primary transition-colors">Portfolio</Link>
           <Link href="/leaderboard" className="hover:text-foreground hover:text-primary transition-colors">Leaderboard</Link>
+          <Link href="/calculator" className="hover:text-foreground hover:text-primary transition-colors">Moat Calculator</Link>
           <a
             href="https://moats.app"
             target="_blank"

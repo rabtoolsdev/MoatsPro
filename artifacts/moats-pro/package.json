@@ -44,6 +44,7 @@
     "@tailwindcss/typography": "^0.5.15",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-query": "catalog:",
+    "@types/canvas-confetti": "^1.9.0",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
@@ -79,6 +80,7 @@
     "@reown/appkit-adapter-wagmi": "^1.8.19",
     "@wagmi/connectors": "^8.0.4",
     "@wagmi/core": "^3.4.5",
+    "canvas-confetti": "^1.9.4",
     "viem": "^2.48.4",
     "wagmi": "^3.6.4"
   }

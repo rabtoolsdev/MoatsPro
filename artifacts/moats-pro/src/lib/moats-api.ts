@@ -22,6 +22,65 @@ async function ownFetch<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+async function ownPost<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${OWN_API_BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    throw new Error(`Moats Pro API Error: ${res.status} for ${path}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+// ---- Moat Calculator (giveaway entry) types ----
+export interface CalculatorCriteria {
+  transactionTypes: string[];
+  tokenAddress: string;
+  tokenAmount: number;
+  entries: number;
+}
+
+export interface CalculatorWalletTxn {
+  hash: string;
+  type: string;
+  amount: number;
+  tokenSymbol?: string;
+  timestamp: number;
+  date: string;
+  functionName?: string;
+}
+
+export interface CalculatorWalletResult {
+  address: string;
+  transactionCount: number;
+  totalAmount: number;
+  entries: number;
+  tokenSymbol?: string;
+  tokenName?: string;
+  burnAmount: number;
+  stakeAmount: number;
+  lockAmount: number;
+  burnCount: number;
+  stakeCount: number;
+  lockCount: number;
+  transactions: CalculatorWalletTxn[];
+}
+
+export interface CalculatorResponse {
+  results: CalculatorWalletResult[];
+  totalWallets: number;
+  totalEntries: number;
+}
+
+export interface CalculatorPayload {
+  contractAddress: string;
+  criteriaList: CalculatorCriteria[];
+  startDate?: string;
+  endDate?: string;
+}
+
 // Swap Points: lifetime USD value of every asset the user has swapped
 // through Moats Pro (1 USD swapped = 1 point). Backed by a SUM over the
 // existing `swaps` table — no separate points ledger.
@@ -327,4 +386,7 @@ export const moatsApi = {
 
   getSwapPoints: (address: string) =>
     ownFetch<SwapPointsResponse>(`/swap-points/${address.toLowerCase()}`),
+
+  calculateMoatEntries: (payload: CalculatorPayload) =>
+    ownPost<CalculatorResponse>("/calculator/calculate", payload),
 };
