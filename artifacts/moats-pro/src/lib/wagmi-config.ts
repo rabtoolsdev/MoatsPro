@@ -99,6 +99,6 @@ export const CHAIN_DISPLAY: Record<
   [avalanche.id]: { label: "Avalanche", logo: "/chains/avalanche.png", network: "avalanche" },
   [mainnet.id]: { label: "Ethereum", logo: "/chains/ethereum.png", network: "ethereum" },
   [base.id]: { label: "Base", logo: "/chains/base.png", network: "base" },
-  [grotto.id]: { label: "The Grotto", logo: "/chains/grotto.png", network: "grotto" },
+  [grotto.id]: { label: "The Grotto", logo: "/chains/grotto.png", network: "thegrotto" },
   [blaze.id]: { label: "Blaze", logo: "/chains/blaze.png", network: "blaze" },
 };
