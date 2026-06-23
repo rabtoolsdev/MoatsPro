@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Download, Users, Ticket, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { WheelSpinner } from "./wheel-spinner";
+import { Input } from "@/components/ui/input";
+import WheelSpinner from "./wheel-spinner";
 import { WalletSpotlightModal } from "./wallet-spotlight-modal";
 import type { CalculatorResponse, CalculatorWalletResult } from "@/lib/moats-api";
 
@@ -48,7 +49,13 @@ function exportCsv(results: CalculatorWalletResult[]) {
 
 export function ResultsDashboard({ data, isLoading, error }: ResultsDashboardProps) {
   const [spotlight, setSpotlight] = useState<CalculatorWalletResult | null>(null);
-  const [showWheel, setShowWheel] = useState(false);
+  const [wheelOpen, setWheelOpen] = useState(false);
+  const [winnerCount, setWinnerCount] = useState(1);
+
+  const resultCount = data?.results.length ?? 0;
+  useEffect(() => {
+    setWinnerCount((c) => Math.max(1, Math.min(c, Math.max(1, resultCount))));
+  }, [resultCount]);
 
   if (error) {
     return (
@@ -118,22 +125,47 @@ export function ResultsDashboard({ data, isLoading, error }: ResultsDashboardPro
         >
           <Download size={14} /> Export CSV
         </Button>
+        <div className="flex items-center gap-1.5">
+          <label htmlFor="winner-count" className="text-xs text-muted-foreground">
+            Winners
+          </label>
+          <Input
+            id="winner-count"
+            type="number"
+            min={1}
+            max={Math.max(1, sorted.length)}
+            value={winnerCount}
+            onChange={(e) =>
+              setWinnerCount(
+                Math.max(1, Math.min(sorted.length || 1, Number(e.target.value) || 1)),
+              )
+            }
+            data-testid="input-winner-count"
+            className="h-8 w-16"
+          />
+        </div>
         <Button
           size="sm"
-          onClick={() => setShowWheel((v) => !v)}
+          onClick={() => setWheelOpen(true)}
           disabled={sorted.length === 0}
           data-testid="button-toggle-wheel"
           className="gap-2"
         >
-          <Sparkles size={14} /> {showWheel ? "Hide" : "Pick a"} Winner
+          <Sparkles size={14} /> Pick {winnerCount > 1 ? `${winnerCount} Winners` : "a Winner"}
         </Button>
       </div>
 
-      {showWheel && (
-        <div className="rounded-2xl border border-border/60 bg-card/40 p-6">
-          <WheelSpinner wallets={sorted} />
-        </div>
-      )}
+      <WheelSpinner
+        open={wheelOpen}
+        onOpenChange={setWheelOpen}
+        results={sorted.map((w) => ({
+          address: w.address,
+          entries: w.entries,
+          tokenSymbol: w.tokenSymbol,
+          totalAmount: w.totalAmount,
+        }))}
+        winnerCount={winnerCount}
+      />
 
       <div className="rounded-2xl border border-border/60 bg-card/40 overflow-hidden">
         <div className="overflow-x-auto">

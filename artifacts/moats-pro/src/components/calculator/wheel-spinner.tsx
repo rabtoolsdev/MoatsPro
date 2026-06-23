@@ -1,203 +1,358 @@
-import { useEffect, useRef, useState } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Trophy, Sparkles, Copy, Check, Star, RotateCcw } from "lucide-react";
+import { SiX } from "react-icons/si";
 import confetti from "canvas-confetti";
-import { Trophy } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import type { CalculatorWalletResult } from "@/lib/moats-api";
+
+interface WalletResult {
+  address: string;
+  entries: number;
+  tokenSymbol?: string;
+  totalAmount?: number;
+}
 
 interface WheelSpinnerProps {
-  wallets: CalculatorWalletResult[];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  results: WalletResult[];
+  winnerCount?: number;
 }
 
 const SEGMENT_COLORS = [
-  "#00d4ff",
-  "#7c3aed",
-  "#06b6d4",
-  "#3b82f6",
-  "#0ea5e9",
-  "#8b5cf6",
-  "#2563eb",
-  "#22d3ee",
+  "hsl(210, 95%, 58%)", "hsl(270, 65%, 55%)", "hsl(142, 70%, 45%)",
+  "hsl(38, 92%, 50%)", "hsl(0, 72%, 55%)", "hsl(190, 80%, 45%)",
+  "hsl(330, 70%, 55%)", "hsl(50, 90%, 50%)", "hsl(160, 60%, 45%)",
+  "hsl(280, 50%, 60%)", "hsl(20, 85%, 55%)", "hsl(200, 75%, 50%)",
 ];
+const TICK_COUNT = 60;
 
-const short = (addr: string) => `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+function fireConfetti() {
+  const duration = 2500;
+  const end = Date.now() + duration;
+  const frame = () => {
+    confetti({ particleCount: 3, angle: 60, spread: 55, origin: { x: 0, y: 0.7 }, colors: ["#fbbf24", "#f59e0b", "#eab308", "#3b82f6", "#8b5cf6"] });
+    confetti({ particleCount: 3, angle: 120, spread: 55, origin: { x: 1, y: 0.7 }, colors: ["#fbbf24", "#f59e0b", "#eab308", "#3b82f6", "#8b5cf6"] });
+    if (Date.now() < end) requestAnimationFrame(frame);
+  };
+  frame();
+  confetti({ particleCount: 80, spread: 100, origin: { x: 0.5, y: 0.5 }, colors: ["#fbbf24", "#f59e0b", "#eab308", "#3b82f6", "#8b5cf6", "#10b981"] });
+}
 
-export function WheelSpinner({ wallets }: WheelSpinnerProps) {
+function SegmentedWheel({ segments, rotation, spinning, phase }: {
+  segments: { address: string; entries: number; fraction: number }[];
+  rotation: number;
+  spinning: boolean;
+  phase: "idle" | "fast" | "slowing" | "done";
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const rotationRef = useRef(0);
-  const animRef = useRef<number | null>(null);
-  const [spinning, setSpinning] = useState(false);
-  const [winner, setWinner] = useState<CalculatorWalletResult | null>(null);
-
-  // Weight each wallet by its number of entries — more entries, bigger slice.
-  const pool = wallets.filter((w) => w.entries > 0);
-
-  const draw = (rotation: number) => {
+  const [size, setSize] = useState(280);
+  const center = size / 2;
+  const radius = size / 2 - 12;
+  useEffect(() => {
+    const updateSize = () => setSize(window.innerWidth < 480 ? 220 : 280);
+    updateSize();
+    window.addEventListener("resize", updateSize);
+    return () => window.removeEventListener("resize", updateSize);
+  }, []);
+  useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const size = canvas.width;
-    const cx = size / 2;
-    const cy = size / 2;
-    const radius = size / 2 - 4;
-
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, size, size);
-    if (pool.length === 0) return;
-
-    const totalEntries = pool.reduce((s, w) => s + w.entries, 0);
-    let start = rotation;
-
-    pool.forEach((w, i) => {
-      const slice = (w.entries / totalEntries) * Math.PI * 2;
-      const end = start + slice;
+    let startAngle = -Math.PI / 2;
+    segments.forEach((seg, i) => {
+      const sliceAngle = seg.fraction * 2 * Math.PI;
+      const endAngle = startAngle + sliceAngle;
       ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.arc(cx, cy, radius, start, end);
+      ctx.moveTo(center, center);
+      ctx.arc(center, center, radius, startAngle, endAngle);
       ctx.closePath();
       ctx.fillStyle = SEGMENT_COLORS[i % SEGMENT_COLORS.length];
       ctx.fill();
-      ctx.strokeStyle = "rgba(0,0,0,0.25)";
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = "rgba(255,255,255,0.15)";
+      ctx.lineWidth = 1.5;
       ctx.stroke();
-
-      // Label
-      if (slice > 0.18) {
+      if (sliceAngle > 0.15) {
+        const midAngle = startAngle + sliceAngle / 2;
+        const lx = center + Math.cos(midAngle) * radius * 0.7;
+        const ly = center + Math.sin(midAngle) * radius * 0.7;
         ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(start + slice / 2);
-        ctx.textAlign = "right";
-        ctx.fillStyle = "#0a0a0a";
-        ctx.font = "600 11px ui-monospace, monospace";
-        ctx.fillText(short(w.address), radius - 12, 4);
+        ctx.translate(lx, ly);
+        ctx.rotate(midAngle + Math.PI / 2);
+        ctx.fillStyle = "rgba(255,255,255,0.9)";
+        ctx.font = "bold 9px monospace";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(seg.address.slice(0, 4) + ".." + seg.address.slice(-3), 0, 0);
         ctx.restore();
       }
-      start = end;
+      startAngle = endAngle;
     });
-
-    // Center hub
+    const tickRadius = radius + 4;
+    for (let i = 0; i < TICK_COUNT; i++) {
+      const angle = (i / TICK_COUNT) * Math.PI * 2 - Math.PI / 2;
+      const isMajor = i % 5 === 0;
+      const innerR = isMajor ? tickRadius - 6 : tickRadius - 3;
+      ctx.beginPath();
+      ctx.moveTo(center + Math.cos(angle) * innerR, center + Math.sin(angle) * innerR);
+      ctx.lineTo(center + Math.cos(angle) * tickRadius, center + Math.sin(angle) * tickRadius);
+      ctx.strokeStyle = isMajor ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.25)";
+      ctx.lineWidth = isMajor ? 2 : 1;
+      ctx.stroke();
+    }
     ctx.beginPath();
-    ctx.arc(cx, cy, radius * 0.16, 0, Math.PI * 2);
-    ctx.fillStyle = "#0b0f17";
+    ctx.arc(center, center, 28, 0, Math.PI * 2);
+    const gradient = ctx.createRadialGradient(center, center, 0, center, center, 28);
+    gradient.addColorStop(0, "hsl(220, 15%, 20%)");
+    gradient.addColorStop(1, "hsl(220, 15%, 10%)");
+    ctx.fillStyle = gradient;
     ctx.fill();
-    ctx.strokeStyle = "#00d4ff";
+    ctx.strokeStyle = "rgba(255,255,255,0.2)";
     ctx.lineWidth = 2;
     ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,0.8)";
+    ctx.font = "bold 10px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("SPIN", center, center);
+  }, [segments, size, center, radius]);
+  const getTransitionConfig = () => {
+    if (phase === "fast") return { duration: 2, ease: [0.2, 0.8, 0.4, 1] as [number, number, number, number] };
+    if (phase === "slowing") return { duration: 3, ease: [0.1, 0.3, 0.15, 1] as [number, number, number, number] };
+    if (phase === "done") return { duration: 0.5, ease: "easeOut" as const };
+    return { duration: 0, ease: "linear" as const };
   };
-
-  useEffect(() => {
-    draw(rotationRef.current);
-    return () => {
-      if (animRef.current) cancelAnimationFrame(animRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wallets]);
-
-  const pickWeightedIndex = () => {
-    const total = pool.reduce((s, w) => s + w.entries, 0);
-    let r = Math.random() * total;
-    for (let i = 0; i < pool.length; i++) {
-      r -= pool[i].entries;
-      if (r <= 0) return i;
-    }
-    return pool.length - 1;
-  };
-
-  const spin = () => {
-    if (spinning || pool.length === 0) return;
-    setSpinning(true);
-    setWinner(null);
-
-    const totalEntries = pool.reduce((s, w) => s + w.entries, 0);
-    const winnerIndex = pickWeightedIndex();
-
-    // Angle of the middle of the winning slice.
-    let acc = 0;
-    for (let i = 0; i < winnerIndex; i++) acc += pool[i].entries;
-    const sliceMid =
-      ((acc + pool[winnerIndex].entries / 2) / totalEntries) * Math.PI * 2;
-
-    // Pointer sits at the top (-90°). Solve for final rotation so the slice
-    // mid lands under the pointer, plus several full turns.
-    const pointer = -Math.PI / 2;
-    const turns = 6 + Math.floor(Math.random() * 3);
-    const target =
-      turns * Math.PI * 2 + (pointer - sliceMid) - (rotationRef.current % (Math.PI * 2));
-
-    const startRot = rotationRef.current;
-    const duration = 4200;
-    const startTime = performance.now();
-
-    const animate = (now: number) => {
-      const t = Math.min((now - startTime) / duration, 1);
-      const eased = 1 - Math.pow(1 - t, 3);
-      rotationRef.current = startRot + target * eased;
-      draw(rotationRef.current);
-      if (t < 1) {
-        animRef.current = requestAnimationFrame(animate);
-      } else {
-        setSpinning(false);
-        setWinner(pool[winnerIndex]);
-        confetti({
-          particleCount: 140,
-          spread: 80,
-          origin: { y: 0.4 },
-          colors: SEGMENT_COLORS,
-        });
-      }
-    };
-    animRef.current = requestAnimationFrame(animate);
-  };
-
-  if (pool.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground text-center py-6">
-        No eligible wallets to spin yet.
-      </p>
-    );
-  }
-
+  const transitionConfig = getTransitionConfig();
   return (
-    <div className="flex flex-col items-center gap-5">
-      <div className="relative">
-        {/* Pointer */}
-        <div className="absolute left-1/2 -top-1 -translate-x-1/2 z-10">
-          <div className="w-0 h-0 border-l-[10px] border-r-[10px] border-t-[16px] border-l-transparent border-r-transparent border-t-primary drop-shadow-[0_0_6px_rgba(0,212,255,0.6)]" />
-        </div>
-        <canvas
-          ref={canvasRef}
-          width={320}
-          height={320}
-          data-testid="wheel-canvas"
-          className="rounded-full"
-        />
+    <div className="relative" style={{ width: size, height: size }}>
+      <motion.div
+        className="absolute inset-[-6px] rounded-full"
+        animate={{
+          boxShadow: spinning
+            ? ["0 0 20px 2px hsl(210,95%,58%,0.2)", "0 0 50px 8px hsl(210,95%,58%,0.6)", "0 0 20px 2px hsl(210,95%,58%,0.2)"]
+            : "0 0 15px 1px hsl(210,95%,58%,0.15)",
+        }}
+        transition={spinning ? { duration: 0.8, repeat: Infinity, ease: "easeInOut" } : { duration: 0.6 }}
+      />
+      <motion.div className="absolute inset-0" animate={{ rotate: rotation }} transition={{ duration: transitionConfig.duration, ease: transitionConfig.ease }}>
+        <canvas ref={canvasRef} style={{ width: size, height: size }} className="rounded-full" />
+      </motion.div>
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 z-10">
+        <motion.div animate={spinning ? { y: [0, -3, 0], scaleY: [1, 1.1, 1] } : { y: 0, scaleY: 1 }} transition={spinning ? { duration: 0.15, repeat: Infinity } : { duration: 0.3 }}>
+          <div className="w-0 h-0" style={{ borderLeft: "12px solid transparent", borderRight: "12px solid transparent", borderTop: "22px solid hsl(0,72%,51%)", filter: spinning ? "drop-shadow(0 3px 8px rgba(239,68,68,0.7))" : "drop-shadow(0 2px 4px rgba(239,68,68,0.5))" }} />
+        </motion.div>
       </div>
-
-      <Button
-        onClick={spin}
-        disabled={spinning}
-        data-testid="button-spin"
-        className="gap-2 btn-shimmer"
-      >
-        <Trophy size={16} />
-        {spinning ? "Spinning…" : "Spin the Wheel"}
-      </Button>
-
-      {winner && (
-        <div
-          data-testid="wheel-winner"
-          className="w-full rounded-xl border border-primary/40 bg-primary/10 px-4 py-3 text-center"
-        >
-          <p className="text-[11px] uppercase tracking-wider text-primary/80">
-            Winner
-          </p>
-          <p className="font-mono text-sm text-foreground break-all">
-            {winner.address}
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            {winner.entries.toLocaleString()} entries
-          </p>
-        </div>
-      )}
     </div>
+  );
+}
+
+export default function WheelSpinner({ open, onOpenChange, results, winnerCount = 1 }: WheelSpinnerProps) {
+  const [spinning, setSpinning] = useState(false);
+  const [winners, setWinners] = useState<WalletResult[]>([]);
+  const [revealedWinners, setRevealedWinners] = useState<WalletResult[]>([]);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [rotation, setRotation] = useState(0);
+  const [phase, setPhase] = useState<"idle" | "fast" | "slowing" | "done">("idle");
+  const [resetting, setResetting] = useState(false);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const addTimer = useCallback((fn: () => void, ms: number) => {
+    const id = setTimeout(fn, ms);
+    timersRef.current.push(id);
+    return id;
+  }, []);
+  const clearTimers = useCallback(() => {
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
+  }, []);
+  useEffect(() => () => clearTimers(), [clearTimers]);
+  const segments = useMemo(() => {
+    const totalEntries = results.reduce((sum, r) => sum + r.entries, 0);
+    if (totalEntries === 0) return results.map((r) => ({ ...r, fraction: 1 / Math.max(results.length, 1) }));
+    return results.map((r) => ({ ...r, fraction: r.entries / totalEntries }));
+  }, [results]);
+  const selectWinners = useCallback((count: number): WalletResult[] => {
+    const selected: WalletResult[] = [];
+    const usedAddresses = new Set<string>();
+    for (let i = 0; i < count; i++) {
+      const remaining = results.filter((r) => !usedAddresses.has(r.address));
+      if (remaining.length === 0) break;
+      const remainingTotal = remaining.reduce((sum, r) => sum + r.entries, 0);
+      if (remainingTotal === 0) {
+        const idx = Math.floor(Math.random() * remaining.length);
+        selected.push(remaining[idx]);
+        usedAddresses.add(remaining[idx].address);
+        continue;
+      }
+      const random = Math.random() * remainingTotal;
+      let cumulative = 0;
+      let pick = remaining[remaining.length - 1];
+      for (const result of remaining) {
+        cumulative += result.entries;
+        if (random <= cumulative) { pick = result; break; }
+      }
+      selected.push(pick);
+      usedAddresses.add(pick.address);
+    }
+    return selected;
+  }, [results]);
+  const spinWheel = () => {
+    if (segments.length === 0) return;
+    const selected = selectWinners(winnerCount);
+    if (selected.length === 0) return;
+    clearTimers();
+    setSpinning(true);
+    setWinners([]);
+    setRevealedWinners([]);
+    setPhase("fast");
+    const spins = 5 + Math.random() * 2;
+    const midRotation = rotation + spins * 360 * 0.6;
+    setRotation(midRotation);
+    addTimer(() => {
+      setPhase("slowing");
+      const primaryWinner = selected[0];
+      let cumulativeFraction = 0;
+      let winnerMidAngle = 0;
+      let found = false;
+      for (const seg of segments) {
+        if (seg.address === primaryWinner.address) { winnerMidAngle = (cumulativeFraction + seg.fraction / 2) * 360; found = true; break; }
+        cumulativeFraction += seg.fraction;
+      }
+      let finalRotation: number;
+      if (found) {
+        const targetRemainder = (360 - (winnerMidAngle % 360) + 360) % 360;
+        const currentRemainder = ((midRotation % 360) + 360) % 360;
+        let forwardAdjustment = targetRemainder - currentRemainder;
+        if (forwardAdjustment < 0) forwardAdjustment += 360;
+        const extraSpins = Math.max(2, Math.ceil(spins * 0.4));
+        finalRotation = midRotation + extraSpins * 360 + forwardAdjustment;
+      } else {
+        finalRotation = midRotation + spins * 360 * 0.4 + Math.random() * 360;
+      }
+      setRotation(finalRotation);
+    }, 1800);
+    addTimer(() => {
+      setWinners(selected);
+      setSpinning(false);
+      setPhase("done");
+      fireConfetti();
+      selected.forEach((winner, index) => {
+        addTimer(() => setRevealedWinners((prev) => [...prev, winner]), index * 600);
+      });
+    }, 4800);
+  };
+  const copyAddress = async (address: string, index: number) => {
+    await navigator.clipboard.writeText(address);
+    setCopiedIndex(index);
+    addTimer(() => setCopiedIndex(null), 2000);
+  };
+  const shareOnX = () => {
+    const totalEntries = results.reduce((sum, r) => sum + r.entries, 0);
+    const shortAddr = (addr: string) => `${addr.slice(0, 8)}...${addr.slice(-6)}`;
+    const winnerLines = winners.map((w, i) => {
+      const pct = totalEntries > 0 ? ((w.entries / totalEntries) * 100).toFixed(2) : "0.00";
+      return `#${i + 1} ${shortAddr(w.address)}\n${w.entries.toLocaleString()} entries (${pct}% chance)`;
+    }).join("\n\n");
+    const text = `🏆 ${winners.length === 1 ? "Winner" : "Winners"} selected on Moat Calculator!\n\n${winnerLines}\n\nTotal pool: ${totalEntries.toLocaleString()} entries`;
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+  };
+  const reset = () => {
+    clearTimers();
+    setResetting(true);
+    addTimer(() => { setWinners([]); setRevealedWinners([]); setRotation(0); setCopiedIndex(null); setPhase("idle"); setResetting(false); }, 400);
+  };
+  useEffect(() => {
+    if (!open) { clearTimers(); setSpinning(false); setWinners([]); setRevealedWinners([]); setRotation(0); setCopiedIndex(null); setPhase("idle"); setResetting(false); }
+  }, [open, clearTimers]);
+  const totalEntries = results.reduce((sum, r) => sum + r.entries, 0);
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Trophy className="h-5 w-5 text-primary" />
+            Winner Selection
+          </DialogTitle>
+          <DialogDescription>
+            Selecting {winnerCount} winner{winnerCount > 1 ? "s" : ""} from {totalEntries.toLocaleString()} total entries
+          </DialogDescription>
+        </DialogHeader>
+        <motion.div className="flex flex-col items-center gap-6 py-4" animate={resetting ? { opacity: 0, scale: 0.95 } : { opacity: 1, scale: 1 }} transition={{ duration: 0.3 }}>
+          <SegmentedWheel segments={segments} rotation={rotation} spinning={spinning} phase={phase} />
+          <AnimatePresence mode="wait">
+            {revealedWinners.length > 0 && !spinning && (
+              <motion.div initial={{ opacity: 0, scale: 0.6, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ type: "spring", stiffness: 200, damping: 15 }} className="text-center space-y-3 w-full">
+                <div className="flex items-center justify-center gap-2">
+                  <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
+                  <h3 className="text-lg font-bold" style={{ background: "linear-gradient(135deg,#fbbf24,#f59e0b,#d97706)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                    {winners.length === 1 ? "Winner Selected!" : `${winners.length} Winners Selected!`}
+                  </h3>
+                  <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
+                </div>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {revealedWinners.map((w, index) => (
+                    <motion.div key={w.address} initial={{ opacity: 0, y: 20, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: "spring", stiffness: 250, damping: 18 }} className="p-3 rounded-md bg-card border space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-semibold text-muted-foreground">#{index + 1}</span>
+                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                          <span className="font-mono text-sm break-all text-foreground">{w.address}</span>
+                          <Button variant="ghost" size="icon" onClick={() => copyAddress(w.address, index)}>
+                            {copiedIndex === index ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3 text-muted-foreground" />}
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-center gap-4 text-xs">
+                        <div className="text-muted-foreground"><span className="font-semibold text-foreground">{w.entries.toLocaleString()}</span> entries</div>
+                        <div className="text-muted-foreground"><span className="font-semibold text-foreground">{totalEntries > 0 ? ((w.entries / totalEntries) * 100).toFixed(2) : "0.00"}%</span> chance</div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+                {revealedWinners.length === winners.length && winners.length > 0 && (
+                  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+                    <Button variant="outline" className="w-full gap-2" onClick={shareOnX}>
+                      <SiX className="h-3.5 w-3.5" />
+                      Share on X
+                    </Button>
+                  </motion.div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <div className="flex gap-3 w-full">
+            {!spinning && winners.length === 0 && !resetting && (
+              <Button onClick={spinWheel} disabled={results.length === 0} className="w-full flex-1" size="lg">
+                <Sparkles className="mr-2 h-4 w-4" />
+                {results.length === 0 ? "No wallets to spin" : "Spin the Wheel"}
+              </Button>
+            )}
+            {spinning && (
+              <Button disabled className="flex-1" size="lg">
+                <motion.div className="h-4 w-4 rounded-full border-2 border-primary-foreground border-t-transparent mr-2" animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} />
+                Selecting Winner...
+              </Button>
+            )}
+            {!spinning && winners.length > 0 && (
+              <Button variant="outline" onClick={reset} className="flex-1 gap-2" size="lg">
+                <RotateCcw className="h-4 w-4" />
+                Spin Again
+              </Button>
+            )}
+          </div>
+        </motion.div>
+      </DialogContent>
+    </Dialog>
   );
 }
