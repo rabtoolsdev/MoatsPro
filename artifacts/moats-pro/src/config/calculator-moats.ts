@@ -5,10 +5,14 @@ export interface CalculatorMoatConfig {
   contractAddress: string;
   tokenAddress: string;
   description?: string;
+  // Earlier moat contracts this moat was migrated from. On-chain burns/stakes/
+  // locks made to these older contracts are aggregated together with the
+  // current contract so totals reflect the full history of the token.
+  legacyContractAddresses?: string[];
 }
 
 export const CALCULATOR_MOATS: CalculatorMoatConfig[] = [
-  { id: "hefe", name: "Hefe Moat", symbol: "HEFE", contractAddress: "0xcf65744c955a292d11de2a4184e9fabedbfc7b40", tokenAddress: "0x18E3605B13F10016901eAC609b9E188CF7c18973" },
+  { id: "hefe", name: "Hefe Moat", symbol: "HEFE", contractAddress: "0xcf65744c955a292d11de2a4184e9fabedbfc7b40", tokenAddress: "0x18E3605B13F10016901eAC609b9E188CF7c18973", legacyContractAddresses: ["0x3d38b316f5bf7b3a37496b61310521d9b6262e6e"] },
   { id: "bensi", name: "Bensi Box Moat", symbol: "BENSI", contractAddress: "0x3399d03566bb6db0cb4f1e13047589a1499cebbc", tokenAddress: "0x00697F5F6dc2CA0A17e6c89bCcd1173A61eA24a6" },
   { id: "freak", name: "FREAK Anon Moat", symbol: "FREAK", contractAddress: "0x020c73b55d139d5e259bad89b126f2a446c22ac6", tokenAddress: "0x201d04f88Bc9B3bdAcdf0519a95E117f25062D38" },
   { id: "dish", name: "Dimish Moat", symbol: "DISH", contractAddress: "0x93d8cc111233f8c5b9a019df7c159b6f9be7b44b", tokenAddress: "0x40146E96EE5297187022D1ca62A3169B5e45B0a4" },

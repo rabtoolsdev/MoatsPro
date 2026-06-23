@@ -76,6 +76,9 @@ export interface CalculatorResponse {
 
 export interface CalculatorPayload {
   contractAddress: string;
+  // All moat contracts to aggregate (current + any legacy contracts). When
+  // omitted the backend falls back to [contractAddress].
+  contractAddresses?: string[];
   criteriaList: CalculatorCriteria[];
   startDate?: string;
   endDate?: string;

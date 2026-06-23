@@ -14,7 +14,7 @@ const calculator = new EntryCalculator();
 // mode requires a wallet to qualify in every project).
 router.post("/calculator/calculate", async (req, res) => {
   try {
-    const { contractAddress, criteriaList, startDate, endDate, multiProject, projects } = req.body;
+    const { contractAddress, contractAddresses, criteriaList, startDate, endDate, multiProject, projects } = req.body;
 
     if (multiProject && projects) {
       const trackedTokens: any[] = [];
@@ -161,11 +161,23 @@ router.post("/calculator/calculate", async (req, res) => {
       });
     }
 
-    // Single-project mode
-    const txs = await snowscanService.getTokenTransactions(contractAddress);
+    // Single-project mode. A moat may span several contracts (e.g. it was
+    // migrated to a new contract over time), so aggregate transfers across
+    // every supplied address. Falls back to the single contractAddress.
+    const targetAddresses: string[] =
+      Array.isArray(contractAddresses) && contractAddresses.length > 0
+        ? contractAddresses
+        : [contractAddress];
+
+    const allTxs: any[] = [];
+    for (const addr of targetAddresses) {
+      const txs = await snowscanService.getTokenTransactions(addr);
+      allTxs.push(...txs);
+    }
+
     let filteredTransactions = Array.from(
       new Map(
-        txs.map((tx: any) => [`${tx.hash}_${tx.from}_${tx.to}_${tx.contractAddress}`, tx]),
+        allTxs.map((tx: any) => [`${tx.hash}_${tx.from}_${tx.to}_${tx.contractAddress}`, tx]),
       ).values(),
     );
     if (startDate || endDate) {
@@ -178,7 +190,7 @@ router.post("/calculator/calculate", async (req, res) => {
     const results = calculator.calculateEntries(
       filteredTransactions,
       criteriaList,
-      contractAddress,
+      targetAddresses,
     );
     return res.json({
       results,

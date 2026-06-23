@@ -48,12 +48,20 @@ export class EntryCalculator {
   calculateEntries(
     transactions: CalculatorTransaction[],
     criteriaList: Criteria[],
-    targetContractAddress: string,
+    targetContractAddress: string | string[],
   ) {
     const walletMap = new Map<string, WalletAccumulator>();
+    // A moat can span multiple contracts (e.g. after a migration). Count a
+    // transfer when it lands on ANY of the moat's contract addresses.
+    const targetSet = new Set(
+      (Array.isArray(targetContractAddress)
+        ? targetContractAddress
+        : [targetContractAddress]
+      ).map((a) => a.toLowerCase()),
+    );
 
     for (const tx of transactions) {
-      if (tx.to?.toLowerCase() !== targetContractAddress.toLowerCase()) continue;
+      if (!targetSet.has(tx.to?.toLowerCase())) continue;
 
       for (let ci = 0; ci < criteriaList.length; ci++) {
         const criteria = criteriaList[ci];

@@ -31,6 +31,10 @@ export default function MoatCalculator() {
       if (!moat) throw new Error("Select a moat first.");
       return moatsApi.calculateMoatEntries({
         contractAddress: moat.contractAddress,
+        contractAddresses: [
+          moat.contractAddress,
+          ...(moat.legacyContractAddresses ?? []),
+        ],
         criteriaList,
         startDate: startDate || undefined,
         endDate: endDate || undefined,
