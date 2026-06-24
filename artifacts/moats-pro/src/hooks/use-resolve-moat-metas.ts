@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 import { useReadContracts } from "wagmi";
 import { ERC20_ABI } from "@/lib/moat-abi";
 import { MOAT_METADATA, setResolvedMoatMeta } from "@/lib/moat-metadata";
+import { networkToChainId } from "@/lib/wagmi-config";
 
 export interface MoatTokenLookup {
   contractAddress: string;
@@ -22,18 +23,23 @@ export function useResolveMoatMetas(lookups: MoatTokenLookup[]) {
 
   const contracts = useMemo(
     () =>
-      unresolved.flatMap((l) => [
-        {
-          address: l.stakingToken as `0x${string}`,
-          abi: ERC20_ABI,
-          functionName: "symbol" as const,
-        },
-        {
-          address: l.stakingToken as `0x${string}`,
-          abi: ERC20_ABI,
-          functionName: "name" as const,
-        },
-      ]),
+      unresolved.flatMap((l) => {
+        const chainId = networkToChainId(l.network);
+        return [
+          {
+            address: l.stakingToken as `0x${string}`,
+            abi: ERC20_ABI,
+            functionName: "symbol" as const,
+            chainId,
+          },
+          {
+            address: l.stakingToken as `0x${string}`,
+            abi: ERC20_ABI,
+            functionName: "name" as const,
+            chainId,
+          },
+        ];
+      }),
     [unresolved],
   );
 

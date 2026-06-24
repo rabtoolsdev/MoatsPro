@@ -38,6 +38,7 @@ import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
 import { useDexscreenerInfo } from "@/hooks/use-dexscreener";
 import { MOAT_V3_ABI, ERC20_ABI } from "@/lib/moat-abi";
 import { getMoatMeta } from "@/lib/moat-metadata";
+import { networkToChainId } from "@/lib/wagmi-config";
 import { useResolveMoatMetas } from "@/hooks/use-resolve-moat-metas";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
@@ -369,10 +370,13 @@ export default function Analytics() {
   // ---- on-chain enrichment (staking tokens for activity USD valuation) ----
   const onchainContracts = useMemo(() => {
     if (!configs) return [];
-    return configs.flatMap((c) => [
-      { address: c.contractAddress as `0x${string}`, abi: MOAT_V3_ABI, functionName: "stakingToken" as const },
-      { address: c.contractAddress as `0x${string}`, abi: MOAT_V3_ABI, functionName: "totalLocked" as const },
-    ]);
+    return configs.flatMap((c) => {
+      const chainId = networkToChainId(c.network);
+      return [
+        { address: c.contractAddress as `0x${string}`, abi: MOAT_V3_ABI, functionName: "stakingToken" as const, chainId },
+        { address: c.contractAddress as `0x${string}`, abi: MOAT_V3_ABI, functionName: "totalLocked" as const, chainId },
+      ];
+    });
   }, [configs]);
 
   const { data: onchainData } = useReadContracts({
@@ -401,6 +405,19 @@ export default function Analytics() {
     return count;
   }, [onchainData, configs]);
 
+  // Map each staking token to the chainId of the Moat that uses it, so the
+  // decimals read targets the correct network (a Grotto staking token must be
+  // read on Grotto, not Avalanche).
+  const stakingTokenChainId = useMemo((): Record<string, number | undefined> => {
+    const m: Record<string, number | undefined> = {};
+    if (!configs) return m;
+    for (const c of configs) {
+      const token = stakingTokenByMoat[c.contractAddress.toLowerCase()];
+      if (token && !(token in m)) m[token] = networkToChainId(c.network);
+    }
+    return m;
+  }, [configs, stakingTokenByMoat]);
+
   const uniqueStakingTokens = useMemo(
     () => [...new Set(Object.values(stakingTokenByMoat).filter(Boolean))],
     [stakingTokenByMoat],
@@ -411,6 +428,7 @@ export default function Analytics() {
       address: addr as `0x${string}`,
       abi: ERC20_ABI,
       functionName: "decimals" as const,
+      chainId: stakingTokenChainId[addr],
     })),
     query: { enabled: uniqueStakingTokens.length > 0 },
   });

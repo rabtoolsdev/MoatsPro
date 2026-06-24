@@ -102,3 +102,25 @@ export const CHAIN_DISPLAY: Record<
   [grotto.id]: { label: "The Grotto", logo: "/chains/grotto.png", network: "thegrotto" },
   [blaze.id]: { label: "Blaze", logo: "/chains/blaze.png", network: "blaze" },
 };
+
+// Maps the `network` string returned by the Moats API config docs to the
+// on-chain wagmi chainId. Used to pin per-Moat contract reads to the correct
+// chain so Moats on non-Avalanche networks (e.g. Greg Moat on The Grotto)
+// resolve their staking token, name, and decimals instead of failing the read
+// against the default chain and falling back to a truncated "Moat 0x…" label.
+const NETWORK_TO_CHAIN_ID: Record<string, number> = {
+  avalanche: avalanche.id,
+  avax: avalanche.id,
+  ethereum: mainnet.id,
+  mainnet: mainnet.id,
+  eth: mainnet.id,
+  base: base.id,
+  thegrotto: grotto.id,
+  grotto: grotto.id,
+  blaze: blaze.id,
+};
+
+export function networkToChainId(network?: string): number | undefined {
+  if (!network) return undefined;
+  return NETWORK_TO_CHAIN_ID[network.toLowerCase()];
+}
