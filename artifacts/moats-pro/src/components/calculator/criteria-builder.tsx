@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DateField } from "@/components/calculator/date-field";
 import { CALCULATOR_MOATS } from "@/config/calculator-moats";
 import type { CalculatorCriteria } from "@/lib/moats-api";
 
@@ -101,24 +102,24 @@ export function CriteriaBuilder({
           <Label className="text-xs uppercase tracking-wider text-muted-foreground">
             Start Date
           </Label>
-          <Input
-            type="date"
+          <DateField
             data-testid="input-start-date"
             value={startDate}
-            onChange={(e) => onStartDateChange(e.target.value)}
-            className="bg-background/60"
+            onChange={onStartDateChange}
+            placeholder="Start date"
+            maxDate={endDate || undefined}
           />
         </div>
         <div className="space-y-2">
           <Label className="text-xs uppercase tracking-wider text-muted-foreground">
             End Date
           </Label>
-          <Input
-            type="date"
+          <DateField
             data-testid="input-end-date"
             value={endDate}
-            onChange={(e) => onEndDateChange(e.target.value)}
-            className="bg-background/60"
+            onChange={onEndDateChange}
+            placeholder="End date"
+            minDate={startDate || undefined}
           />
         </div>
       </div>

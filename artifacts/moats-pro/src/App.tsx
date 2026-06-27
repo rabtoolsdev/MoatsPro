@@ -16,6 +16,7 @@ import Swap from "@/pages/swap";
 import MoatCalculator from "@/pages/moat-calculator";
 import Admin from "@/pages/admin";
 import { PasswordGate } from "@/components/password-gate";
+import { CommandPalette } from "@/components/command-palette";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -84,6 +85,7 @@ function App() {
         <TooltipProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <ScrollToTop />
+            <CommandPalette />
             <Router />
           </WouterRouter>
           <Toaster />

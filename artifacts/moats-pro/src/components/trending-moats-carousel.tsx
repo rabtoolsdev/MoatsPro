@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { Flame, TrendingUp, Users, DollarSign } from "lucide-react";
+import useEmblaCarousel from "embla-carousel-react";
+import { Flame, TrendingUp, Users, DollarSign, ChevronLeft, ChevronRight } from "lucide-react";
 import { MoatLogo } from "@/components/moat-card";
 import { getMoatMeta } from "@/lib/moat-metadata";
 import { useTrendingMoats, type TrendingMoat } from "@/hooks/use-trending-moats";
@@ -134,8 +135,31 @@ function SkeletonCard() {
 export function TrendingMoatsCarousel({ configs, tvmMap, logoUrls }: TrendingMoatsCarouselProps) {
   const { trending, isLoading } = useTrendingMoats({ configs, tvmMap, limit: 10 });
 
-  // Duplicate the list so the marquee can loop seamlessly via -50% translate
-  const doubled = useMemo(() => [...trending, ...trending], [trending]);
+  const [emblaRef, emblaApi] = useEmblaCarousel({
+    align: "start",
+    dragFree: true,
+    containScroll: "trimSnaps",
+  });
+  const [canScrollPrev, setCanScrollPrev] = useState(false);
+  const [canScrollNext, setCanScrollNext] = useState(false);
+
+  const onSelect = useCallback(() => {
+    if (!emblaApi) return;
+    setCanScrollPrev(emblaApi.canScrollPrev());
+    setCanScrollNext(emblaApi.canScrollNext());
+  }, [emblaApi]);
+
+  useEffect(() => {
+    if (!emblaApi) return;
+    onSelect();
+    emblaApi.on("select", onSelect).on("reInit", onSelect);
+    return () => {
+      emblaApi.off("select", onSelect).off("reInit", onSelect);
+    };
+  }, [emblaApi, onSelect]);
+
+  const scrollPrev = useCallback(() => emblaApi?.scrollPrev(), [emblaApi]);
+  const scrollNext = useCallback(() => emblaApi?.scrollNext(), [emblaApi]);
 
   // Hide gracefully if no trending data after load
   if (!isLoading && trending.length === 0) return null;
@@ -155,15 +179,41 @@ export function TrendingMoatsCarousel({ configs, tvmMap, logoUrls }: TrendingMoa
             Top performers by TVM, rewards distributed, and active users over the last 7 days
           </p>
         </div>
+
+        {/* Prev / Next controls */}
+        {!isLoading && (
+          <div className="hidden sm:flex items-center gap-2">
+            <button
+              type="button"
+              onClick={scrollPrev}
+              disabled={!canScrollPrev}
+              data-testid="button-trending-prev"
+              aria-label="Previous trending moats"
+              className="h-9 w-9 inline-flex items-center justify-center rounded-full border border-border/60 bg-card/60 text-muted-foreground transition-all duration-200 hover:text-primary hover:border-primary/50 hover:bg-card/90 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-muted-foreground disabled:hover:border-border/60"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={scrollNext}
+              disabled={!canScrollNext}
+              data-testid="button-trending-next"
+              aria-label="Next trending moats"
+              className="h-9 w-9 inline-flex items-center justify-center rounded-full border border-border/60 bg-card/60 text-muted-foreground transition-all duration-200 hover:text-primary hover:border-primary/50 hover:bg-card/90 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-muted-foreground disabled:hover:border-border/60"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+        )}
       </div>
 
       <div
-        className="group relative overflow-hidden"
+        className="relative"
         style={{
           maskImage:
-            "linear-gradient(to right, transparent 0, #000 64px, #000 calc(100% - 64px), transparent 100%)",
+            "linear-gradient(to right, transparent 0, #000 32px, #000 calc(100% - 32px), transparent 100%)",
           WebkitMaskImage:
-            "linear-gradient(to right, transparent 0, #000 64px, #000 calc(100% - 64px), transparent 100%)",
+            "linear-gradient(to right, transparent 0, #000 32px, #000 calc(100% - 32px), transparent 100%)",
         }}
       >
         {isLoading ? (
@@ -173,29 +223,20 @@ export function TrendingMoatsCarousel({ configs, tvmMap, logoUrls }: TrendingMoa
             ))}
           </div>
         ) : (
-          <motion.div
-            className="flex gap-4 py-2 w-max group-hover:[animation-play-state:paused]"
-            style={{
-              animation: `trending-marquee ${Math.max(30, trending.length * 6)}s linear infinite`,
-            }}
+          <div
+            className="overflow-hidden cursor-grab active:cursor-grabbing"
+            ref={emblaRef}
           >
-            {doubled.map((item, i) => (
-              <TrendingCard
-                key={`${item.config.contractAddress}-${i}`}
-                item={item}
-                logoUrls={logoUrls}
-              />
-            ))}
-          </motion.div>
+            <div className="flex gap-4 py-2">
+              {trending.map((item) => (
+                <div key={item.config.contractAddress} className="shrink-0">
+                  <TrendingCard item={item} logoUrls={logoUrls} />
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </div>
-
-      <style>{`
-        @keyframes trending-marquee {
-          from { transform: translateX(0); }
-          to   { transform: translateX(-50%); }
-        }
-      `}</style>
     </section>
   );
 }

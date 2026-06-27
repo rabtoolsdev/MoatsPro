@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, TrendingUp, LayoutDashboard, Trophy, Wallet, ChevronDown, Check, ArrowLeftRight, BarChart3 } from "lucide-react";
+import { Menu, X, TrendingUp, LayoutDashboard, Trophy, Wallet, ChevronDown, Check, ArrowLeftRight, BarChart3, Search } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useAppKit, useAppKitNetwork } from "@reown/appkit/react";
 import { CHAIN_DISPLAY, networks } from "@/lib/wagmi-config";
+import { OPEN_COMMAND_PALETTE_EVENT } from "@/components/command-palette";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -117,6 +118,17 @@ export function Navbar() {
 
         {/* Wallet Button */}
         <div className="flex items-center md:justify-self-end gap-2 sm:gap-3 shrink-0">
+          {/* Command palette trigger */}
+          <button
+            data-testid="btn-command-palette"
+            onClick={() => window.dispatchEvent(new Event(OPEN_COMMAND_PALETTE_EVENT))}
+            aria-label="Search (Cmd+K)"
+            title="Search — ⌘K"
+            className="hidden md:inline-flex items-center justify-center h-9 w-9 rounded-lg border border-border bg-card/40 text-muted-foreground hover:text-foreground hover:border-primary/60 hover:bg-card/70 transition-all duration-200"
+          >
+            <Search size={15} className="shrink-0" />
+          </button>
+
           {/* Chain Selector */}
           <div ref={chainMenuRef} className="relative">
             <button
@@ -237,6 +249,17 @@ export function Navbar() {
             className="md:hidden border-t border-border/50 glass-strong"
           >
             <nav className="px-4 py-4 flex flex-col gap-1">
+              <button
+                data-testid="btn-command-palette-mobile"
+                onClick={() => {
+                  setMobileOpen(false);
+                  window.dispatchEvent(new Event(OPEN_COMMAND_PALETTE_EVENT));
+                }}
+                className="flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all"
+              >
+                <Search size={16} />
+                Search moats &amp; pages
+              </button>
               {links.map(({ href, label, icon: Icon }) => (
                 <Link
                   key={href}
