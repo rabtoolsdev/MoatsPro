@@ -125,114 +125,66 @@ export default function Leaderboard() {
 
         {/* Podium top-3 */}
         {mapsScores && mapsScores.length >= 3 && (
-          <div className="flex items-end justify-center gap-2 sm:gap-4 mb-10 max-w-2xl mx-auto px-2">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-10 max-w-2xl mx-auto">
             {podiumOrder.map((idx) => {
               const entry = mapsScores[idx];
               if (!entry) return null;
               const isGold = idx === 0;
               const isSilver = idx === 1;
-              const rankNum = isGold ? 1 : isSilver ? 2 : 3;
-              const accentText = isGold
-                ? "text-amber-400"
-                : isSilver
-                ? "text-zinc-300"
-                : "text-amber-600";
-              const pedestalH = isGold
-                ? "h-24 sm:h-28"
-                : isSilver
-                ? "h-16 sm:h-20"
-                : "h-11 sm:h-14";
-              const pedestalBg = isGold
-                ? "from-amber-400/25 to-amber-400/[0.03] border-amber-400/30"
-                : isSilver
-                ? "from-zinc-300/20 to-zinc-300/[0.03] border-zinc-300/25"
-                : "from-amber-700/20 to-amber-700/[0.03] border-amber-700/25";
+              const isBronze = idx === 2;
               return (
-                <div
+                <motion.div
                   key={entry.address}
-                  data-testid={`podium-${rankNum}`}
-                  className={`flex flex-col items-center min-w-0 ${
-                    isGold ? "w-[38%] z-10" : "w-[31%]"
-                  }`}
+                  initial={{ opacity: 0, y: 30, scale: isGold ? 0.88 : 0.94 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{
+                    delay: isGold ? 0.45 : isSilver ? 0.1 : 0.25,
+                    duration: isGold ? 0.6 : 0.45,
+                    ease: [0.22, 1, 0.36, 1],
+                  }}
+                  className="w-full min-w-0 overflow-hidden rounded-2xl border border-transparent p-3 sm:p-5 text-center flex flex-col items-center"
+                  style={{
+                    background: isGold
+                      ? "linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box, linear-gradient(135deg, rgba(251,191,36,0.7) 0%, rgba(251,191,36,0.15) 60%, transparent 100%) border-box"
+                      : isSilver
+                      ? "linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box, linear-gradient(135deg, rgba(212,212,216,0.6) 0%, rgba(212,212,216,0.12) 60%, transparent 100%) border-box"
+                      : "linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box, linear-gradient(135deg, rgba(180,83,9,0.55) 0%, rgba(180,83,9,0.1) 60%, transparent 100%) border-box",
+                    boxShadow: isGold
+                      ? "0 0 28px rgba(251,191,36,0.12)"
+                      : isSilver
+                      ? "0 0 18px rgba(212,212,216,0.08)"
+                      : "0 0 16px rgba(180,83,9,0.08)",
+                  }}
                 >
-                  <motion.div
-                    initial={{ opacity: 0, y: 30, scale: 0.9 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{
-                      delay: isGold ? 0.4 : isSilver ? 0.1 : 0.25,
-                      duration: isGold ? 0.6 : 0.45,
-                      ease: [0.22, 1, 0.36, 1],
-                    }}
-                    className={`w-full min-w-0 overflow-hidden rounded-2xl border border-transparent text-center flex flex-col items-center ${
-                      isGold ? "p-4 sm:p-5" : "p-3 sm:p-4"
-                    }`}
-                    style={{
-                      background: isGold
-                        ? "linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box, linear-gradient(135deg, rgba(251,191,36,0.7) 0%, rgba(251,191,36,0.15) 60%, transparent 100%) border-box"
-                        : isSilver
-                        ? "linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box, linear-gradient(135deg, rgba(212,212,216,0.6) 0%, rgba(212,212,216,0.12) 60%, transparent 100%) border-box"
-                        : "linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box, linear-gradient(135deg, rgba(180,83,9,0.55) 0%, rgba(180,83,9,0.1) 60%, transparent 100%) border-box",
-                      boxShadow: isGold
-                        ? "0 0 28px rgba(251,191,36,0.14)"
-                        : isSilver
-                        ? "0 0 18px rgba(212,212,216,0.08)"
-                        : "0 0 16px rgba(180,83,9,0.08)",
-                    }}
-                  >
-                    <div className={isGold ? "mb-2.5" : "mb-2"}>
-                      {isGold ? (
-                        <Crown
-                          size={30}
-                          className="text-amber-400 mx-auto"
-                          style={{ filter: "drop-shadow(0 0 6px rgba(251,191,36,0.5))" }}
-                        />
-                      ) : (
-                        <Medal
-                          size={isSilver ? 24 : 22}
-                          className={`mx-auto ${isSilver ? "text-zinc-300" : "text-amber-600"}`}
-                        />
-                      )}
-                    </div>
-                    <p
-                      className={`w-full font-mono font-bold leading-tight mb-2 truncate px-0.5 ${
-                        isGold ? "text-xs sm:text-base" : "text-[10px] sm:text-sm"
-                      }`}
-                    >
-                      {entry.username && !entry.username.startsWith("0x")
-                        ? entry.username
-                        : formatAddress(entry.address)}
-                    </p>
-                    <p
-                      className={`w-full font-bold tabular-nums truncate ${accentText} ${
-                        isGold ? "text-lg sm:text-2xl" : "text-base sm:text-lg"
-                      }`}
-                    >
-                      {(entry.points ?? 0).toLocaleString()}
-                    </p>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground">MAPS pts</p>
-                  </motion.div>
-
-                  {/* Pedestal */}
-                  <motion.div
-                    initial={{ opacity: 0, scaleY: 0 }}
-                    animate={{ opacity: 1, scaleY: 1 }}
-                    transition={{
-                      delay: isGold ? 0.55 : isSilver ? 0.25 : 0.4,
-                      duration: 0.4,
-                      ease: [0.22, 1, 0.36, 1],
-                    }}
-                    style={{ transformOrigin: "bottom" }}
-                    className={`w-full ${pedestalH} mt-2 rounded-t-xl bg-gradient-to-b ${pedestalBg} border border-b-0 flex items-start justify-center pt-2`}
-                  >
-                    <span
-                      className={`font-black tabular-nums leading-none ${accentText} ${
-                        isGold ? "text-3xl sm:text-4xl" : "text-2xl sm:text-3xl"
-                      }`}
-                    >
-                      {rankNum}
-                    </span>
-                  </motion.div>
-                </div>
+                  <div className="mb-3">
+                    {isGold ? (
+                      <Crown
+                        size={28}
+                        className="text-amber-400 mx-auto"
+                        style={{ filter: "drop-shadow(0 0 6px rgba(251,191,36,0.5))" }}
+                      />
+                    ) : (
+                      <Medal
+                        size={24}
+                        className={`mx-auto ${isSilver ? "text-zinc-300" : "text-amber-600"}`}
+                      />
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-1 font-medium">
+                    #{isGold ? 1 : isSilver ? 2 : 3}
+                  </p>
+                  <p className="w-full font-mono text-[10px] sm:text-sm font-bold leading-tight mb-2 truncate px-0.5 sm:px-1">
+                    {entry.username && !entry.username.startsWith("0x")
+                      ? entry.username
+                      : formatAddress(entry.address)}
+                  </p>
+                  <p className={`w-full font-bold text-base sm:text-xl tabular-nums truncate ${
+                    isGold ? "text-amber-400" : isSilver ? "text-zinc-300" : "text-amber-600"
+                  }`}>
+                    {(entry.points ?? 0).toLocaleString()}
+                  </p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">MAPS pts</p>
+                </motion.div>
               );
             })}
           </div>
