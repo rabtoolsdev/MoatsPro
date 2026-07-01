@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams } from "wouter";
 import { useAccount, useReadContracts, useReadContract } from "wagmi";
 import { useAppKit } from "@reown/appkit/react";
@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import { formatUnits, parseUnits } from "viem";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMoatConfig, useMoatPointsV2, useUserMoatPointsV2, useEvents } from "@/hooks/use-moats-api";
 import { getActiveBoosts, getBoostTier, getEffectiveBoostValue, getMaxBoostValue, type BoostConfig, type BoostTier } from "@/lib/moats-api";
 import {
@@ -298,13 +299,36 @@ export default function MoatDetail() {
     activeLockCount
   );
 
+  // Moat Points, the leaderboard and the activity feed come from the Moats
+  // API, whose indexer lags the chain by a few seconds. After a points-moving
+  // transaction we invalidate those queries immediately and again shortly
+  // after, so the numbers converge without a manual page refresh.
+  const queryClient = useQueryClient();
+  const pointsTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const invalidatePointsData = () => {
+    const invalidate = () => {
+      queryClient.invalidateQueries({ queryKey: ["moats", "points"] });
+      queryClient.invalidateQueries({ queryKey: ["moats", "events", contractAddress] });
+    };
+    invalidate();
+    // Delayed retries survive follow-up transactions; they are only
+    // cleared when the page unmounts.
+    pointsTimersRef.current.push(
+      setTimeout(invalidate, 6_000),
+      setTimeout(invalidate, 20_000),
+    );
+  };
   useEffect(() => {
-    if (exitAction.isSuccess) {
-      refetchLocks();
-      userInfo.refetch();
-      tokenBalance.refetch();
-      stats.refetch();
-    }
+    return () => pointsTimersRef.current.forEach(clearTimeout);
+  }, []);
+
+  useEffect(() => {
+    if (!exitAction.isSuccess) return;
+    refetchLocks();
+    userInfo.refetch();
+    tokenBalance.refetch();
+    stats.refetch();
+    invalidatePointsData();
   }, [exitAction.isSuccess]);
 
   // Refetch everything the panels display after a stake, lock, withdraw or
@@ -313,17 +337,19 @@ export default function MoatDetail() {
   // locks) the lock list — so the UI updates without a page refresh.
   useEffect(() => {
     if (
-      stakeAction.isSuccess ||
-      lockAction.isSuccess ||
-      unstakeAction.isSuccess ||
-      burnAction.isSuccess
+      !stakeAction.isSuccess &&
+      !lockAction.isSuccess &&
+      !unstakeAction.isSuccess &&
+      !burnAction.isSuccess
     ) {
-      userInfo.refetch();
-      tokenBalance.refetch();
-      stats.refetch();
-      allowance.refetch();
-      refetchLocks();
+      return;
     }
+    userInfo.refetch();
+    tokenBalance.refetch();
+    stats.refetch();
+    allowance.refetch();
+    refetchLocks();
+    invalidatePointsData();
   }, [
     stakeAction.isSuccess,
     lockAction.isSuccess,
