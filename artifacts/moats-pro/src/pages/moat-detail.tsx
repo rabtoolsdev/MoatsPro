@@ -302,32 +302,8 @@ export default function MoatDetail() {
     if (exitAction.isSuccess) {
       refetchLocks();
       userInfo.refetch();
-      stats.refetch();
-      tokenBalance.refetch();
     }
   }, [exitAction.isSuccess]);
-
-  // Refresh wallet balance, user position, Moat totals, and locks after any
-  // stake / lock / withdraw / burn so the panel reflects the new on-chain
-  // state without a manual page refresh.
-  useEffect(() => {
-    if (
-      stakeAction.isSuccess ||
-      lockAction.isSuccess ||
-      unstakeAction.isSuccess ||
-      burnAction.isSuccess
-    ) {
-      userInfo.refetch();
-      stats.refetch();
-      tokenBalance.refetch();
-      refetchLocks();
-    }
-  }, [
-    stakeAction.isSuccess,
-    lockAction.isSuccess,
-    unstakeAction.isSuccess,
-    burnAction.isSuccess,
-  ]);
 
   // Refetch allowance immediately after an approval confirms so the
   // action button flips from "Approve First" to the real action (Stake/Lock/Burn).
@@ -342,7 +318,6 @@ export default function MoatDetail() {
   useEffect(() => {
     if (claimAction.isSuccess) {
       userInfo.refetch();
-      tokenBalance.refetch();
     }
   }, [claimAction.isSuccess]);
 
@@ -689,9 +664,9 @@ export default function MoatDetail() {
           )}
         </motion.div>
 
-        <div className="grid grid-cols-1 min-[960px]:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left: Stats */}
-          <div className="min-[960px]:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-6">
             {/* On-chain Stats */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               {[
@@ -1250,7 +1225,7 @@ export default function MoatDetail() {
           </div>
 
           {/* Right: Action Panel */}
-          <div className="self-start min-[960px]:sticky min-[960px]:top-24 min-[960px]:max-h-[calc(100vh-7rem)] min-[960px]:overflow-y-auto">
+          <div className="sticky top-24 self-start">
             <div className="rounded-2xl border border-border bg-card/30 backdrop-blur-md overflow-hidden"
               style={{ boxShadow: "0 0 0 1px rgba(0,212,255,0.05), 0 4px 32px rgba(0,0,0,0.3)" }}
             >
