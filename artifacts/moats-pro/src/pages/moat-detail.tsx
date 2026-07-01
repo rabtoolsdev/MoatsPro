@@ -619,14 +619,11 @@ export default function MoatDetail() {
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <Navbar />
       <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-24 sm:pt-28 pb-16">
-        <div className="grid grid-cols-1 min-[960px]:grid-cols-3 gap-8 items-start">
-          {/* Left: Back, Header & Stats */}
-          <div className="min-[960px]:col-span-2 space-y-6">
         {/* Back */}
         <Link
           href="/"
           data-testid="btn-back"
-          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-2 text-sm"
+          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-8 text-sm"
         >
           <ArrowLeft size={16} />
           Back to Explore
@@ -692,6 +689,9 @@ export default function MoatDetail() {
           )}
         </motion.div>
 
+        <div className="grid grid-cols-1 min-[960px]:grid-cols-3 gap-8">
+          {/* Left: Stats */}
+          <div className="min-[960px]:col-span-2 space-y-6">
             {/* On-chain Stats */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               {[
