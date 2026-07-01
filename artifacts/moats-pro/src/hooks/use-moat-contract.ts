@@ -79,6 +79,13 @@ export function useMoatStats(contractAddress: MoatContractAddress | undefined) {
       totalStaked.isLoading ||
       totalLocked.isLoading ||
       totalPoints.isLoading,
+    refetch: () => {
+      totalStaked.refetch();
+      totalLocked.refetch();
+      totalBurned.refetch();
+      totalPoints.refetch();
+      activeUserCount.refetch();
+    },
   };
 }
 
@@ -109,7 +116,10 @@ export function useUserMoatInfo(
     pendingRewards: pendingRewards.data,
     pendingRewardsError: pendingRewards.error,
     isLoading: userInfo.isLoading || pendingRewards.isLoading,
-    refetch: userInfo.refetch,
+    refetch: () => {
+      userInfo.refetch();
+      pendingRewards.refetch();
+    },
   };
 }
 
@@ -150,6 +160,7 @@ export function useTokenBalance(
         ? formatUnits(balance.data, decimals.data)
         : undefined,
     isLoading: balance.isLoading,
+    refetch: balance.refetch,
   };
 }
 

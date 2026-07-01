@@ -302,8 +302,34 @@ export default function MoatDetail() {
     if (exitAction.isSuccess) {
       refetchLocks();
       userInfo.refetch();
+      tokenBalance.refetch();
+      stats.refetch();
     }
   }, [exitAction.isSuccess]);
+
+  // Refetch everything the panels display after a stake, lock, withdraw or
+  // burn confirms: wallet balance, the user's position/pending rewards, the
+  // moat's totals (staked/locked/burned), the remaining allowance, and (for
+  // locks) the lock list — so the UI updates without a page refresh.
+  useEffect(() => {
+    if (
+      stakeAction.isSuccess ||
+      lockAction.isSuccess ||
+      unstakeAction.isSuccess ||
+      burnAction.isSuccess
+    ) {
+      userInfo.refetch();
+      tokenBalance.refetch();
+      stats.refetch();
+      allowance.refetch();
+      refetchLocks();
+    }
+  }, [
+    stakeAction.isSuccess,
+    lockAction.isSuccess,
+    unstakeAction.isSuccess,
+    burnAction.isSuccess,
+  ]);
 
   // Refetch allowance immediately after an approval confirms so the
   // action button flips from "Approve First" to the real action (Stake/Lock/Burn).
@@ -314,10 +340,12 @@ export default function MoatDetail() {
   }, [approveAction.isSuccess]);
 
   // Refetch user info after a claim so pendingRewards goes back to 0
-  // and the Stake/Lock/Burn buttons unblock immediately.
+  // and the Stake/Lock/Burn buttons unblock immediately. Also refresh the
+  // wallet balance in case a reward token is the staking token.
   useEffect(() => {
     if (claimAction.isSuccess) {
       userInfo.refetch();
+      tokenBalance.refetch();
     }
   }, [claimAction.isSuccess]);
 
