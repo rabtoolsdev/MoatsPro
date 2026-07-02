@@ -20,8 +20,16 @@ export function getLlamaId(network: string | null | undefined, address: string):
 async function fetchLlamaPrices(coins: string[]): Promise<Record<string, number>> {
   if (coins.length === 0) return {};
   try {
+    // searchWidth is how far back DefiLlama will look for the latest price
+    // point. Moat staking tokens are thinly traded, so their canonical price
+    // can be several hours old — a narrow window (DefiLlama's own default is
+    // 6h) drops them and forces the DexScreener fallback, whose
+    // liquidity-weighted average is easily skewed ~2x by a single outlier pool
+    // (e.g. MYST's vapordex MYST/FLD pool). A 24h window keeps the canonical
+    // price without changing the value returned (DefiLlama always returns the
+    // most recent point within the window).
     const res = await fetch(
-      `https://coins.llama.fi/prices/current/${coins.join(",")}?searchWidth=4h`
+      `https://coins.llama.fi/prices/current/${coins.join(",")}?searchWidth=24h`
     );
     if (!res.ok) return {};
     const data = (await res.json()) as {
