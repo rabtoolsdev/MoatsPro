@@ -57,6 +57,11 @@ const networkLabels: Record<string, string> = {
   base: "Base",
   optimism: "Optimism",
   polygon: "Polygon",
+  bsc: "BNB",
+  bnb: "BNB",
+  monad: "Monad",
+  thegrotto: "The Grotto",
+  blaze: "Blaze",
 };
 
 function NetworkBadge({ network }: { network?: string }) {

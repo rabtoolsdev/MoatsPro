@@ -264,6 +264,10 @@ const EXPLORER_URLS: Record<string, string> = {
   optimism: "https://optimistic.etherscan.io",
   polygon: "https://polygonscan.com",
   bsc: "https://bscscan.com",
+  bnb: "https://bscscan.com",
+  monad: "https://monadvision.com",
+  thegrotto: "https://subnets.avax.network/thegrotto",
+  blaze: "https://subnets.avax.network/blaze",
 };
 
 export function getExplorerUrl(network: string): string {

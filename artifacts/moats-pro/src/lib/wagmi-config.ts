@@ -1,6 +1,6 @@
 import { createAppKit } from "@reown/appkit/react";
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
-import { mainnet, base, avalanche } from "@reown/appkit/networks";
+import { mainnet, base, avalanche, bsc, monad } from "@reown/appkit/networks";
 import type { AppKitNetwork } from "@reown/appkit/networks";
 import { defineChain } from "viem";
 import { http } from "wagmi";
@@ -44,6 +44,8 @@ export const networks: [AppKitNetwork, ...AppKitNetwork[]] = [
   avalanche,
   mainnet,
   base,
+  bsc,
+  monad,
   grotto as unknown as AppKitNetwork,
   blaze as unknown as AppKitNetwork,
 ];
@@ -56,6 +58,8 @@ export const wagmiAdapter = new WagmiAdapter({
     [avalanche.id]: http("https://api.avax.network/ext/bc/C/rpc"),
     [mainnet.id]: http("https://eth.llamarpc.com"),
     [base.id]: http("https://mainnet.base.org"),
+    [bsc.id]: http("https://bsc.drpc.org"),
+    [monad.id]: http("https://rpc.monad.xyz"),
     [grotto.id]: http(grotto.rpcUrls.default.http[0]),
     [blaze.id]: http(blaze.rpcUrls.default.http[0]),
   },
@@ -99,6 +103,8 @@ export const CHAIN_DISPLAY: Record<
   [avalanche.id]: { label: "Avalanche", logo: "/chains/avalanche.png", network: "avalanche" },
   [mainnet.id]: { label: "Ethereum", logo: "/chains/ethereum.png", network: "ethereum" },
   [base.id]: { label: "Base", logo: "/chains/base.png", network: "base" },
+  [bsc.id]: { label: "BNB", logo: "/chains/bnb.png", network: "bsc" },
+  [monad.id]: { label: "Monad", logo: "/chains/monad.png", network: "monad" },
   [grotto.id]: { label: "The Grotto", logo: "/chains/grotto.png", network: "thegrotto" },
   [blaze.id]: { label: "Blaze", logo: "/chains/blaze.png", network: "blaze" },
 };
@@ -115,6 +121,9 @@ const NETWORK_TO_CHAIN_ID: Record<string, number> = {
   mainnet: mainnet.id,
   eth: mainnet.id,
   base: base.id,
+  bsc: bsc.id,
+  bnb: bsc.id,
+  monad: monad.id,
   thegrotto: grotto.id,
   grotto: grotto.id,
   blaze: blaze.id,
