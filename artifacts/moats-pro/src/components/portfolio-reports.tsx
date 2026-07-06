@@ -116,11 +116,15 @@ function loadImg(src: string): Promise<HTMLImageElement | null> {
     if (!src) return resolve(null);
     const img = new Image();
     img.crossOrigin = "anonymous";
-    const done = (v: HTMLImageElement | null) => resolve(v);
+    let settled = false;
+    const done = (v: HTMLImageElement | null) => { if (!settled) { settled = true; resolve(v); } };
     img.onload  = () => done(img);
     img.onerror = () => done(null);
     setTimeout(() => done(null), 4000);
-    img.src = src;
+    // Append a cache-bust param so the browser makes a fresh CORS request instead
+    // of serving a previously-cached non-CORS response (which would taint the canvas).
+    const bust = src.includes("?") ? `${src}&_cors=1` : `${src}?_cors=1`;
+    img.src = bust;
   });
 }
 
@@ -393,8 +397,28 @@ export function PortfolioReports(props: PortfolioReportsProps) {
     setPreviewLoading(true);
     setPreviewUrl(null);
     buildCard(activeCard, props).then(canvas => {
-      if (!cancelled) setPreviewUrl(canvas.toDataURL("image/png"));
-    }).catch(() => {}).finally(() => { if (!cancelled) setPreviewLoading(false); });
+      if (cancelled) return;
+      try {
+        setPreviewUrl(canvas.toDataURL("image/png"));
+      } catch (e) {
+        // Canvas tainted (residual CORS issue) — rebuild without logos as fallback
+        console.warn("Canvas tainted, rebuilding without logos:", e);
+        const blank = document.createElement("canvas");
+        blank.width = canvas.width; blank.height = canvas.height;
+        const bctx = blank.getContext("2d")!;
+        bctx.drawImage(canvas, 0, 0);
+        // Attempt a plain redraw with no external images by passing an empty logoUrl map
+        buildCard(activeCard, { ...props, claimedAggregate: {
+          ...props.claimedAggregate,
+          featured: {
+            usdc:  { ...props.claimedAggregate.featured.usdc,  logoUrl: undefined },
+            wavax: { ...props.claimedAggregate.featured.wavax, logoUrl: undefined },
+            btcb:  { ...props.claimedAggregate.featured.btcb,  logoUrl: undefined },
+          },
+          community: props.claimedAggregate.community.map(t => ({ ...t, logoUrl: undefined })),
+        }}).then(c2 => { if (!cancelled) setPreviewUrl(c2.toDataURL("image/png")); }).catch(console.error);
+      }
+    }).catch(console.error).finally(() => { if (!cancelled) setPreviewLoading(false); });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCard, props.claimedAggregate, props.mapsScore, props.totalPortfolioValueUSD, props.swapPoints, props.ownTransactions.length]);
