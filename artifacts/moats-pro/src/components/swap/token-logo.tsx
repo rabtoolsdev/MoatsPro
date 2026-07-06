@@ -23,7 +23,9 @@ const NATIVE_SENTINELS = new Set([
 // Trust Wallet's `blockchains/<folder>` for ERC20 contracts and native logos.
 const TRUSTWALLET_FOLDER: Record<string, string> = {
   avalanche: "avalanchec",
+  avax: "avalanchec",
   ethereum: "ethereum",
+  eth: "ethereum",
   base: "base",
   optimism: "optimism",
   arbitrum: "arbitrum",
@@ -38,7 +40,9 @@ const TRUSTWALLET_FOLDER: Record<string, string> = {
 // after TrustWallet to catch long-tail tokens (HEFE, BLAZE, JOE, GMX, etc.)
 const LLAMA_CHAIN_ID: Record<string, number> = {
   avalanche: 43114,
+  avax: 43114,
   ethereum: 1,
+  eth: 1,
   base: 8453,
   optimism: 10,
   arbitrum: 42161,

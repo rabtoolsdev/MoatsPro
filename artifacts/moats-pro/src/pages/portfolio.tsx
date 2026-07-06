@@ -37,7 +37,7 @@ import { MOAT_V3_ABI, ERC20_ABI, MOAT_LOGO_ABI } from "@/lib/moat-abi";
 import { moatsApi } from "@/lib/moats-api";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
-import { formatAddress, formatPoints, getEventTypeLabel, getEventTypeColor, getExplorerUrl, timeAgo, formatUSD, getMoatMeta } from "@/lib/moat-metadata";
+import { formatAddress, formatPoints, getEventTypeLabel, getEventTypeColor, getExplorerUrl, timeAgo, formatUSD, getMoatMeta, MOAT_METADATA } from "@/lib/moat-metadata";
 import { Link } from "wouter";
 import { PortfolioReports } from "@/components/portfolio-reports";
 
@@ -437,7 +437,11 @@ export default function Portfolio() {
         featured.btcb.usd += usd;
         featured.btcb.price = price;
       } else {
-        const logoUrl = rewardDexInfoMap?.[addr]?.imageUrl || llamaIconUrl(network, addr);
+        // Priority: our system (MOAT_METADATA by tokenAddress) → DexScreener → DefiLlama
+        const metaLogo = Object.values(MOAT_METADATA).find(
+          m => m.tokenAddress?.toLowerCase() === addr
+        )?.logoUrl ?? "";
+        const logoUrl = metaLogo || rewardDexInfoMap?.[addr]?.imageUrl || llamaIconUrl(network, addr);
         community.set(addr, { address: addr, symbol, amount, usd, price, logoUrl, network });
       }
     }
