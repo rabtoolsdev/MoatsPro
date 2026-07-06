@@ -4,7 +4,7 @@ import { useAccount, useReadContracts } from "wagmi";
 import { useAppKit } from "@reown/appkit/react";
 import { formatUnits } from "viem";
 import { motion } from "framer-motion";
-import { Wallet, TrendingUp, Award, AlertCircle, ArrowDownRight, Lock, DollarSign, ArrowUpRight, Flame, Gift, Zap, Sparkles, ArrowUpDown } from "lucide-react";
+import { Wallet, TrendingUp, Award, AlertCircle, ArrowDownRight, Lock, DollarSign, ArrowUpRight, Flame, Gift, Zap, Sparkles, ArrowUpDown, ArrowRight, Activity } from "lucide-react";
 import btcbLogo from "@assets/logobtc_1777735570322.png";
 
 const USDC_LOGO_URL =
@@ -441,19 +441,38 @@ export default function Portfolio() {
   }, [userEvents, address]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
+    <div className="min-h-screen bg-background text-foreground flex flex-col cyber-grid relative overflow-hidden">
+      {/* Ambient background glows */}
+      <div className="absolute top-0 left-1/4 w-[800px] h-[500px] bg-primary/10 rounded-full blur-[120px] pointer-events-none -z-10 mix-blend-screen" />
+      <div className="absolute top-1/2 right-1/4 w-[600px] h-[400px] bg-cyan-500/5 rounded-full blur-[100px] pointer-events-none -z-10 mix-blend-screen" />
+      <div className="absolute bottom-0 left-1/3 w-[700px] h-[600px] bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none -z-10 mix-blend-screen" />
+
       <Navbar />
 
-      <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-24 sm:pt-28 pb-16">
+      <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-28 sm:pt-32 pb-24 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
+          transition={{ duration: 0.6, ease: [0.25, 1, 0.5, 1] }}
+          className="mb-10 relative"
         >
-          <h1 className="text-4xl font-bold mb-2">Portfolio</h1>
-          <p className="text-muted-foreground">
+          {/* Decorative cyber line */}
+          <div className="absolute -left-4 sm:-left-8 top-2 bottom-2 w-px bg-gradient-to-b from-transparent via-primary/50 to-transparent" />
+          
+          <h1 className="text-4xl sm:text-5xl font-black mb-3 tracking-tight text-white drop-shadow-md flex items-center gap-4">
+            Portfolio
+            {isConnected && (
+              <span className="inline-block px-3 py-1 rounded-md bg-white/5 border border-white/10 text-xs font-mono uppercase tracking-widest text-primary/80 align-middle">
+                Live
+              </span>
+            )}
+          </h1>
+          <p className="text-muted-foreground/80 font-mono text-sm tracking-wide">
             {isConnected && address
-              ? `Positions for ${formatAddress(address)}`
+              ? <span className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse" />
+                  Positions for <span className="text-white">{formatAddress(address)}</span>
+                </span>
               : "Connect your wallet to view your positions"}
           </p>
         </motion.div>
@@ -462,45 +481,61 @@ export default function Portfolio() {
           <motion.div
             initial={{ opacity: 0, scale: 0.97 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="rounded-2xl border border-border bg-card/30 p-16 text-center"
+            transition={{ duration: 0.7, ease: [0.25, 1, 0.5, 1] }}
+            className="rounded-2xl border border-primary/20 bg-black/40 backdrop-blur-xl p-16 text-center shadow-[0_0_40px_rgba(0,0,0,0.5),inset_0_0_20px_rgba(0,212,255,0.05)] relative overflow-hidden group"
             data-testid="wallet-connect-prompt"
           >
-            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
-              <Wallet size={28} className="text-primary" />
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(0,212,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,212,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
+            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+            <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+            
+            <div className="relative z-10 flex flex-col items-center">
+              <div className="relative w-24 h-24 mb-8 flex items-center justify-center">
+                <div className="absolute inset-0 rounded-full border border-primary/30 animate-[spin_10s_linear_infinite] border-t-primary" />
+                <div className="absolute inset-2 rounded-full border border-primary/20 animate-[spin_15s_linear_infinite_reverse] border-r-primary" />
+                <div className="absolute inset-0 bg-primary/10 rounded-full blur-xl animate-pulse" />
+                <Wallet size={32} className="text-primary relative z-10" />
+              </div>
+              <h2 className="text-2xl font-bold mb-4 tracking-wide text-white drop-shadow">Connect Your Wallet</h2>
+              <p className="text-muted-foreground/80 mb-10 max-w-md mx-auto font-mono text-sm leading-relaxed">
+                Connect your wallet to view your Moats positions and MAPS score.
+              </p>
+              <button
+                onClick={() => open({ view: "Connect" })}
+                data-testid="btn-connect-wallet-portfolio"
+                className="btn-shimmer relative overflow-hidden group inline-flex items-center gap-3 px-8 py-4 rounded-xl bg-primary/10 border border-primary/50 text-primary font-bold hover:bg-primary/20 hover:border-primary transition-all duration-300 hover:shadow-[0_0_30px_rgba(0,212,255,0.3)] hover:-translate-y-1"
+              >
+                <Wallet size={18} className="group-hover:scale-110 transition-transform" />
+                <span className="tracking-widest uppercase">Connect Wallet</span>
+              </button>
             </div>
-            <h2 className="text-2xl font-bold mb-3">Connect Your Wallet</h2>
-            <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-              Connect your wallet to view your Moats positions and MAPS score.
-            </p>
-            <button
-              onClick={() => open({ view: "Connect" })}
-              data-testid="btn-connect-wallet-portfolio"
-              className="btn-shimmer inline-flex items-center gap-2 px-8 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-all duration-200 hover:shadow-[0_0_24px_rgba(0,212,255,0.4)]"
-            >
-              <Wallet size={16} />
-              Connect Wallet
-            </button>
           </motion.div>
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-10">
             {/* Stats row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
                 data-testid="stat-maps-score"
-                className="rounded-2xl border border-border bg-card/30 p-6 flex items-center gap-4"
+                className="rounded-xl border border-violet-500/20 bg-black/40 backdrop-blur-md p-5 flex flex-col justify-between relative overflow-hidden group hover:border-violet-500/40 transition-colors"
               >
-                <div className="p-3 rounded-xl bg-violet-400/10 shrink-0">
-                  <Award className="w-6 h-6 text-violet-400" />
+                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                  <Award className="w-16 h-16 text-violet-400" />
                 </div>
+                <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-violet-500/30 to-transparent" />
+                
+                <p className="text-[10px] font-mono text-violet-400/80 uppercase tracking-widest mb-4 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-violet-400 shadow-[0_0_8px_rgba(167,139,250,0.8)]" />
+                  MAPS Score
+                </p>
                 <div>
-                  <p className="text-3xl font-bold tabular-nums">
+                  <p className="text-3xl font-black tabular-nums text-white drop-shadow-md tracking-tight">
                     {scoreLoading ? "..." : mapsScore?.points != null ? mapsScore.points.toLocaleString() : "—"}
                   </p>
-                  <p className="text-sm text-muted-foreground">MAPS Score</p>
                   {mapsScore?.rank && (
-                    <p className="text-xs text-primary mt-0.5">Rank #{mapsScore.rank}</p>
+                    <p className="text-xs text-violet-400 mt-1 font-mono uppercase tracking-wider">Rank #{mapsScore.rank}</p>
                   )}
                 </div>
               </motion.div>
@@ -508,78 +543,92 @@ export default function Portfolio() {
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.05 }}
+                transition={{ duration: 0.5, delay: 0.05 }}
                 data-testid="stat-active-positions"
-                className="rounded-2xl border border-border bg-card/30 p-6 flex items-center gap-4"
+                className="rounded-xl border border-cyan-500/20 bg-black/40 backdrop-blur-md p-5 flex flex-col justify-between relative overflow-hidden group hover:border-cyan-500/40 transition-colors"
               >
-                <div className="p-3 rounded-xl bg-cyan-400/10 shrink-0">
-                  <TrendingUp className="w-6 h-6 text-cyan-400" />
+                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                  <TrendingUp className="w-16 h-16 text-cyan-400" />
                 </div>
-                <div>
-                  <p className="text-3xl font-bold tabular-nums">
-                    {isPositionsLoading ? "..." : activePositions.length}
-                  </p>
-                  <p className="text-sm text-muted-foreground">Active Positions</p>
-                </div>
+                <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent" />
+
+                <p className="text-[10px] font-mono text-cyan-400/80 uppercase tracking-widest mb-4 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
+                  Active Positions
+                </p>
+                <p className="text-3xl font-black tabular-nums text-white drop-shadow-md tracking-tight">
+                  {isPositionsLoading ? "..." : activePositions.length}
+                </p>
               </motion.div>
 
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
                 data-testid="stat-total-moats"
-                className="rounded-2xl border border-border bg-card/30 p-6 flex items-center gap-4"
+                className="rounded-xl border border-emerald-500/20 bg-black/40 backdrop-blur-md p-5 flex flex-col justify-between relative overflow-hidden group hover:border-emerald-500/40 transition-colors"
               >
-                <div className="p-3 rounded-xl bg-emerald-400/10 shrink-0">
-                  <Lock className="w-6 h-6 text-emerald-400" />
+                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                  <Lock className="w-16 h-16 text-emerald-400" />
                 </div>
-                <div>
-                  <p className="text-3xl font-bold tabular-nums">
-                    {configsLoading ? "..." : (configs?.length || 0)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">Available Moats</p>
-                </div>
+                <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent" />
+
+                <p className="text-[10px] font-mono text-emerald-400/80 uppercase tracking-widest mb-4 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                  Available Moats
+                </p>
+                <p className="text-3xl font-black tabular-nums text-white drop-shadow-md tracking-tight">
+                  {configsLoading ? "..." : (configs?.length || 0)}
+                </p>
               </motion.div>
 
               {totalPortfolioValueUSD > 0 && (
                 <motion.div
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15 }}
+                  transition={{ duration: 0.5, delay: 0.15 }}
                   data-testid="stat-portfolio-value-usd"
-                  className="rounded-2xl border border-primary/20 bg-primary/5 p-6 flex items-center gap-4"
+                  className="rounded-xl border border-primary/20 bg-black/40 backdrop-blur-md p-5 flex flex-col justify-between relative overflow-hidden group hover:border-primary/40 transition-colors"
                 >
-                  <div className="p-3 rounded-xl bg-primary/10 shrink-0">
-                    <DollarSign className="w-6 h-6 text-primary" />
+                  <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <DollarSign className="w-16 h-16 text-primary" />
                   </div>
-                  <div>
-                    <p className="text-3xl font-bold tabular-nums text-primary">
-                      {formatUSD(totalPortfolioValueUSD)}
-                    </p>
-                    <p className="text-sm text-muted-foreground">Portfolio Value</p>
-                  </div>
+                  <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+
+                  <p className="text-[10px] font-mono text-primary/80 uppercase tracking-widest mb-4 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(0,212,255,0.8)] animate-pulse" />
+                    Portfolio Value
+                  </p>
+                  <p className="text-3xl font-black tabular-nums text-white drop-shadow-[0_0_10px_rgba(0,212,255,0.3)] tracking-tight">
+                    {formatUSD(totalPortfolioValueUSD)}
+                  </p>
                 </motion.div>
               )}
 
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.18 }}
+                transition={{ duration: 0.5, delay: 0.18 }}
                 data-testid="stat-swap-points"
-                className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6 flex items-center gap-4"
+                className="rounded-xl border border-amber-500/20 bg-black/40 backdrop-blur-md p-5 flex flex-col justify-between relative overflow-hidden group hover:border-amber-500/40 transition-colors"
               >
-                <div className="p-3 rounded-xl bg-amber-400/10 shrink-0">
-                  <Zap className="w-6 h-6 text-amber-400" />
+                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                  <Zap className="w-16 h-16 text-amber-400" />
                 </div>
+                <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-amber-500/30 to-transparent" />
+
+                <p className="text-[10px] font-mono text-amber-400/80 uppercase tracking-widest mb-4 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]" />
+                  Swap Points
+                </p>
                 <div>
-                  <p className="text-3xl font-bold tabular-nums text-amber-400">
+                  <p className="text-3xl font-black tabular-nums text-white drop-shadow-md tracking-tight">
                     {swapPointsLoading
                       ? "..."
                       : Math.floor(swapPoints?.points ?? 0).toLocaleString()}
                   </p>
-                  <p className="text-sm text-muted-foreground">Swap Points</p>
                   {!swapPointsLoading && (swapPoints?.swapCount ?? 0) > 0 && (
-                    <p className="text-xs text-muted-foreground/80 mt-0.5">
+                    <p className="text-xs text-amber-400/80 mt-1 font-mono uppercase tracking-wider">
                       {swapPoints!.swapCount} swap{swapPoints!.swapCount === 1 ? "" : "s"}
                     </p>
                   )}
@@ -590,44 +639,59 @@ export default function Portfolio() {
                 <motion.div
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
                   data-testid="stat-daily-rewards-usd"
-                  className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-6 flex items-center gap-4"
+                  className="rounded-xl border border-emerald-500/20 bg-black/40 backdrop-blur-md p-5 flex flex-col justify-between relative overflow-hidden group hover:border-emerald-500/40 transition-colors"
                 >
-                  <div className="p-3 rounded-xl bg-emerald-400/10 shrink-0">
-                    <DollarSign className="w-6 h-6 text-emerald-400" />
+                  <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <DollarSign className="w-16 h-16 text-emerald-400" />
                   </div>
-                  <div>
-                    <p className="text-3xl font-bold tabular-nums text-emerald-400">
-                      {formatUSD(totalDailyUSD)}
-                    </p>
-                    <p className="text-sm text-muted-foreground">Est. Daily Rewards</p>
-                  </div>
+                  <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent" />
+
+                  <p className="text-[10px] font-mono text-emerald-400/80 uppercase tracking-widest mb-4 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                    Est. Daily Rewards
+                  </p>
+                  <p className="text-3xl font-black tabular-nums text-white drop-shadow-md tracking-tight">
+                    {formatUSD(totalDailyUSD)}
+                  </p>
                 </motion.div>
               )}
             </div>
 
             {/* No MAPS score notice */}
             {!scoreLoading && !mapsScore && (
-              <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 flex items-start gap-3">
-                <AlertCircle size={18} className="text-amber-400 shrink-0 mt-0.5" />
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-5 flex items-start gap-4 shadow-[0_0_15px_rgba(251,191,36,0.1)] relative overflow-hidden"
+              >
+                <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
+                <AlertCircle size={20} className="text-amber-400 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-amber-400">No MAPS Score Found</p>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-sm font-bold text-amber-400 uppercase tracking-widest mb-1">No MAPS Score Found</p>
+                  <p className="text-xs text-amber-100/70 font-mono tracking-wide leading-relaxed">
                     Your wallet hasn't earned MAPS points yet. Stake, lock, or burn tokens in a Moat to start earning.
                   </p>
                 </div>
-              </div>
+              </motion.div>
             )}
 
             {/* Active Positions */}
-            <div>
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <h2 className="text-xl font-bold">My Positions</h2>
+            <div className="relative">
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6 relative z-10">
+                <div>
+                  <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-3">
+                    <div className="p-1.5 rounded bg-primary/20 border border-primary/30">
+                      <TrendingUp size={16} className="text-primary" />
+                    </div>
+                    My Positions
+                  </h2>
+                </div>
                 {!isPositionsLoading && activePositions.length > 1 && (
-                  <div role="group" aria-label="Sort positions" className="flex items-center gap-2">
-                    <ArrowUpDown size={14} className="text-muted-foreground shrink-0" />
-                    <div className="flex gap-1.5 flex-wrap">
+                  <div role="group" aria-label="Sort positions" className="flex items-center gap-3 bg-black/40 backdrop-blur-sm p-1.5 rounded-xl border border-white/5 shadow-inner">
+                    <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest pl-2">Sort</span>
+                    <div className="flex gap-1">
                       {([
                         ["points", "Points"],
                         ["value", "Value"],
@@ -638,10 +702,10 @@ export default function Portfolio() {
                           onClick={() => setSortBy(key)}
                           data-testid={`sort-positions-${key}`}
                           aria-pressed={sortBy === key}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                          className={`px-4 py-1.5 rounded-lg text-[10px] font-mono uppercase tracking-widest transition-all ${
                             sortBy === key
-                              ? "bg-primary/15 border border-primary/60 text-foreground"
-                              : "border border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                              ? "bg-primary/20 border border-primary/50 text-primary shadow-[0_0_10px_rgba(0,212,255,0.2)] font-bold"
+                              : "bg-transparent border border-transparent text-muted-foreground hover:bg-white/5 hover:text-white"
                           }`}
                         >
                           {label}
@@ -651,19 +715,23 @@ export default function Portfolio() {
                   </div>
                 )}
               </div>
+
               {isPositionsLoading ? (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {[...Array(3)].map((_, i) => (
-                    <div key={i} className="h-32 rounded-2xl skeleton-shimmer border border-border" />
+                    <div key={i} className="h-40 rounded-2xl bg-card/30 border border-border relative overflow-hidden">
+                       <div className="absolute inset-0 skeleton-shimmer opacity-20" />
+                    </div>
                   ))}
                 </div>
               ) : activePositions.length === 0 ? (
-                <div className="rounded-2xl border border-border bg-card/30 p-10 text-center text-muted-foreground">
-                  <p className="text-sm">No active positions found for this wallet.</p>
-                  <p className="text-xs mt-1">Stake, lock, or burn tokens in a Moat to get started.</p>
+                <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur-md p-12 text-center text-muted-foreground flex flex-col items-center justify-center min-h-[300px] cyber-grid">
+                  <TrendingUp size={32} className="text-white/20 mb-4" />
+                  <p className="text-lg font-bold text-white/80 mb-2 tracking-tight">NO ACTIVE POSITIONS</p>
+                  <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground/60 max-w-sm">Scan the markets and stake tokens in a Moat to establish a position.</p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-4 relative z-10">
                   {[...activePositions.keys()]
                     .sort((a, b) => {
                       if (sortBy === "value") {
@@ -692,129 +760,128 @@ export default function Portfolio() {
                     return (
                       <motion.div
                         key={pos.config.contractAddress}
-                        initial={{ opacity: 0, y: 12 }}
+                        initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        whileHover={{ y: -2 }}
-                        transition={{ delay: i * 0.04 }}
-                        className="rounded-2xl border border-border bg-card/30 p-5 hover:border-primary/30 hover:bg-card/40 transition-colors duration-200"
+                        whileHover={{ scale: 1.005, y: -2 }}
+                        transition={{ duration: 0.3 }}
+                        className="rounded-xl border border-white/10 bg-black/60 backdrop-blur-xl p-5 sm:p-6 hover:border-primary/40 transition-all duration-300 relative group overflow-hidden cyber-grid shadow-lg"
                       >
-                        <div className="flex items-center justify-between gap-4">
-                          <div className="flex items-center gap-3 min-w-0">
-                            {/* Logo */}
-                            {logoUrl ? (
-                              <img
-                                src={logoUrl}
-                                alt={meta.name}
-                                className="w-9 h-9 rounded-xl object-cover shrink-0 border border-border/30"
-                                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                              />
-                            ) : (
-                              <div className="w-9 h-9 rounded-xl bg-primary/15 border border-primary/20 flex items-center justify-center text-primary font-bold text-xs shrink-0">
-                                {meta.tokenSymbol.slice(0, 2)}
+                        {/* Interactive hover glows */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                        
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 relative z-10">
+                          
+                          {/* Left: Identity */}
+                          <div className="flex items-center gap-4 min-w-0">
+                            <div className="relative shrink-0">
+                              {logoUrl ? (
+                                <img
+                                  src={logoUrl}
+                                  alt={meta.name}
+                                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl object-cover border border-white/20 shadow-md group-hover:border-primary/50 transition-colors bg-black"
+                                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                                />
+                              ) : (
+                                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center text-primary font-black text-xl shrink-0 shadow-[inset_0_0_15px_rgba(0,212,255,0.1)] group-hover:border-primary/60 transition-colors">
+                                  {meta.tokenSymbol.slice(0, 2)}
+                                </div>
+                              )}
+                              <div className="absolute -inset-2 bg-primary/20 rounded-[1rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 -z-10" />
+                            </div>
+                            <div className="min-w-0 py-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Link
+                                  href={`/moat/${pos.config.contractAddress}`}
+                                  className="font-black text-xl text-white hover:text-primary transition-colors tracking-tight drop-shadow-sm truncate"
+                                >
+                                  {meta.name}
+                                </Link>
+                                <span className={`text-[9px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-[4px] border border-white/10 bg-white/5 text-muted-foreground shrink-0`}>
+                                  {pos.config.network}
+                                </span>
                               </div>
-                            )}
-                            <div className="min-w-0">
-                              <Link
-                                href={`/moat/${pos.config.contractAddress}`}
-                                className="font-semibold text-foreground hover:text-primary transition-colors text-sm"
-                              >
-                                {meta.name}
-                              </Link>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                {meta.protocol} · {pos.config.status} · {pos.config.network}
+                              <p className="text-xs font-mono text-muted-foreground uppercase tracking-widest truncate">
+                                {meta.protocol} <span className="mx-1 opacity-50">/</span> <span className="text-primary/70">{pos.config.status}</span>
                               </p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            {hasRewards && (
-                              <Link
-                                href={`/moat/${pos.config.contractAddress}`}
-                                data-testid={`badge-rewards-pending-${pos.config.contractAddress}`}
-                                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/15 transition-colors"
-                                title="You have unclaimed rewards"
-                              >
-                                <Gift size={12} />
-                                <span className="hidden sm:inline">Rewards Pending</span>
-                              </Link>
-                            )}
-                            <Link
-                              href={`/moat/${pos.config.contractAddress}`}
-                              className="px-4 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors"
-                            >
-                              Manage
-                            </Link>
-                          </div>
-                        </div>
 
-                        {(posVal > 0 || dailyUSD > 0) && (
-                          <div className="flex items-end justify-between gap-4 mt-4 pt-4 border-t border-border/40">
-                            <div className="min-w-0">
-                              <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
-                                Position Value
-                              </p>
-                              <p className="text-2xl font-bold text-primary tabular-nums leading-tight">
+                          {/* Center: Financials */}
+                          <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 sm:gap-1 px-2 sm:px-6 sm:border-x border-white/10 min-w-[200px]">
+                            <div className="text-left sm:text-right">
+                              <p className="text-[9px] font-mono text-muted-foreground/80 uppercase tracking-widest mb-1">Position Value</p>
+                              <p className="text-2xl font-black text-white tabular-nums tracking-tight drop-shadow-sm">
                                 {posVal > 0 ? formatUSD(posVal) : "—"}
                               </p>
                             </div>
                             {dailyUSD > 0 && (
-                              <div className="text-right shrink-0">
-                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
-                                  Est. Rewards
-                                </p>
-                                <p className="text-sm font-bold text-emerald-400 tabular-nums leading-tight">
-                                  {formatUSD(dailyUSD)}/day
+                              <div className="text-right">
+                                <p className="text-sm font-bold text-emerald-400 tabular-nums bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 inline-block shadow-[inset_0_0_8px_rgba(52,211,153,0.1)]">
+                                  +{formatUSD(dailyUSD)}<span className="text-[10px] text-emerald-400/70 ml-1 uppercase">/day</span>
                                 </p>
                               </div>
                             )}
                           </div>
-                        )}
 
-                        <div className="flex flex-wrap gap-x-6 gap-y-3 mt-4">
+                          {/* Right: Actions */}
+                          <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 mt-2 sm:mt-0">
+                            {hasRewards && (
+                              <Link
+                                href={`/moat/${pos.config.contractAddress}`}
+                                data-testid={`badge-rewards-pending-${pos.config.contractAddress}`}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 text-xs font-bold hover:bg-emerald-500/25 transition-all shadow-[0_0_15px_rgba(52,211,153,0.2)] animate-pulse hover:animate-none"
+                                title="You have unclaimed rewards"
+                              >
+                                <Gift size={14} />
+                                <span className="hidden sm:inline tracking-wide uppercase font-mono text-[10px]">Rewards Ready</span>
+                              </Link>
+                            )}
+                            <Link
+                              href={`/moat/${pos.config.contractAddress}`}
+                              className="btn-shimmer relative overflow-hidden group inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-primary/20 border border-primary/50 text-primary font-bold hover:bg-primary/30 hover:border-primary transition-all shadow-[0_0_20px_rgba(0,212,255,0.15)]"
+                            >
+                              <span className="tracking-widest uppercase text-xs font-mono">Manage</span>
+                              <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                            </Link>
+                          </div>
+                        </div>
+
+                        {/* Metric Chips */}
+                        <div className="flex flex-wrap items-center gap-2 mt-5 pt-5 border-t border-white/5">
                           {pos.stakedAmount > 0n && (
-                            <div className="flex items-center gap-2">
-                              <ArrowUpRight size={14} className="text-emerald-400" />
-                              <div>
-                                <p className="text-sm font-bold">{formatTokenAmount(pos.stakedAmount, dec)}</p>
-                                <p className="text-xs text-muted-foreground">Staked</p>
-                              </div>
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-black/40 border border-emerald-500/20">
+                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
+                              <span className="text-[10px] font-mono text-emerald-400/80 uppercase tracking-widest">Staked</span>
+                              <span className="text-xs font-bold text-white tabular-nums ml-1">{formatTokenAmount(pos.stakedAmount, dec)}</span>
                             </div>
                           )}
                           {locked > 0n && (
-                            <div className="flex items-center gap-2">
-                              <Lock size={14} className="text-cyan-400" />
-                              <div>
-                                <p className="text-sm font-bold">{formatTokenAmount(locked, dec)}</p>
-                                <p className="text-xs text-muted-foreground">Locked</p>
-                              </div>
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-black/40 border border-cyan-500/20">
+                              <Lock size={10} className="text-cyan-400" />
+                              <span className="text-[10px] font-mono text-cyan-400/80 uppercase tracking-widest">Locked</span>
+                              <span className="text-xs font-bold text-white tabular-nums ml-1">{formatTokenAmount(locked, dec)}</span>
                             </div>
                           )}
                           {pos.activeLockCount > 0n && locked === 0n && (
-                            <div className="flex items-center gap-2">
-                              <Lock size={14} className="text-cyan-400" />
-                              <div>
-                                <p className="text-sm font-bold">{Number(pos.activeLockCount)}</p>
-                                <p className="text-xs text-muted-foreground">Active Locks</p>
-                              </div>
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-black/40 border border-cyan-500/20">
+                              <Lock size={10} className="text-cyan-400" />
+                              <span className="text-[10px] font-mono text-cyan-400/80 uppercase tracking-widest">Locks</span>
+                              <span className="text-xs font-bold text-white tabular-nums ml-1">{Number(pos.activeLockCount)}</span>
                             </div>
                           )}
                           {pos.totalUserBurn > 0n && (
-                            <div className="flex items-center gap-2">
-                              <Flame size={14} className="text-rose-400" />
-                              <div>
-                                <p className="text-sm font-bold">{formatTokenAmount(pos.totalUserBurn, dec)}</p>
-                                <p className="text-xs text-muted-foreground">Burned</p>
-                              </div>
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-black/40 border border-rose-500/20">
+                              <Flame size={10} className="text-rose-400" />
+                              <span className="text-[10px] font-mono text-rose-400/80 uppercase tracking-widest">Burned</span>
+                              <span className="text-xs font-bold text-white tabular-nums ml-1">{formatTokenAmount(pos.totalUserBurn, dec)}</span>
                             </div>
                           )}
                           {mapsPoints > 0 && (
-                            <div className="flex items-center gap-2">
-                              <Award size={14} className="text-violet-400" />
-                              <div>
-                                <p className="text-sm font-bold text-violet-400">
-                                  {formatPoints(mapsPoints)}
-                                </p>
-                                <p className="text-xs text-muted-foreground">Moat Points</p>
-                              </div>
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-black/40 border border-violet-500/30 shadow-[inset_0_0_10px_rgba(167,139,250,0.1)]">
+                              <Award size={10} className="text-violet-400" />
+                              <span className="text-[10px] font-mono text-violet-400/80 uppercase tracking-widest">MAPS</span>
+                              <span className="text-xs font-bold text-violet-300 tabular-nums ml-1">{formatPoints(mapsPoints)}</span>
                             </div>
                           )}
                         </div>
@@ -825,23 +892,28 @@ export default function Portfolio() {
               )}
             </div>
 
-            {/* Rewards Claimed — lifetime totals from on-chain RewardClaimed events */}
-            <div>
-              <div className="flex items-baseline justify-between mb-4">
-                <h2 className="text-xl font-bold">Rewards Claimed</h2>
+            {/* Rewards Claimed */}
+            <div className="relative pt-6">
+              <div className="flex items-baseline justify-between mb-6 relative z-10">
+                <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-3">
+                  <div className="p-1.5 rounded bg-emerald-500/20 border border-emerald-500/30">
+                    <Gift size={16} className="text-emerald-400" />
+                  </div>
+                  Rewards Claimed
+                </h2>
                 {claimedAggregate.totalUsd > 0 && (
-                  <span className="text-sm text-muted-foreground">
-                    Total <span className="text-foreground font-semibold">{formatUSD(claimedAggregate.totalUsd)}</span>
+                  <span className="text-xs font-mono text-muted-foreground uppercase tracking-widest bg-black/40 px-3 py-1.5 rounded-lg border border-white/5">
+                    LIFETIME <span className="text-emerald-400 font-bold ml-1">{formatUSD(claimedAggregate.totalUsd)}</span>
                   </span>
                 )}
               </div>
 
               {/* Featured tokens */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4 relative z-10">
                 {([
-                  { key: "usdc", row: claimedAggregate.featured.usdc, label: "Total USDC Claimed" },
-                  { key: "wavax", row: claimedAggregate.featured.wavax, label: "Total WAVAX Claimed" },
-                  { key: "btcb", row: claimedAggregate.featured.btcb, label: "Total BTC.b Claimed" },
+                  { key: "usdc", row: claimedAggregate.featured.usdc, label: "USDC" },
+                  { key: "wavax", row: claimedAggregate.featured.wavax, label: "WAVAX" },
+                  { key: "btcb", row: claimedAggregate.featured.btcb, label: "BTC.b" },
                 ] as const).map(({ key, row, label }) => {
                   const dust = row.symbol === "BTC.b" ? 0.0001 : 0.01;
                   const amtStr =
@@ -851,123 +923,153 @@ export default function Portfolio() {
                       ? row.amount.toLocaleString("en-US", { maximumFractionDigits: 6 })
                       : row.amount.toLocaleString("en-US", { maximumFractionDigits: 4 });
                   return (
-                    <div
+                    <motion.div
                       key={key}
+                      whileHover={{ y: -4 }}
                       data-testid={`stat-claimed-${key}`}
-                      className="rounded-2xl border border-border bg-card/30 p-5 flex items-center gap-4"
+                      className="rounded-xl border border-white/10 bg-black/50 backdrop-blur-md p-5 flex flex-col items-center sm:items-start text-center sm:text-left gap-4 relative overflow-hidden group shadow-lg"
                     >
-                      {row.logoUrl && (
-                        <img
-                          src={row.logoUrl}
-                          alt={row.symbol}
-                          className="w-10 h-10 rounded-full shrink-0"
-                          onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")}
-                        />
-                      )}
-                      <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground">{label}</p>
-                        <p className="text-2xl font-bold tabular-nums">{amtStr}</p>
-                        {row.usd > 0 && (
-                          <p className="text-xs text-muted-foreground">{formatUSD(row.usd)}</p>
+                      <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                      
+                      <div className="flex items-center gap-3 w-full justify-center sm:justify-start border-b border-white/5 pb-3">
+                        {row.logoUrl ? (
+                          <img
+                            src={row.logoUrl}
+                            alt={row.symbol}
+                            className="w-7 h-7 rounded-full shadow-md"
+                            onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")}
+                          />
+                        ) : (
+                          <div className="w-7 h-7 rounded-full bg-white/10 border border-white/20" />
+                        )}
+                        <p className="text-[11px] font-mono text-muted-foreground uppercase tracking-widest font-bold">{label}</p>
+                      </div>
+                      
+                      <div className="w-full">
+                        <p className="text-2xl font-black text-white tabular-nums drop-shadow-sm leading-none mb-2">{amtStr}</p>
+                        {row.usd > 0 ? (
+                          <p className="text-[11px] font-mono font-bold text-emerald-400 tabular-nums uppercase tracking-widest">{formatUSD(row.usd)} <span className="text-emerald-500/50">USD</span></p>
+                        ) : (
+                          <p className="text-[11px] font-mono text-muted-foreground/40 tabular-nums uppercase tracking-widest">—</p>
                         )}
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 })}
               </div>
 
               {/* Community tokens */}
-              {claimedAggregate.community.length === 0 ? (
-                <div className="rounded-2xl border border-border bg-card/30 p-5 text-center text-muted-foreground text-sm">
-                  No community asset rewards claimed yet.
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-border bg-card/30 overflow-hidden">
-                  <div className="px-5 py-3 border-b border-border/50 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-                    <Sparkles size={14} className="text-violet-400" />
-                    Community Assets Claimed
-                    <span className="ml-auto text-xs font-normal">
-                      {claimedAggregate.community.length} token{claimedAggregate.community.length === 1 ? "" : "s"}
-                    </span>
+              <div className="relative z-10">
+                {claimedAggregate.community.length === 0 ? (
+                  <div className="rounded-xl border border-white/5 bg-black/30 p-6 text-center text-muted-foreground/60 font-mono text-xs uppercase tracking-widest">
+                    No community asset rewards claimed yet
                   </div>
-                  <div className="divide-y divide-border/50">
-                    {claimedAggregate.community.map((row) => {
-                      const amtStr =
-                        row.amount < 0.01
-                          ? row.amount.toLocaleString("en-US", { maximumFractionDigits: 6 })
-                          : row.amount.toLocaleString("en-US", { maximumFractionDigits: 2 });
-                      return (
-                        <div
-                          key={row.address}
-                          data-testid={`row-claimed-${row.symbol.toLowerCase()}`}
-                          className="px-5 py-3 flex items-center justify-between gap-4 hover:bg-card/40 transition-colors"
-                        >
-                          <span className="text-sm font-semibold">Total {row.symbol} Claimed</span>
-                          <div className="flex items-center gap-4 shrink-0">
-                            <span className="text-sm font-medium tabular-nums">{amtStr}</span>
-                            <span className="text-xs text-muted-foreground tabular-nums w-20 text-right">
-                              {row.usd > 0 ? formatUSD(row.usd) : "—"}
-                            </span>
+                ) : (
+                  <div className="rounded-xl border border-white/10 bg-black/40 backdrop-blur-md overflow-hidden shadow-lg">
+                    <div className="px-5 py-3 border-b border-white/10 bg-white/[0.02] flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Sparkles size={14} className="text-primary/70" />
+                        <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest font-bold">Community Assets</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-muted-foreground/60 uppercase tracking-widest">
+                        {claimedAggregate.community.length} token{claimedAggregate.community.length === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                    <div className="divide-y divide-white/5">
+                      {claimedAggregate.community.map((row) => {
+                        const amtStr =
+                          row.amount < 0.01
+                            ? row.amount.toLocaleString("en-US", { maximumFractionDigits: 6 })
+                            : row.amount.toLocaleString("en-US", { maximumFractionDigits: 2 });
+                        return (
+                          <div
+                            key={row.address}
+                            data-testid={`row-claimed-${row.symbol.toLowerCase()}`}
+                            className="px-5 py-3.5 flex items-center justify-between gap-4 hover:bg-white/[0.03] transition-colors group"
+                          >
+                            <span className="text-xs font-bold text-white/90 group-hover:text-primary transition-colors tracking-wide">{row.symbol}</span>
+                            <div className="flex items-center gap-6 shrink-0">
+                              <span className="text-xs font-mono text-white tabular-nums tracking-wider">{amtStr}</span>
+                              <span className="text-[11px] font-mono font-bold text-emerald-400 tabular-nums w-20 text-right">
+                                {row.usd > 0 ? formatUSD(row.usd) : "—"}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
-            {/* Transaction History — only this wallet's own transactions */}
+            {/* Transaction History */}
             {!eventsLoading && (
-              <div>
-                <h2 className="text-xl font-bold mb-4">Transaction History</h2>
+              <div className="relative pt-6">
+                <div className="flex items-center gap-3 mb-6 relative z-10">
+                  <div className="p-1.5 rounded bg-white/5 border border-white/10">
+                    <Activity size={16} className="text-white/60" />
+                  </div>
+                  <h2 className="text-2xl font-black tracking-tight text-white">Transaction History</h2>
+                </div>
+
                 {ownTransactions.length === 0 ? (
-                  <div className="rounded-2xl border border-border bg-card/30 p-8 text-center text-muted-foreground text-sm">
+                  <div className="rounded-xl border border-white/5 bg-black/30 p-8 text-center text-muted-foreground/60 font-mono text-xs uppercase tracking-widest">
                     No personal transactions found.
                   </div>
                 ) : (
-                  <div className="rounded-2xl border border-border bg-card/30 divide-y divide-border/50 overflow-hidden">
-                    {ownTransactions.slice(0, 20).map((ev, i) => (
-                      <motion.div
-                        key={ev._id || i}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: i * 0.02 }}
-                        className="px-5 py-3 flex items-center justify-between gap-4 hover:bg-card/40 transition-colors"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <span className={`text-sm font-semibold shrink-0 ${getEventTypeColor(ev.eventType)}`}>
-                            {getEventTypeLabel(ev.eventType)}
-                          </span>
-                          <span className="text-xs text-muted-foreground truncate">
-                            {getMoatMeta(ev.contractAddress).name}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3 shrink-0">
-                          <span className="text-xs text-muted-foreground">{timeAgo(new Date(ev.timestamp).getTime())}</span>
-                          <a
-                            href={`${getExplorerUrl(ev.network)}/tx/${ev.transactionHash}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-xs text-primary/60 hover:text-primary transition-colors"
-                          >
-                            <ArrowDownRight size={12} />
-                            {ev.transactionHash.slice(0, 8)}…
-                          </a>
-                        </div>
-                      </motion.div>
-                    ))}
+                  <div className="rounded-xl border border-white/10 bg-black/40 backdrop-blur-md overflow-hidden shadow-lg relative z-10">
+                    <div className="divide-y divide-white/5">
+                      {ownTransactions.slice(0, 20).map((ev, i) => (
+                        <motion.div
+                          key={ev._id || i}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: i * 0.02 }}
+                          className="px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-white/[0.03] transition-colors group"
+                        >
+                          <div className="flex items-center gap-4 min-w-0">
+                            <div className="w-24 shrink-0 flex items-center">
+                              <span className={`text-[10px] font-mono font-bold uppercase tracking-widest px-2 py-0.5 rounded border border-current/20 ${
+                                ev.eventType.includes('Lock') ? 'text-cyan-400 bg-cyan-400/10' :
+                                ev.eventType.includes('Burn') ? 'text-rose-400 bg-rose-400/10' :
+                                ev.eventType.includes('Stak') ? 'text-emerald-400 bg-emerald-400/10' :
+                                ev.eventType.includes('Claim') ? 'text-primary bg-primary/10' :
+                                'text-muted-foreground bg-white/5'
+                              }`}>
+                                {getEventTypeLabel(ev.eventType)}
+                              </span>
+                            </div>
+                            <span className="text-xs font-medium text-white/80 truncate">
+                              {getMoatMeta(ev.contractAddress).name}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between sm:justify-end gap-6 shrink-0 pl-14 sm:pl-0">
+                            <span className="text-[10px] font-mono text-muted-foreground/60 tracking-widest">{timeAgo(new Date(ev.timestamp).getTime())}</span>
+                            <a
+                              href={`${getExplorerUrl(ev.network)}/tx/${ev.transactionHash}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 text-[10px] font-mono text-primary/60 hover:text-primary transition-colors border border-primary/20 hover:border-primary/50 bg-primary/5 px-2 py-1 rounded"
+                            >
+                              TX:{ev.transactionHash.slice(0, 6)}
+                              <ArrowUpRight size={10} />
+                            </a>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
                     {ownTransactions.length > 20 && (
-                      <div className="px-5 py-3 flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                        <span>Showing latest 20 of {ownTransactions.length} transactions</span>
+                      <div className="px-5 py-3 bg-white/[0.02] border-t border-white/5 flex items-center justify-between gap-2">
+                        <span className="text-[9px] font-mono text-muted-foreground/50 uppercase tracking-widest">Displaying 20 of {ownTransactions.length} operations</span>
                         <a
                           href={`${getExplorerUrl(ownTransactions[0].network)}/address/${address}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-primary/70 hover:text-primary transition-colors"
+                          className="inline-flex items-center gap-1.5 text-[10px] font-mono text-white/50 hover:text-white transition-colors uppercase tracking-widest font-bold"
                         >
-                          View all on explorer
-                          <ArrowDownRight size={12} />
+                          Launch Block Explorer
+                          <ArrowRight size={10} />
                         </a>
                       </div>
                     )}
