@@ -24,6 +24,7 @@ import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { formatAddress, formatPoints, getEventTypeLabel, getEventTypeColor, getExplorerUrl, timeAgo, formatUSD, getMoatMeta } from "@/lib/moat-metadata";
 import { Link } from "wouter";
+import { PortfolioReports } from "@/components/portfolio-reports";
 
 function formatTokenAmount(raw: bigint, decimals: number = 18): string {
   const val = parseFloat(formatUnits(raw, decimals));
@@ -995,6 +996,19 @@ export default function Portfolio() {
                 )}
               </div>
             </div>
+
+            {/* Reports & Analytics */}
+            {!eventsLoading && ownTransactions.length > 0 && (
+              <PortfolioReports
+                address={address}
+                mapsScore={mapsScore}
+                totalPortfolioValueUSD={totalPortfolioValueUSD}
+                totalDailyUSD={totalDailyUSD}
+                ownTransactions={ownTransactions}
+                claimedAggregate={claimedAggregate}
+                activePositionCount={activePositions.length}
+              />
+            )}
 
             {/* Transaction History */}
             {!eventsLoading && (
