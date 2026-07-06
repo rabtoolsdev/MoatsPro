@@ -3,7 +3,7 @@ import {
   BarChart, Bar, AreaChart, Area, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid, Legend,
 } from "recharts";
-import { Download, BarChart2, TrendingUp, TrendingDown, Minus, Copy, Check, Image } from "lucide-react";
+import { Download, BarChart2, TrendingUp, TrendingDown, Minus, Copy, Check, Image as ImageIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import { formatUSD } from "@/lib/moat-metadata";
 import type { MoatEvent } from "@/lib/moats-api";
@@ -423,22 +423,32 @@ export function PortfolioReports(props: PortfolioReportsProps) {
   // Stable keys derived from data so the preview effect only re-runs when values actually change.
   const previewKey = `${activeCard}|${props.totalPortfolioValueUSD}|${props.claimedAggregate.totalUsd}|${props.swapPoints ?? 0}|${props.mapsScore?.points ?? 0}|${props.ownTransactions.length}`;
 
-  // Preview uses stripLogos so rendering is synchronous (no image fetches, no CORS).
   useEffect(() => {
     let cancelled = false;
     setPreviewLoading(true);
     setPreviewUrl(null);
-    // Build with letter-avatar fallbacks only — instant, CORS-free, never tainted.
+
+    const tryDataUrl = (canvas: HTMLCanvasElement): string | null => {
+      try { return canvas.toDataURL("image/png"); }
+      catch (e) { console.error("[preview] toDataURL failed:", (e as Error)?.name, (e as Error)?.message); return null; }
+    };
+
+    // Phase 1 — instant: render with letter-avatar fallbacks (no image fetches).
     buildCard(activeCard, stripLogos(props)).then(canvas => {
       if (cancelled) return;
-      try {
-        setPreviewUrl(canvas.toDataURL("image/png"));
-      } catch (e) {
-        console.error("[preview] toDataURL failed:", (e as Error)?.name, (e as Error)?.message);
-      }
+      const url = tryDataUrl(canvas);
+      if (url) { setPreviewUrl(url); setPreviewLoading(false); }
+    }).catch(() => {});
+
+    // Phase 2 — async: re-render with real logos once loaded (CORS-safe via cache-bust).
+    buildCard(activeCard, props).then(canvas => {
+      if (cancelled) return;
+      const url = tryDataUrl(canvas);
+      if (url) setPreviewUrl(url);
     }).catch(e => {
-      console.error("[preview] buildCard rejected:", (e as Error)?.name, (e as Error)?.message, e);
+      console.error("[preview] logo build failed:", (e as Error)?.name, (e as Error)?.message);
     }).finally(() => { if (!cancelled) setPreviewLoading(false); });
+
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [previewKey]);
@@ -623,7 +633,7 @@ export function PortfolioReports(props: PortfolioReportsProps) {
         <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
         <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Image size={14} className="text-primary/70" />
+            <ImageIcon size={14} className="text-primary/70" />
             <p className="text-[11px] font-mono text-white font-bold uppercase tracking-widest">Social Card Export</p>
           </div>
           <p className="text-[9px] font-mono text-muted-foreground/40 uppercase tracking-widest">PNG · 800×440 · 2×</p>
