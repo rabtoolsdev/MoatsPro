@@ -11,6 +11,23 @@ export function useEvents(contractAddress?: string) {
 }
 
 /**
+ * Fetch the most recent RewardsDeposited events for a single moat.
+ * Used to derive accurate per-token "last distributed" timestamps —
+ * the lastProcessed field on the config object is set when the config
+ * record is updated by the backend and can be severely stale/wrong.
+ */
+export function useRewardsDepositedEvents(contractAddress?: string) {
+  return useQuery({
+    queryKey: ["moats", "events", contractAddress, "RewardsDeposited"],
+    queryFn: () =>
+      moatsApi.getEvents({ contractAddress, eventType: "RewardsDeposited", limit: 100 }),
+    enabled: !!contractAddress,
+    staleTime: 60_000,
+    refetchInterval: 120_000,
+  });
+}
+
+/**
  * Fetch every RewardsDeposited event ever emitted across all moats. Used to
  * compute the canonical "total rewards distributed" per token — matches what
  * moats.app shows, including moats that have removed a reward token from

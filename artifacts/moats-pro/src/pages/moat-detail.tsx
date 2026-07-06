@@ -12,7 +12,7 @@ import {
 import { Link } from "wouter";
 import { formatUnits, parseUnits } from "viem";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMoatConfig, useMoatPointsV2, useUserMoatPointsV2, useEvents } from "@/hooks/use-moats-api";
+import { useMoatConfig, useMoatPointsV2, useUserMoatPointsV2, useEvents, useRewardsDepositedEvents } from "@/hooks/use-moats-api";
 import { getActiveBoosts, getBoostTier, getEffectiveBoostValue, getMaxBoostValue, type BoostConfig, type BoostTier } from "@/lib/moats-api";
 import {
   useMoatStats, useUserMoatInfo, useTokenBalance,
@@ -276,6 +276,22 @@ export default function MoatDetail() {
   const { data: pointsV2 } = useMoatPointsV2(contractAddress);
   const { data: userMoatPoints } = useUserMoatPointsV2(userAddress, contractAddress);
   const { data: eventsData } = useEvents(contractAddress);
+  const { data: rewardsDepositedData } = useRewardsDepositedEvents(contractAddress);
+  // Per-token last distribution timestamp (ms), derived from on-chain
+  // RewardsDeposited events. Replaces token.lastProcessed which is set when
+  // the *config record* is updated — not when rewards actually go out — and
+  // can be severely stale (e.g. stuck 59 days ago when the real last deposit
+  // was 4 days ago).
+  const lastDepositedMap = useMemo((): Record<string, number> => {
+    const map: Record<string, number> = {};
+    for (const ev of rewardsDepositedData?.results ?? []) {
+      const tokenAddr = (ev.args.token as string | undefined)?.toLowerCase();
+      if (!tokenAddr) continue;
+      const ts = new Date(ev.timestamp).getTime();
+      if (!map[tokenAddr] || ts > map[tokenAddr]) map[tokenAddr] = ts;
+    }
+    return map;
+  }, [rewardsDepositedData]);
   const stats = useMoatStats(contractAddress as MoatContractAddress | undefined);
   const userInfo = useUserMoatInfo(contractAddress as MoatContractAddress | undefined);
   const tokenBalance = useTokenBalance(stats.stakingToken as MoatContractAddress | undefined);
@@ -1044,13 +1060,13 @@ export default function MoatDetail() {
                             </span>
                           </div>
 
-                          {token.lastProcessed && (
+                          {lastDepositedMap[token.tokenAddress.toLowerCase()] && (
                             <div className="flex flex-col col-span-2 border-t border-white/5 pt-3 mt-1">
                               <div className="flex justify-between items-center text-xs">
                                 <span className="font-mono text-muted-foreground/60 uppercase tracking-widest text-[10px]">Last Distributed</span>
                                 <span className="font-medium text-primary/80 flex items-center gap-1.5">
                                   <Clock size={12} className="text-primary/50" />
-                                  {timeAgo(new Date(token.lastProcessed).getTime())}
+                                  {timeAgo(lastDepositedMap[token.tokenAddress.toLowerCase()])}
                                 </span>
                               </div>
                             </div>
