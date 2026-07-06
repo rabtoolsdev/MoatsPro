@@ -144,28 +144,31 @@ export function MoatCard({ moat, tvlUSD, supplyPct, logoUrl, dexLiquidityUSD, de
     <Link href={`/moat/${moat.contractAddress}`}>
       <motion.div
         data-testid={`card-moat-${moat.contractAddress}`}
-        whileHover={{ y: -6, scale: 1.015 }}
-        transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
-        className={`relative cursor-pointer rounded-2xl border ${statusStyle.border} bg-card/60 backdrop-blur-xl overflow-hidden group h-full flex flex-col cyber-grid`}
-        style={{ boxShadow: "0 8px 30px rgba(0,0,0,0.5)" }}
+        whileHover={{ y: -4, scale: 1.01 }}
+        transition={{ duration: 0.25, ease: [0.25, 1, 0.5, 1] }}
+        className={`relative cursor-pointer rounded-2xl border ${statusStyle.border} bg-card/80 backdrop-blur-sm overflow-hidden group h-full flex flex-col cyber-grid`}
+        style={{
+          boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
+          contain: "layout paint",
+          willChange: "transform",
+        }}
       >
-        {/* Glow overlay container */}
+        {/* Glow overlay — opacity-only transition, GPU-composited */}
         <div
-          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none rounded-2xl"
+          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-2xl"
           style={{ boxShadow: statusStyle.hoverGlow }}
         />
         {/* Subtle background highlight based on status */}
-        <div className={`absolute inset-0 bg-gradient-to-br ${statusStyle.bgHighlight} via-transparent to-transparent opacity-30 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none`} />
+        <div className={`absolute inset-0 bg-gradient-to-br ${statusStyle.bgHighlight} via-transparent to-transparent opacity-20 group-hover:opacity-70 transition-opacity duration-300 pointer-events-none`} />
 
         {/* Top edge highlight */}
-        <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+        <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
         <div className="relative p-5 flex flex-col flex-1 z-10">
           <div className="flex items-start justify-between mb-5 gap-4">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="relative shrink-0 group-hover:scale-105 transition-transform duration-500">
+              <div className="relative shrink-0">
                 <MoatLogo meta={meta} primaryTokenAddress={primaryTokenAddress} onChainLogoUrl={logoUrl} size="sm" />
-                <div className="absolute -inset-1 bg-primary/20 rounded-[10px] blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-500 -z-10" />
               </div>
               <div className="min-w-0 flex flex-col justify-center">
                 <p
@@ -287,7 +290,7 @@ export function MoatCard({ moat, tvlUSD, supplyPct, logoUrl, dexLiquidityUSD, de
                 <div className="relative flex items-end justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/60 flex items-center gap-1.5 mb-1">
-                      <span className={`w-1.5 h-1.5 rounded-full ${moat.status === "Verified" ? "bg-emerald-500/80 shadow-[0_0_8px_rgba(52,211,153,0.8)]" : "bg-cyan-500/80 shadow-[0_0_8px_rgba(0,212,255,0.8)]"} animate-pulse`} />
+                      <span className={`w-1.5 h-1.5 rounded-full ${moat.status === "Verified" ? "bg-emerald-500/80 shadow-[0_0_6px_rgba(52,211,153,0.7)]" : "bg-cyan-500/80 shadow-[0_0_6px_rgba(0,212,255,0.7)]"}`} />
                       Value Moated
                     </p>
                     <p

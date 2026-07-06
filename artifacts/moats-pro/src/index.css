@@ -250,11 +250,27 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* ─── Reduced-motion: disable decorative animations ───────────── */
+/* Covers float-slow, float-slow-alt, shimmer-sweep, radar-ping,
+   border-glow, swap-halo-drift, and Framer Motion spring animations.
+   Critical for users who have system accessibility settings enabled. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* ─── Base layer ───────────────────────────────────────────────── */
 
 @layer base {
   html {
     color-scheme: dark;
+    /* smooth-scroll is kept on since we have no IntersectionObserver-based
+       jank; scroll-behavior: smooth only fires on programmatic scrolls */
     scroll-behavior: smooth;
   }
   * {

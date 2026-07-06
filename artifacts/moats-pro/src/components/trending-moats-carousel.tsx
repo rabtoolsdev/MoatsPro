@@ -56,7 +56,7 @@ function TrendingCard({ item, logoUrls }: { item: TrendingMoat; logoUrls?: Recor
         whileHover={{ y: -4, scale: 1.015 }}
         transition={{ duration: 0.2, ease: "easeOut" }}
         data-testid={`trending-card-${config.contractAddress}`}
-        className={`relative w-[280px] sm:w-[300px] shrink-0 rounded-2xl border border-border/60 bg-card/60 backdrop-blur-md overflow-hidden cursor-pointer group hover:border-primary/40 transition-colors ${accent.glow}`}
+        className={`relative w-[280px] sm:w-[300px] shrink-0 rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm overflow-hidden cursor-pointer group hover:border-primary/40 transition-colors ${accent.glow}`}
       >
         {/* Top accent bar */}
         <div className={`h-[2px] w-full bg-gradient-to-r ${accent.chip}`} />

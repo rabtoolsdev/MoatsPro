@@ -515,17 +515,16 @@ export default function Home() {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      transition: { staggerChildren: 0.08 },
+      transition: { staggerChildren: 0.04 },
     },
   };
 
   const itemVariants = {
-    hidden: { opacity: 0, y: 24, scale: 0.93 },
+    hidden: { opacity: 0, y: 16 },
     visible: {
       opacity: 1,
       y: 0,
-      scale: 1,
-      transition: { type: "spring" as const, stiffness: 260, damping: 18, mass: 0.8 },
+      transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] },
     },
   };
 
@@ -542,10 +541,11 @@ export default function Home() {
           style={{ background: "radial-gradient(ellipse 80% 60% at 50% 50%, transparent 40%, hsl(var(--background)) 100%)" }}
         />
         
-        {/* Floating orbs */}
-        <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[1000px] h-[400px] bg-primary/10 rounded-full blur-[150px] pointer-events-none float-slow z-0" />
-        <div className="absolute top-32 left-1/4 w-[350px] h-[350px] bg-cyan-500/10 rounded-full blur-[100px] pointer-events-none float-slow-alt z-0" />
-        <div className="absolute top-20 right-1/5 w-[250px] h-[250px] bg-violet-500/10 rounded-full blur-[90px] pointer-events-none float-slow-alt z-0" />
+        {/* Floating orbs — static: animating huge blur layers forces full-page
+            recompositing on every frame and causes scroll jank on mobile */}
+        <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[1000px] h-[400px] bg-primary/10 rounded-full blur-[120px] pointer-events-none z-0" />
+        <div className="absolute top-32 left-1/4 w-[350px] h-[350px] bg-cyan-500/8 rounded-full blur-[80px] pointer-events-none z-0" />
+        <div className="absolute top-20 right-1/5 w-[250px] h-[250px] bg-violet-500/8 rounded-full blur-[70px] pointer-events-none z-0" />
 
         <div className="max-w-5xl mx-auto text-center relative z-10">
           <motion.div
