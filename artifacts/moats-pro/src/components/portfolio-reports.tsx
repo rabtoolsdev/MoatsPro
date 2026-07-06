@@ -160,6 +160,37 @@ function drawCircleLogo(
   ctx.restore();
 }
 
+/** Cross-browser rounded rectangle path (replaces ctx.roundRect which requires Chrome 99+). */
+function rrect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
+
+/** Strip all logoUrls so the canvas draws only letter-avatar circles (no external fetches). */
+function stripLogos(props: PortfolioReportsProps): PortfolioReportsProps {
+  return {
+    ...props,
+    claimedAggregate: {
+      ...props.claimedAggregate,
+      featured: {
+        usdc:  { ...props.claimedAggregate.featured.usdc,  logoUrl: undefined },
+        wavax: { ...props.claimedAggregate.featured.wavax, logoUrl: undefined },
+        btcb:  { ...props.claimedAggregate.featured.btcb,  logoUrl: undefined },
+      },
+      community: props.claimedAggregate.community.map(t => ({ ...t, logoUrl: undefined })),
+    },
+  };
+}
+
 async function buildCard(
   type: "portfolio" | "rewards" | "activity",
   props: PortfolioReportsProps,
@@ -277,13 +308,11 @@ async function buildCard(
 
         // Cell background
         ctx.fillStyle = "rgba(255,255,255,0.025)";
-        ctx.beginPath();
-        ctx.roundRect(cols[col], cy - 32, 344, 64, 8);
+        rrect(ctx, cols[col], cy - 32, 344, 64, 8);
         ctx.fill();
         ctx.strokeStyle = "rgba(255,255,255,0.06)";
         ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.roundRect(cols[col], cy - 32, 344, 64, 8);
+        rrect(ctx, cols[col], cy - 32, 344, 64, 8);
         ctx.stroke();
 
         // Logo circle
@@ -391,37 +420,28 @@ export function PortfolioReports(props: PortfolioReportsProps) {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [copied, setCopied]           = useState(false);
 
-  // Regenerate preview whenever the active card type or key data changes
+  // Stable keys derived from data so the preview effect only re-runs when values actually change.
+  const previewKey = `${activeCard}|${props.totalPortfolioValueUSD}|${props.claimedAggregate.totalUsd}|${props.swapPoints ?? 0}|${props.mapsScore?.points ?? 0}|${props.ownTransactions.length}`;
+
+  // Preview uses stripLogos so rendering is synchronous (no image fetches, no CORS).
   useEffect(() => {
     let cancelled = false;
     setPreviewLoading(true);
     setPreviewUrl(null);
-    buildCard(activeCard, props).then(canvas => {
+    // Build with letter-avatar fallbacks only — instant, CORS-free, never tainted.
+    buildCard(activeCard, stripLogos(props)).then(canvas => {
       if (cancelled) return;
       try {
         setPreviewUrl(canvas.toDataURL("image/png"));
       } catch (e) {
-        // Canvas tainted (residual CORS issue) — rebuild without logos as fallback
-        console.warn("Canvas tainted, rebuilding without logos:", e);
-        const blank = document.createElement("canvas");
-        blank.width = canvas.width; blank.height = canvas.height;
-        const bctx = blank.getContext("2d")!;
-        bctx.drawImage(canvas, 0, 0);
-        // Attempt a plain redraw with no external images by passing an empty logoUrl map
-        buildCard(activeCard, { ...props, claimedAggregate: {
-          ...props.claimedAggregate,
-          featured: {
-            usdc:  { ...props.claimedAggregate.featured.usdc,  logoUrl: undefined },
-            wavax: { ...props.claimedAggregate.featured.wavax, logoUrl: undefined },
-            btcb:  { ...props.claimedAggregate.featured.btcb,  logoUrl: undefined },
-          },
-          community: props.claimedAggregate.community.map(t => ({ ...t, logoUrl: undefined })),
-        }}).then(c2 => { if (!cancelled) setPreviewUrl(c2.toDataURL("image/png")); }).catch(console.error);
+        console.error("[preview] toDataURL failed:", (e as Error)?.name, (e as Error)?.message);
       }
-    }).catch(console.error).finally(() => { if (!cancelled) setPreviewLoading(false); });
+    }).catch(e => {
+      console.error("[preview] buildCard rejected:", (e as Error)?.name, (e as Error)?.message, e);
+    }).finally(() => { if (!cancelled) setPreviewLoading(false); });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeCard, props.claimedAggregate, props.mapsScore, props.totalPortfolioValueUSD, props.swapPoints, props.ownTransactions.length]);
+  }, [previewKey]);
 
   const doDownload = useCallback(() => {
     buildCard(activeCard, props).then(canvas => downloadCard(canvas, activeCard)).catch(console.error);
