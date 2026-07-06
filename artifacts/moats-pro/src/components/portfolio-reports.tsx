@@ -20,7 +20,7 @@ const TIMEFRAME_MS: Record<Timeframe, number> = {
   "All": Infinity,
 };
 
-interface TokenRow { symbol: string; amount: number; usd: number; logoUrl?: string; address?: string; network?: string; }
+interface TokenRow { symbol: string; amount: number; usd: number; logoUrl?: string; address?: string; network?: string; dexLogoUrl?: string; }
 interface ClaimedAggregate {
   featured: Record<"usdc" | "wavax" | "btcb", TokenRow>;
   community: TokenRow[];
@@ -112,21 +112,39 @@ function buildGrowthStats(events: MoatEvent[], tf: Timeframe): GrowthStat[] {
 
 // ── Canvas-based social card export ─────────────────────────────────────────
 
-function loadImg(src: string): Promise<HTMLImageElement | null> {
+// Load a single URL into an HTMLImageElement with crossOrigin="anonymous" so
+// ctx.drawImage() can use it without tainting the canvas.
+function loadImgDirect(url: string, timeoutMs = 4000): Promise<HTMLImageElement | null> {
   return new Promise(resolve => {
-    if (!src) return resolve(null);
+    if (!url) return resolve(null);
     const img = new Image();
     img.crossOrigin = "anonymous";
     let settled = false;
     const done = (v: HTMLImageElement | null) => { if (!settled) { settled = true; resolve(v); } };
     img.onload  = () => done(img);
     img.onerror = () => done(null);
-    setTimeout(() => done(null), 4000);
-    // Append a cache-bust param so the browser makes a fresh CORS request instead
-    // of serving a previously-cached non-CORS response (which would taint the canvas).
-    const bust = src.includes("?") ? `${src}&_cors=1` : `${src}?_cors=1`;
+    setTimeout(() => done(null), timeoutMs);
+    // Cache-bust so the browser makes a fresh CORS request instead of re-using
+    // a previously-cached non-CORS response (which would taint the canvas).
+    const bust = url.includes("?") ? `${url}&_cors=1` : `${url}?_cors=1`;
     img.src = bust;
   });
+}
+
+// Try loading a URL directly (CORS); if the CDN doesn't send CORS headers
+// (e.g. cdn.dexscreener.com), fall back to our server-side image proxy which
+// fetches the image without browser CORS constraints and re-serves it from our
+// own origin with Access-Control-Allow-Origin: *.
+// This is the canvas equivalent of how <TokenLogo> uses a plain <img> tag —
+// any URL works, no CORS restriction — but routed through our server so
+// ctx.drawImage() + canvas.toDataURL() don't throw a SecurityError.
+async function loadImg(src: string): Promise<HTMLImageElement | null> {
+  if (!src) return null;
+  const direct = await loadImgDirect(src);
+  if (direct) return direct;
+  // Retry via our proxy for CDNs that lack CORS headers
+  const proxied = await loadImgDirect(`/api/proxy-image?url=${encodeURIComponent(src)}`);
+  return proxied;
 }
 
 // Try each URL in the priority list in sequence; return the first that loads.
@@ -306,9 +324,15 @@ async function buildCard(
       // Load all logos in parallel, walking the full priority chain per token:
       // SYMBOL_LOGOS → TrustWallet → DefiLlama (via buildSources), with the
       // DexScreener imageUrl passed as the highest-priority hint.
-      const logos = await Promise.all(tokens.map(t =>
-        loadFirstImg(buildSources(t.address ?? "", t.network ?? "avalanche", t.symbol, t.logoUrl))
-      ));
+      const logos = await Promise.all(tokens.map(t => {
+        // Build the full candidate list: DexScreener first (most reliable for
+        // community tokens), then the TW/DefiLlama chain via buildSources.
+        const sources = [
+          t.dexLogoUrl ?? "",
+          ...buildSources(t.address ?? "", t.network ?? "avalanche", t.symbol, t.logoUrl),
+        ].filter((url, i, arr) => Boolean(url) && arr.indexOf(url) === i);
+        return loadFirstImg(sources);
+      }));
 
       // 2×2 grid: col0=36, col1=416 | row0 cy=268, row1 cy=358
       const cols = [36, 416];

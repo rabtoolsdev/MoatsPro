@@ -380,6 +380,7 @@ export default function Portfolio() {
     price: number;
     logoUrl?: string;
     network?: string;
+    dexLogoUrl?: string;
   };
   const claimedAggregate = useMemo(() => {
     const featured: Record<"usdc" | "wavax" | "btcb", ClaimedRow> = {
@@ -441,8 +442,9 @@ export default function Portfolio() {
         const metaLogo = Object.values(MOAT_METADATA).find(
           m => m.tokenAddress?.toLowerCase() === addr
         )?.logoUrl ?? "";
-        const logoUrl = metaLogo || rewardDexInfoMap?.[addr]?.imageUrl || llamaIconUrl(network, addr);
-        community.set(addr, { address: addr, symbol, amount, usd, price, logoUrl, network });
+        const dexImg = rewardDexInfoMap?.[addr]?.imageUrl ?? "";
+        const logoUrl = metaLogo || dexImg || llamaIconUrl(network, addr);
+        community.set(addr, { address: addr, symbol, amount, usd, price, logoUrl, dexLogoUrl: dexImg, network });
       }
     }
 
