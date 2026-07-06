@@ -160,20 +160,25 @@ function bucketLabelFor(symbol: string, address: string): "USDC" | "WAVAX" | "BT
 function ChartTooltip({ active, payload, label, valueFormat = fmtUsd }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-lg border border-border/80 bg-card/95 backdrop-blur-xl px-3 py-2 shadow-2xl shadow-black/60 text-xs">
-      <div className="text-muted-foreground mb-1">
+    <div className="rounded-lg border border-primary/20 bg-black/80 backdrop-blur-xl px-4 py-3 shadow-[0_0_30px_rgba(0,0,0,0.8),inset_0_0_15px_rgba(0,212,255,0.1)] text-xs border-l-2 border-l-primary relative overflow-hidden">
+      <div className="absolute inset-0 cyber-grid opacity-20 pointer-events-none" />
+      <div className="text-muted-foreground mb-2 font-mono uppercase tracking-widest text-[10px]">
         {typeof label === "number" ? fmtDay(label) : label}
       </div>
-      {payload.map((p: any) => (
-        <div key={p.dataKey} className="flex items-center gap-2 tabular-nums">
-          <span
-            className="w-2 h-2 rounded-sm shrink-0"
-            style={{ background: p.color || p.fill }}
-          />
-          <span className="text-muted-foreground">{p.name}:</span>
-          <span className="text-foreground font-medium">{valueFormat(p.value)}</span>
-        </div>
-      ))}
+      <div className="space-y-1.5 relative z-10">
+        {payload.map((p: any) => (
+          <div key={p.dataKey} className="flex items-center justify-between gap-4 font-mono">
+            <div className="flex items-center gap-2">
+              <span
+                className="w-1.5 h-1.5 rounded-full shrink-0 shadow-[0_0_8px_currentColor]"
+                style={{ background: p.color || p.fill, color: p.color || p.fill }}
+              />
+              <span className="text-muted-foreground uppercase text-[10px] tracking-wider">{p.name}:</span>
+            </div>
+            <span className="text-white font-medium drop-shadow-md">{valueFormat(p.value)}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -197,13 +202,21 @@ function ChartCard({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="rounded-2xl border border-border/60 bg-card/40 backdrop-blur-sm p-5 hover:border-primary/30 transition-colors"
+      className="group relative rounded-xl border border-white/5 bg-card/40 backdrop-blur-xl p-5 hover:border-primary/30 transition-colors overflow-hidden flex flex-col"
     >
-      <div className="mb-4">
-        <h3 className="text-base font-semibold">{title}</h3>
-        {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
+      <div className="absolute inset-0 cyber-grid opacity-30 pointer-events-none transition-opacity group-hover:opacity-50" />
+      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+      
+      <div className="mb-5 relative z-10">
+        <h3 className="text-[13px] font-mono font-bold uppercase tracking-widest text-white flex items-center gap-2">
+          <span className="w-1.5 h-4 bg-primary/80 rounded-sm shadow-[0_0_10px_rgba(0,212,255,0.5)]" />
+          {title}
+        </h3>
+        {subtitle && <p className="text-[11px] font-mono text-muted-foreground mt-1.5 ml-3.5 tracking-wide">{subtitle}</p>}
       </div>
-      {children}
+      <div className="relative z-10 flex-1">
+        {children}
+      </div>
     </motion.section>
   );
 }
@@ -250,42 +263,45 @@ function MoatSelect({
       <button
         onClick={() => setOpen((o) => !o)}
         data-testid="moat-select-trigger"
-        className="inline-flex items-center justify-between gap-2 rounded-lg border border-border bg-card/40 px-3 py-1.5 text-xs font-medium hover:border-primary/40 transition-colors min-w-[150px] max-w-[220px]"
+        className={`inline-flex items-center justify-between gap-3 rounded-lg border bg-black/60 backdrop-blur-md px-3 py-1.5 text-xs font-mono tracking-wide transition-all min-w-[160px] max-w-[240px] ${
+          open ? "border-primary/50 shadow-[0_0_15px_rgba(0,212,255,0.2)] text-primary" : "border-white/10 text-white hover:border-primary/30 hover:text-primary"
+        }`}
       >
         <span className="truncate">{selectedLabel}</span>
         <ChevronDown
           size={14}
-          className={`shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+          className={`shrink-0 transition-transform ${open ? "rotate-180 text-primary" : "text-muted-foreground"}`}
         />
       </button>
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
+            initial={{ opacity: 0, y: -4, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.98 }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 z-50 mt-2 w-64 rounded-xl border border-border bg-card/95 backdrop-blur-xl shadow-2xl shadow-black/50 overflow-hidden"
+            className="absolute right-0 z-50 mt-2 w-64 rounded-xl border border-primary/20 bg-black/90 backdrop-blur-2xl shadow-[0_0_40px_rgba(0,0,0,0.8),inset_0_0_20px_rgba(0,212,255,0.05)] overflow-hidden cyber-grid"
           >
-            <div className="p-2 border-b border-border/50">
-              <div className="relative">
-                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+            <div className="p-2 border-b border-white/5 relative z-10 bg-black/40">
+              <div className="relative group">
+                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
                 <input
                   autoFocus
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
-                  placeholder="Search Moats…"
+                  placeholder="SEARCH MOATS..."
                   data-testid="moat-select-search"
-                  className="w-full rounded-lg bg-background/60 border border-border/60 pl-8 pr-2 py-1.5 text-xs outline-none focus:border-primary/50"
+                  className="w-full rounded-md bg-white/5 border border-white/10 pl-8 pr-2 py-1.5 text-[11px] font-mono tracking-wider text-white outline-none focus:border-primary/50 focus:bg-primary/5 focus:shadow-[0_0_10px_rgba(0,212,255,0.1)] transition-all placeholder:text-muted-foreground/50"
                 />
               </div>
             </div>
-            <div className="max-h-64 overflow-y-auto py-1">
+            <div className="max-h-64 overflow-y-auto py-1 relative z-10">
               <button
                 onClick={() => pick("ALL")}
                 data-testid="moat-option-all"
-                className={`w-full text-left px-3 py-2 text-xs hover:bg-muted/30 transition-colors ${
-                  value === "ALL" ? "text-primary font-medium" : ""
+                className={`w-full text-left px-4 py-2 text-[11px] font-mono tracking-wide transition-colors ${
+                  value === "ALL" ? "text-primary bg-primary/10 border-l-2 border-primary" : "text-muted-foreground hover:bg-white/5 hover:text-white border-l-2 border-transparent"
                 }`}
               >
                 All Moats
@@ -295,15 +311,15 @@ function MoatSelect({
                   key={o.address}
                   onClick={() => pick(o.address)}
                   data-testid={`moat-option-${o.address.toLowerCase()}`}
-                  className={`w-full text-left px-3 py-2 text-xs hover:bg-muted/30 transition-colors truncate ${
-                    value.toLowerCase() === o.address.toLowerCase() ? "text-primary font-medium" : ""
+                  className={`w-full text-left px-4 py-2 text-[11px] font-mono tracking-wide transition-colors truncate ${
+                    value.toLowerCase() === o.address.toLowerCase() ? "text-primary bg-primary/10 border-l-2 border-primary" : "text-muted-foreground hover:bg-white/5 hover:text-white border-l-2 border-transparent"
                   }`}
                 >
                   {o.name}
                 </button>
               ))}
               {filtered.length === 0 && (
-                <p className="px-3 py-3 text-xs text-muted-foreground">No Moats found.</p>
+                <p className="px-4 py-4 text-[10px] font-mono text-center tracking-widest text-muted-foreground/50">NO MOATS FOUND.</p>
               )}
             </div>
           </motion.div>
@@ -959,16 +975,21 @@ export default function Analytics() {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="mb-6"
+          transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
+          className="mb-8 relative"
         >
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 rounded-xl bg-primary/10">
-              <BarChart3 className="w-5 h-5 text-primary" />
-            </div>
-            <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Analytics</h1>
+          <div className="absolute -left-4 sm:-left-8 top-2 bottom-2 w-px bg-gradient-to-b from-transparent via-primary/50 to-transparent" />
+          
+          <div className="flex items-center gap-4 mb-3">
+            <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white drop-shadow-md flex items-center gap-4">
+              Analytics
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-white/5 border border-white/10 text-xs font-mono uppercase tracking-widest text-primary/80 align-middle">
+                <BarChart3 className="w-3.5 h-3.5" />
+                Live Data
+              </span>
+            </h1>
           </div>
-          <p className="text-muted-foreground text-sm max-w-2xl">
+          <p className="text-muted-foreground/80 font-mono text-sm tracking-wide max-w-2xl">
             {singleMoat
               ? `Scoped to ${
                   moatOptions.find(
@@ -982,59 +1003,77 @@ export default function Analytics() {
         {/* KPI Strip */}
         <section
           data-testid="analytics-kpi-strip"
-          className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-6"
+          className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-8"
         >
-          {kpis.map((k, i) => (
-            <motion.div
-              key={k.label}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, delay: i * 0.05 }}
-              data-testid={k.testId}
-              className="rounded-xl border border-border/60 bg-card/40 backdrop-blur-sm p-4 hover:border-primary/30 transition-colors"
-            >
-              <div className="flex items-center gap-2.5">
-                <div className={`p-2 rounded-lg ${k.bg} shrink-0`}>
-                  <k.icon className={`w-4 h-4 ${k.color}`} />
+          {kpis.map((k, i) => {
+            const glowClass = 
+              k.color.includes("emerald") ? "group-hover:shadow-[0_0_15px_rgba(52,211,153,0.3)] group-hover:border-emerald-500/30" :
+              k.color.includes("violet") ? "group-hover:shadow-[0_0_15px_rgba(167,139,250,0.3)] group-hover:border-violet-500/30" :
+              k.color.includes("amber") ? "group-hover:shadow-[0_0_15px_rgba(251,191,36,0.3)] group-hover:border-amber-500/30" :
+              k.color.includes("rose") ? "group-hover:shadow-[0_0_15px_rgba(251,113,133,0.3)] group-hover:border-rose-500/30" :
+              "group-hover:shadow-[0_0_15px_rgba(0,212,255,0.3)] group-hover:border-cyan-500/30";
+
+            return (
+              <motion.div
+                key={k.label}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: i * 0.05, ease: "easeOut" }}
+                data-testid={k.testId}
+                className={`group relative rounded-xl border border-white/5 bg-black/40 backdrop-blur-xl p-4 transition-all ${glowClass}`}
+              >
+                <div className="absolute inset-0 cyber-grid opacity-20 pointer-events-none rounded-xl" />
+                <div className="relative z-10 flex flex-col gap-3">
+                  <div className={`w-8 h-8 rounded border border-white/10 flex items-center justify-center shrink-0 transition-colors ${k.bg}`}>
+                    <k.icon className={`w-4 h-4 ${k.color}`} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/60 mb-1 truncate">{k.label}</p>
+                    <p className="text-xl font-black tabular-nums tracking-tight text-white drop-shadow-md">
+                      <AnimatedValue value={k.value} format={k.fmt} />
+                    </p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-lg font-bold tabular-nums leading-tight">
-                    <AnimatedValue value={k.value} format={k.fmt} />
-                  </p>
-                  <p className="text-[11px] text-muted-foreground truncate">{k.label}</p>
-                </div>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            );
+          })}
         </section>
 
         {/* Timeframe toggle */}
         <div
           data-testid="timeframe-toggle"
-          className="sticky top-16 z-30 mb-6 flex items-center gap-2 bg-background/80 backdrop-blur-xl py-3 -mx-4 px-4 border-b border-border/30"
+          className="sticky top-[72px] z-40 mb-8 flex flex-wrap items-center gap-4 bg-black/60 backdrop-blur-2xl py-3 px-4 sm:px-6 -mx-4 sm:-mx-6 lg:-mx-8 border-y border-white/5 shadow-[0_4px_30px_rgba(0,0,0,0.5)] cyber-lines"
         >
-          <span className="text-xs text-muted-foreground mr-1 uppercase tracking-wider">Timeframe</span>
-          <div className="inline-flex rounded-lg border border-border bg-card/40 p-0.5">
-            {TIMEFRAMES.map((t) => (
-              <button
-                key={t}
-                onClick={() => setTf(t)}
-                data-testid={`tf-${t}`}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                  tf === t
-                    ? "bg-primary text-primary-foreground shadow-[0_0_10px_rgba(0,212,255,0.3)]"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {t}
-              </button>
-            ))}
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+          
+          <div className="flex items-center gap-3 relative z-10">
+            <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest hidden sm:inline-block">Timeframe</span>
+            <div className="inline-flex rounded-md border border-white/10 bg-black/50 p-1">
+              {TIMEFRAMES.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTf(t)}
+                  data-testid={`tf-${t}`}
+                  className={`px-3 py-1.5 rounded text-[11px] font-mono tracking-widest transition-all ${
+                    tf === t
+                      ? "bg-primary/20 text-primary border border-primary/50 shadow-[0_0_10px_rgba(0,212,255,0.2)]"
+                      : "text-muted-foreground border border-transparent hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+            {isLoading && (
+              <span className="text-[10px] font-mono text-primary/70 uppercase tracking-widest ml-2 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                Loading…
+              </span>
+            )}
           </div>
-          {isLoading && (
-            <span className="text-xs text-muted-foreground ml-3">Loading event history…</span>
-          )}
-          <div className="ml-auto flex items-center gap-2">
-            <span className="hidden sm:inline text-xs text-muted-foreground uppercase tracking-wider">Moat</span>
+          
+          <div className="ml-auto flex items-center gap-3 relative z-10">
+            <span className="hidden sm:inline text-[10px] font-mono text-muted-foreground uppercase tracking-widest">Moat</span>
             <MoatSelect options={moatOptions} value={selectedMoat} onChange={setSelectedMoat} />
           </div>
         </div>
@@ -1100,7 +1139,7 @@ export default function Analytics() {
             subtitle="Daily USD value of stakes, locks, and burns. Click legend to toggle."
             testId="chart-activity"
           >
-            <div className="flex flex-wrap gap-2 mb-3">
+            <div className="flex flex-wrap gap-3 mb-4">
               {(["Staked", "Locked", "Burned"] as const).map((k) => {
                 const d = activityDelta[k];
                 const up = d.pct >= 0;
@@ -1108,15 +1147,15 @@ export default function Analytics() {
                   <span
                     key={k}
                     data-testid={`delta-${k.toLowerCase()}`}
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium ${
+                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-mono tracking-wider border bg-black/40 backdrop-blur-md ${
                       up
-                        ? "bg-emerald-400/10 text-emerald-400 border border-emerald-400/20"
-                        : "bg-rose-400/10 text-rose-400 border border-rose-400/20"
+                        ? "text-emerald-400 border-emerald-500/30 shadow-[0_0_10px_rgba(52,211,153,0.1)]"
+                        : "text-rose-400 border-rose-500/30 shadow-[0_0_10px_rgba(251,113,133,0.1)]"
                     }`}
                   >
-                    <span className="text-muted-foreground">{k}</span>
-                    <span className="tabular-nums">{fmtUsd(d.cur)}</span>
-                    <span className="tabular-nums">{up ? "▲" : "▼"} {Math.abs(d.pct).toFixed(0)}%</span>
+                    <span className="text-muted-foreground uppercase">{k}</span>
+                    <span className="text-white font-medium tabular-nums">{fmtUsd(d.cur)}</span>
+                    <span className="tabular-nums opacity-80">{up ? "▲" : "▼"} {Math.abs(d.pct).toFixed(0)}%</span>
                   </span>
                 );
               })}
@@ -1213,16 +1252,16 @@ export default function Analytics() {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="text-xs uppercase tracking-wider text-muted-foreground border-b border-border/50">
+                  <thead className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground border-b border-white/10">
                     <tr>
-                      <th className="text-left py-2 pr-3">#</th>
-                      <th className="text-left py-2 pr-3">Moat</th>
-                      <th className="text-left py-2 pr-3 hidden sm:table-cell">Network</th>
-                      <th className="text-left py-2 pr-3 hidden md:table-cell">Status</th>
-                      <th className="text-right py-2 pr-3">Rewards</th>
-                      <th className="text-right py-2 pr-3 hidden sm:table-cell">Wallets</th>
-                      <th className="text-right py-2 pr-3 hidden md:table-cell">Burned</th>
-                      <th className="text-right py-2 hidden lg:table-cell">Trend</th>
+                      <th className="text-left py-3 pr-3">#</th>
+                      <th className="text-left py-3 pr-3">Moat</th>
+                      <th className="text-left py-3 pr-3 hidden sm:table-cell">Network</th>
+                      <th className="text-left py-3 pr-3 hidden md:table-cell">Status</th>
+                      <th className="text-right py-3 pr-3">Rewards</th>
+                      <th className="text-right py-3 pr-3 hidden sm:table-cell">Wallets</th>
+                      <th className="text-right py-3 pr-3 hidden md:table-cell">Burned</th>
+                      <th className="text-right py-3 hidden lg:table-cell">Trend</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1231,23 +1270,23 @@ export default function Analytics() {
                       return (
                         <tr
                           key={r.address}
-                          className="border-b border-border/30 hover:bg-muted/20 transition-colors"
+                          className="border-b border-white/5 hover:bg-white/5 transition-colors group"
                         >
-                          <td className="py-2 pr-3 text-muted-foreground tabular-nums">{i + 1}</td>
-                          <td className="py-2 pr-3">
+                          <td className="py-3 pr-3 text-muted-foreground/50 tabular-nums font-mono text-xs">{i + 1}</td>
+                          <td className="py-3 pr-3">
                             <Link
                               href={`/moat/${r.address}`}
-                              className="font-medium hover:text-primary transition-colors"
+                              className="font-medium text-white group-hover:text-primary transition-colors flex items-center gap-2"
                             >
                               {meta.name}
                             </Link>
                           </td>
-                          <td className="py-2 pr-3 hidden sm:table-cell">
-                            <span className="capitalize text-muted-foreground">{r.cfg?.network || "—"}</span>
+                          <td className="py-3 pr-3 hidden sm:table-cell">
+                            <span className="capitalize text-muted-foreground text-xs">{r.cfg?.network || "—"}</span>
                           </td>
-                          <td className="py-2 pr-3 hidden md:table-cell">
+                          <td className="py-3 pr-3 hidden md:table-cell">
                             <span
-                              className="text-[10px] px-2 py-0.5 rounded-full border"
+                              className="text-[9px] font-mono uppercase tracking-wider px-2 py-1 rounded border"
                               style={{
                                 color: STATUS_COLORS[r.cfg?.status || ""] || "hsl(var(--muted-foreground))",
                                 borderColor: (STATUS_COLORS[r.cfg?.status || ""] || "hsl(var(--border))") + "55",
@@ -1257,17 +1296,17 @@ export default function Analytics() {
                               {r.cfg?.status || "—"}
                             </span>
                           </td>
-                          <td className="py-2 pr-3 text-right tabular-nums font-medium text-emerald-400">
+                          <td className="py-3 pr-3 text-right tabular-nums font-mono text-emerald-400 group-hover:drop-shadow-[0_0_8px_rgba(52,211,153,0.5)] transition-all">
                             {fmtUsd(r.rewardsUsd)}
                           </td>
-                          <td className="py-2 pr-3 text-right tabular-nums hidden sm:table-cell">
+                          <td className="py-3 pr-3 text-right tabular-nums hidden sm:table-cell font-mono text-muted-foreground group-hover:text-white transition-colors">
                             {r.wallets.size.toLocaleString()}
                           </td>
-                          <td className="py-2 pr-3 text-right tabular-nums hidden md:table-cell text-rose-400">
+                          <td className="py-3 pr-3 text-right tabular-nums hidden md:table-cell font-mono text-rose-400 group-hover:drop-shadow-[0_0_8px_rgba(251,113,133,0.5)] transition-all">
                             {r.burnedUsd > 0 ? fmtUsd(r.burnedUsd) : "—"}
                           </td>
                           <td className="py-2 hidden lg:table-cell">
-                            <div className="h-8 w-28 ml-auto">
+                            <div className="h-8 w-28 ml-auto opacity-70 group-hover:opacity-100 transition-opacity">
                               {r.spark.length > 1 && (
                                 <ResponsiveContainer>
                                   <LineChart data={r.spark}>
@@ -1403,36 +1442,37 @@ export default function Analytics() {
                 </ResponsiveContainer>
               )}
             </div>
-            <div className="flex flex-wrap gap-3 mt-3">
+            <div className="flex flex-wrap gap-4 mt-5">
               {(Object.keys(TOKEN_COLORS) as (keyof typeof TOKEN_COLORS)[]).map((k) => {
                 const v = tokenMix.groupUsd[k];
                 const pct = tokenMix.total > 0 ? (v / tokenMix.total) * 100 : 0;
                 return (
-                  <div key={k} className="flex items-center gap-2 text-xs">
+                  <div key={k} className="flex items-center gap-2 text-[11px] font-mono bg-black/20 px-2.5 py-1.5 rounded-md border border-white/5">
                     <span
-                      className="w-2.5 h-2.5 rounded-sm"
-                      style={{ background: TOKEN_COLORS[k] }}
+                      className="w-2 h-2 rounded-full shadow-[0_0_8px_currentColor]"
+                      style={{ background: TOKEN_COLORS[k], color: TOKEN_COLORS[k] }}
                     />
-                    <span className="text-muted-foreground">{k}</span>
-                    <span className="tabular-nums font-medium">{fmtUsd(v)}</span>
-                    <span className="text-muted-foreground tabular-nums">({pct.toFixed(1)}%)</span>
+                    <span className="text-muted-foreground tracking-widest uppercase">{k}</span>
+                    <span className="tabular-nums text-white">{fmtUsd(v)}</span>
+                    <span className="text-muted-foreground/50 tabular-nums">({pct.toFixed(1)}%)</span>
                   </div>
                 );
               })}
             </div>
             {tokenMix.topCommunity.length > 0 && (
-              <div className="mt-5 pt-4 border-t border-border/40">
-                <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
-                  Top community reward tokens (by USD)
+              <div className="mt-6 pt-5 border-t border-white/10">
+                <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/70 mb-3 flex items-center gap-2">
+                  <span className="w-1 h-1 rounded-full bg-muted-foreground/50" />
+                  Top Community Reward Tokens (by USD)
                 </p>
-                <ul className="space-y-1.5">
+                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {tokenMix.topCommunity.map((t) => (
                     <li
                       key={t.symbol}
-                      className="flex items-center justify-between text-sm"
+                      className="flex items-center justify-between text-[11px] font-mono bg-white/5 px-3 py-2 rounded border border-white/5"
                     >
-                      <span className="text-foreground">{t.symbol}</span>
-                      <span className="tabular-nums text-muted-foreground">{fmtUsd(t.usd)}</span>
+                      <span className="text-white tracking-widest uppercase">{t.symbol}</span>
+                      <span className="tabular-nums text-emerald-400/80">{fmtUsd(t.usd)}</span>
                     </li>
                   ))}
                 </ul>
@@ -1448,11 +1488,18 @@ export default function Analytics() {
 
 function EmptyState({ loading }: { loading: boolean }) {
   return (
-    <div className="h-full w-full flex items-center justify-center">
+    <div className="h-full w-full flex items-center justify-center relative overflow-hidden rounded-lg border border-white/5 bg-black/20">
+      <div className="absolute inset-0 cyber-grid opacity-20" />
       {loading ? (
-        <div className="w-full h-full rounded-lg skeleton-shimmer border border-border/30" />
+        <div className="w-full h-full rounded-lg skeleton-shimmer opacity-50" />
       ) : (
-        <span className="text-sm text-muted-foreground">No data for this timeframe.</span>
+        <div className="flex flex-col items-center gap-3 relative z-10">
+          <div className="relative">
+            <div className="w-2 h-2 rounded-full bg-muted-foreground/40 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+            <div className="w-2 h-2 rounded-full bg-muted-foreground/40 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-ping" />
+          </div>
+          <span className="text-[11px] font-mono tracking-widest text-muted-foreground/50 uppercase">No Data</span>
+        </div>
       )}
     </div>
   );
