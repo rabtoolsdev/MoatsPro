@@ -542,9 +542,6 @@ export default function Home() {
           style={{ background: "radial-gradient(ellipse 80% 60% at 50% 50%, transparent 40%, hsl(var(--background)) 100%)" }}
         />
         
-        {/* Scan line */}
-        <div className="absolute top-[45%] left-0 right-0 h-px bg-primary/20 shadow-[0_0_20px_rgba(0,212,255,0.8)] pointer-events-none z-0" />
-
         {/* Floating orbs */}
         <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[1000px] h-[400px] bg-primary/10 rounded-full blur-[150px] pointer-events-none float-slow z-0" />
         <div className="absolute top-32 left-1/4 w-[350px] h-[350px] bg-cyan-500/10 rounded-full blur-[100px] pointer-events-none float-slow-alt z-0" />
