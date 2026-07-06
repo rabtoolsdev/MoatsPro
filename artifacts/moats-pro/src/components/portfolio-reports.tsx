@@ -19,9 +19,10 @@ const TIMEFRAME_MS: Record<Timeframe, number> = {
   "All": Infinity,
 };
 
+interface TokenRow { symbol: string; amount: number; usd: number; logoUrl?: string; }
 interface ClaimedAggregate {
-  featured: Record<"usdc" | "wavax" | "btcb", { symbol: string; amount: number; usd: number }>;
-  community: { symbol: string; amount: number; usd: number }[];
+  featured: Record<"usdc" | "wavax" | "btcb", TokenRow>;
+  community: TokenRow[];
   totalUsd: number;
 }
 
@@ -110,7 +111,52 @@ function buildGrowthStats(events: MoatEvent[], tf: Timeframe): GrowthStat[] {
 
 // ── Canvas-based social card export ─────────────────────────────────────────
 
-function exportCard(
+function loadImg(src: string): Promise<HTMLImageElement | null> {
+  return new Promise(resolve => {
+    if (!src) return resolve(null);
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    const done = (v: HTMLImageElement | null) => resolve(v);
+    img.onload  = () => done(img);
+    img.onerror = () => done(null);
+    setTimeout(() => done(null), 4000);
+    img.src = src;
+  });
+}
+
+function drawCircleLogo(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement | null,
+  symbol: string,
+  cx: number, cy: number, r: number,
+) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  if (img) {
+    ctx.clip();
+    ctx.drawImage(img, cx - r, cy - r, r * 2, r * 2);
+  } else {
+    ctx.fillStyle = "rgba(255,255,255,0.12)";
+    ctx.fill();
+    ctx.font = `bold ${Math.round(r * 0.95)}px -apple-system, sans-serif`;
+    ctx.fillStyle = "rgba(255,255,255,0.7)";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(symbol.slice(0, 1).toUpperCase(), cx, cy + 1);
+  }
+  ctx.restore();
+  // thin ring
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(255,255,255,0.12)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.restore();
+}
+
+async function exportCard(
   type: "portfolio" | "rewards" | "activity",
   props: PortfolioReportsProps,
 ) {
@@ -201,21 +247,60 @@ function exportCard(
     ctx.font = `10px ${mono}`; ctx.fillStyle = "rgba(255,255,255,0.28)"; ctx.fillText("LIFETIME REWARDS CLAIMED", 36, 198);
     ctx.strokeStyle = "rgba(255,255,255,0.06)"; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(36, 220); ctx.lineTo(W - 36, 220); ctx.stroke();
+
     const tokens = [
-      { symbol: "USDC",  ...props.claimedAggregate.featured.usdc },
-      { symbol: "WAVAX", ...props.claimedAggregate.featured.wavax },
-      { symbol: "BTC.b", ...props.claimedAggregate.featured.btcb },
+      props.claimedAggregate.featured.usdc,
+      props.claimedAggregate.featured.wavax,
+      props.claimedAggregate.featured.btcb,
       ...props.claimedAggregate.community,
     ].filter(t => t.amount > 0).slice(0, 4);
-    tokens.forEach((t, i) => {
-      const x = 36 + i * 184;
-      ctx.font = `9px ${mono}`; ctx.fillStyle = "rgba(255,255,255,0.35)"; ctx.fillText(t.symbol, x, 250);
-      const amtStr = t.amount < 0.001 ? t.amount.toPrecision(3) : t.amount.toLocaleString("en-US", { maximumFractionDigits: 3 });
-      ctx.font = `bold 24px ${sans}`; ctx.fillStyle = "#ffffff"; ctx.fillText(amtStr, x, 286);
-      if (t.usd > 0) { ctx.font = `8px ${mono}`; ctx.fillStyle = "rgba(52,211,153,0.75)"; ctx.fillText(formatUSD(t.usd), x, 302); }
-    });
+
     if (tokens.length === 0) {
       ctx.font = `14px ${mono}`; ctx.fillStyle = "rgba(255,255,255,0.2)"; ctx.fillText("No rewards claimed yet", 36, 280);
+    } else {
+      // Load all logos in parallel before drawing
+      const logos = await Promise.all(tokens.map(t => t.logoUrl ? loadImg(t.logoUrl) : Promise.resolve(null)));
+
+      // 2×2 grid: col0=36, col1=416 | row0 cy=268, row1 cy=358
+      const cols = [36, 416];
+      const rows = tokens.length <= 2 ? [313] : [268, 358]; // single row if ≤2 tokens
+      tokens.forEach((t, i) => {
+        const col = i % 2;
+        const row = Math.floor(i / 2);
+        const cx = cols[col] + 22;
+        const cy = rows[row] ?? 268;
+        const textX = cols[col] + 52;
+
+        // Cell background
+        ctx.fillStyle = "rgba(255,255,255,0.025)";
+        ctx.beginPath();
+        ctx.roundRect(cols[col], cy - 32, 344, 64, 8);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,0.06)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(cols[col], cy - 32, 344, 64, 8);
+        ctx.stroke();
+
+        // Logo circle
+        drawCircleLogo(ctx, logos[i], t.symbol, cx, cy, 20);
+
+        // Symbol
+        ctx.font = `bold 10px ${mono}`; ctx.fillStyle = "rgba(255,255,255,0.5)";
+        ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+        ctx.fillText(t.symbol.toUpperCase(), textX, cy - 10);
+
+        // Amount
+        const amtStr = t.amount < 0.001 ? t.amount.toPrecision(3) : t.amount.toLocaleString("en-US", { maximumFractionDigits: 4 });
+        ctx.font = `bold 22px ${sans}`; ctx.fillStyle = "#ffffff";
+        ctx.fillText(amtStr, textX, cy + 14);
+
+        // USD value
+        if (t.usd > 0) {
+          ctx.font = `8px ${mono}`; ctx.fillStyle = "rgba(52,211,153,0.8)";
+          ctx.fillText(formatUSD(t.usd), textX, cy + 28);
+        }
+      });
     }
 
   } else {
@@ -287,7 +372,7 @@ export function PortfolioReports(props: PortfolioReportsProps) {
   const hasActivity   = activityData.length > 0;
   const hasCumulative = cumulativeData.length > 0;
 
-  const doExport = useCallback(() => exportCard(activeCard, props), [activeCard, props]);
+  const doExport = useCallback(() => { exportCard(activeCard, props).catch(console.error); }, [activeCard, props]);
 
   const pctLabel = (pct: number | null) => {
     if (pct === null) return null;

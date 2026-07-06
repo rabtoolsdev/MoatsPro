@@ -11,6 +11,21 @@ const USDC_LOGO_URL =
   "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/avalanchec/assets/0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E/logo.png";
 const WAVAX_LOGO_URL =
   "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/avalanchec/info/logo.png";
+
+const NETWORK_TO_CHAIN_ID: Record<string, number> = {
+  avax: 43114, avalanche: 43114,
+  ethereum: 1,
+  base: 8453,
+  optimism: 10,
+  arbitrum: 42161,
+  polygon: 137,
+  bsc: 56,
+  sonic: 146,
+};
+function llamaIconUrl(network: string, address: string): string {
+  const chainId = NETWORK_TO_CHAIN_ID[network.toLowerCase()] ?? 43114;
+  return `https://token-icons.llamao.fi/icons/tokens/${chainId}/${address.toLowerCase()}?h=64&w=64`;
+}
 const USDC_ADDR = "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e";
 const WAVAX_ADDR = "0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7";
 const BTCB_ADDR = "0x152b9d0fdc40c096757f570a51e494bd4b943e50";
@@ -421,7 +436,7 @@ export default function Portfolio() {
         featured.btcb.usd += usd;
         featured.btcb.price = price;
       } else {
-        community.set(addr, { address: addr, symbol, amount, usd, price });
+        community.set(addr, { address: addr, symbol, amount, usd, price, logoUrl: llamaIconUrl(network, addr) });
       }
     }
 
