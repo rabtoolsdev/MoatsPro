@@ -148,15 +148,18 @@ export function TrendingMoatsCarousel({ configs, tvmMap, logoUrls }: TrendingMoa
   return (
     <section
       data-testid="section-trending-moats"
-      className="relative w-full max-w-7xl mx-auto px-4 pt-10 pb-4"
+      className="relative w-full border-b border-white/5 bg-black/20 backdrop-blur-md overflow-hidden cyber-grid pt-10 pb-6"
     >
-      <div className="flex items-end justify-between mb-4 flex-wrap gap-2">
+      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-primary/50 to-transparent shadow-[0_0_15px_rgba(0,212,255,0.6)]" />
+      <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+
+      <div className="max-w-7xl mx-auto px-4 mb-5 relative z-10">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold inline-flex items-center gap-2">
-            <Flame className="w-5 h-5 text-orange-400" />
+          <h2 className="text-[10px] font-mono font-bold text-orange-400 uppercase tracking-widest flex items-center gap-2">
+            <Flame className="w-3 h-3 text-orange-400" />
             Trending Moats
           </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="text-xs text-muted-foreground mt-1">
             Top performers by TVM, rewards distributed, and active users over the last 7 days
           </p>
         </div>

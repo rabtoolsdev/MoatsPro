@@ -535,19 +535,32 @@ export default function Home() {
       {/* Hero */}
       <section className="relative pt-32 pb-16 px-4 sm:px-6 lg:px-8 overflow-hidden">
         {/* Animated grid background */}
-        <div className="absolute inset-0 bg-grid-animated opacity-60 pointer-events-none" />
+        <div className="absolute inset-0 bg-grid-animated opacity-30 pointer-events-none" />
         {/* Radial vignette over grid */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{ background: "radial-gradient(ellipse 80% 60% at 50% 50%, transparent 40%, hsl(var(--background)) 100%)" }}
         />
+        
+        {/* Scan line */}
+        <div className="absolute top-[45%] left-0 right-0 h-px bg-primary/20 shadow-[0_0_20px_rgba(0,212,255,0.8)] pointer-events-none z-0" />
 
         {/* Floating orbs */}
-        <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[900px] h-[380px] bg-primary/8 rounded-full blur-[140px] pointer-events-none float-slow" />
-        <div className="absolute top-32 left-1/4 w-[280px] h-[280px] bg-cyan-500/6 rounded-full blur-[90px] pointer-events-none float-slow-alt" />
-        <div className="absolute top-20 right-1/5 w-[200px] h-[200px] bg-violet-500/5 rounded-full blur-[80px] pointer-events-none float-slow-alt" />
+        <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[1000px] h-[400px] bg-primary/10 rounded-full blur-[150px] pointer-events-none float-slow z-0" />
+        <div className="absolute top-32 left-1/4 w-[350px] h-[350px] bg-cyan-500/10 rounded-full blur-[100px] pointer-events-none float-slow-alt z-0" />
+        <div className="absolute top-20 right-1/5 w-[250px] h-[250px] bg-violet-500/10 rounded-full blur-[90px] pointer-events-none float-slow-alt z-0" />
 
         <div className="max-w-5xl mx-auto text-center relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/30 bg-primary/10 text-primary mb-6 shadow-[0_0_15px_rgba(0,212,255,0.2)] backdrop-blur-md"
+          >
+            <span className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(0,212,255,0.8)]" />
+            <span className="text-[10px] font-mono uppercase tracking-widest font-bold">Moats Pro Terminal v3.0</span>
+          </motion.div>
+
           {/* Staggered headline words */}
           <div className="text-5xl md:text-7xl font-bold tracking-tight mb-4 flex flex-wrap justify-center gap-x-4">
             {heroWords.map((word, i) => (
@@ -621,16 +634,16 @@ export default function Home() {
       />
       {/* Tag Filters — sit between Rewards Distributed and Active Moats */}
       {tagOptions.length > 0 && (
-        <section className="px-4 sm:px-6 lg:px-8 pt-10 max-w-7xl mx-auto w-full">
-          <div className="flex items-center gap-3 mb-3 flex-wrap">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              Filter by Tag
+        <section className="px-4 sm:px-6 lg:px-8 pt-10 max-w-7xl mx-auto w-full relative z-10">
+          <div className="flex items-center gap-3 mb-4 flex-wrap">
+            <h3 className="text-[10px] font-mono font-bold text-primary uppercase tracking-widest flex items-center gap-2">
+              <span className="w-1 h-3 bg-primary shadow-[0_0_8px_rgba(0,212,255,0.8)]" /> Filter by Tag
             </h3>
             {selectedTags.length > 0 && (
               <button
                 onClick={() => setSelectedTags([])}
                 data-testid="btn-clear-tags"
-                className="text-xs text-primary hover:text-primary/80 underline-offset-2 hover:underline"
+                className="text-xs text-primary hover:text-primary/80 underline-offset-2 hover:underline font-mono"
               >
                 Clear ({selectedTags.length})
               </button>
@@ -644,20 +657,20 @@ export default function Home() {
                   key={t.name}
                   onClick={() => toggleTag(t.name)}
                   data-testid={`tag-${t.name}`}
-                  className={`group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                  className={`group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[4px] text-[10px] font-mono uppercase tracking-widest border transition-all ${
                     active
-                      ? "bg-primary/15 border-primary/60 text-foreground shadow-[0_0_10px_rgba(0,212,255,0.15)]"
-                      : "bg-card/30 border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                      ? "bg-primary/20 border-primary text-primary shadow-[0_0_12px_rgba(0,212,255,0.4)] backdrop-blur-sm"
+                      : "bg-black/40 border-border text-muted-foreground hover:border-primary/50 hover:text-foreground backdrop-blur-sm"
                   }`}
                 >
                   {t.color && (
                     <span
-                      className="w-2 h-2 rounded-full shrink-0"
-                      style={{ backgroundColor: t.color }}
+                      className="w-2 h-2 rounded-full shrink-0 shadow-[0_0_4px_currentColor]"
+                      style={{ backgroundColor: t.color, color: t.color }}
                     />
                   )}
                   <span>{t.name}</span>
-                  <span className={`tabular-nums ${active ? "text-primary" : "text-muted-foreground/70"}`}>
+                  <span className={`tabular-nums ${active ? "text-primary font-bold" : "text-muted-foreground/50"}`}>
                     {t.count}
                   </span>
                 </button>
@@ -667,11 +680,14 @@ export default function Home() {
         </section>
       )}
       {/* Moats Grid */}
-      <section className="flex-1 px-4 sm:px-6 lg:px-8 py-16 max-w-7xl mx-auto w-full">
-        <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
+      <section className="flex-1 px-4 sm:px-6 lg:px-8 py-16 max-w-7xl mx-auto w-full relative z-10">
+        <div className="flex items-center justify-between mb-8 flex-wrap gap-4 border-b border-white/5 pb-4 relative">
+          <div className="absolute bottom-0 left-0 w-32 h-[2px] bg-primary shadow-[0_0_10px_rgba(0,212,255,0.8)]" />
           <div>
-            <h2 className="text-2xl font-bold" data-testid="section-moats">Active Moats</h2>
-            <p className="text-muted-foreground text-sm mt-1">
+            <h2 className="text-2xl font-black uppercase tracking-tight flex items-center gap-3 text-white" data-testid="section-moats">
+              Active Moats
+            </h2>
+            <p className="text-muted-foreground text-[11px] font-mono tracking-widest uppercase mt-1">
               {filteredMoats.length} active{" "}
               {filteredMoats.length === 1 ? "moat" : "moats"}
               {activeChainLabel ? ` on ${activeChainLabel}` : ""}
@@ -683,10 +699,10 @@ export default function Home() {
                 key={status}
                 onClick={() => setStatusFilter(status)}
                 data-testid={`filter-${status}`}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all capitalize ${
+                className={`px-4 py-1.5 rounded-[4px] text-[10px] font-mono uppercase tracking-widest transition-all ${
                   statusFilter === status
-                    ? "bg-primary text-primary-foreground shadow-[0_0_12px_rgba(0,212,255,0.3)]"
-                    : "border border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                    ? "bg-primary text-black font-bold shadow-[0_0_15px_rgba(0,212,255,0.5)]"
+                    : "border border-border bg-black/40 text-muted-foreground hover:border-primary/50 hover:text-foreground"
                 }`}
               >
                 {status}
@@ -697,10 +713,10 @@ export default function Home() {
 
         {/* Search + sort controls */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-8">
-          <div className="relative flex-1 sm:max-w-sm">
+          <div className="relative flex-1 sm:max-w-sm group">
             <Search
               size={15}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none group-focus-within:text-primary transition-colors"
             />
             <input
               type="text"
@@ -709,14 +725,14 @@ export default function Home() {
               placeholder="Search moats, tokens, protocols…"
               data-testid="input-search-moats"
               aria-label="Search moats, tokens, and protocols"
-              className="w-full pl-9 pr-9 py-2 rounded-lg bg-card/40 border border-border text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/30 transition-all"
+              className="w-full pl-9 pr-9 py-2 rounded-[4px] bg-black/40 border border-border text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary focus:shadow-[0_0_15px_rgba(0,212,255,0.3)] transition-all font-mono backdrop-blur-sm"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
                 data-testid="btn-clear-search"
                 aria-label="Clear search"
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
               >
                 <X size={14} />
               </button>
@@ -727,7 +743,7 @@ export default function Home() {
             aria-label="Sort moats"
             className="flex items-center gap-2 sm:ml-auto"
           >
-            <ArrowUpDown size={14} className="text-muted-foreground shrink-0" />
+            <ArrowUpDown size={14} className="text-primary/70 shrink-0" />
             <div className="flex gap-1.5 flex-wrap">
               {([
                 ["tvm", "TVM"],
@@ -739,10 +755,10 @@ export default function Home() {
                   onClick={() => setSortBy(key)}
                   data-testid={`sort-${key}`}
                   aria-pressed={sortBy === key}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  className={`px-3 py-1.5 rounded-[4px] text-[10px] font-mono uppercase tracking-widest transition-all ${
                     sortBy === key
-                      ? "bg-primary/15 border border-primary/60 text-foreground"
-                      : "border border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                      ? "bg-primary/20 border border-primary text-primary shadow-[0_0_10px_rgba(0,212,255,0.2)]"
+                      : "border border-border bg-black/40 text-muted-foreground hover:border-primary/40 hover:text-foreground"
                   }`}
                 >
                   {label}
@@ -814,18 +830,21 @@ export default function Home() {
       </section>
       {/* Activity Feed */}
       {eventsData && eventsData.results.length > 0 && (
-        <section className="px-4 sm:px-6 lg:px-8 py-12 max-w-7xl mx-auto w-full">
-          <div className="flex items-center justify-between mb-6">
-            <div />
-            <span className="text-sm text-muted-foreground">
-              {eventsData.total.toLocaleString()} total events
-            </span>
+        <section className="px-4 sm:px-6 lg:px-8 py-12 max-w-7xl mx-auto w-full relative z-10">
+          <div className="bg-card/30 backdrop-blur-xl border border-white/5 rounded-2xl p-6 relative overflow-hidden cyber-grid">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+            <div className="flex items-center justify-between mb-6">
+              <div />
+              <span className="text-[10px] font-mono text-muted-foreground/60 uppercase tracking-widest">
+                {eventsData.total.toLocaleString()} total events
+              </span>
+            </div>
+            <ActivityFeed
+              events={eventsData.results.slice(0, 12)}
+              moatConfigs={configs}
+              showLiveBadge
+            />
           </div>
-          <ActivityFeed
-            events={eventsData.results.slice(0, 12)}
-            moatConfigs={configs}
-            showLiveBadge
-          />
         </section>
       )}
       <Footer />

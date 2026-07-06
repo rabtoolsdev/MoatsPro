@@ -131,12 +131,12 @@ export function StatsBar({ moatConfigs, leaderboard, totalTvmUsd = 0 }: StatsBar
   ];
 
   return (
-    <section className="relative border-y border-border/50 bg-card/20 backdrop-blur-sm overflow-hidden">
+    <section className="relative border-y border-white/5 bg-black/40 backdrop-blur-xl overflow-hidden cyber-grid">
       {/* Subtle horizontal glow line at top */}
-      <div className="absolute top-0 left-1/4 right-1/4 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+      <div className="absolute top-0 left-1/4 right-1/4 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent shadow-[0_0_20px_rgba(0,212,255,0.5)]" />
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           {stats.map((stat, i) => (
             <motion.div
               key={stat.label}
@@ -145,33 +145,28 @@ export function StatsBar({ moatConfigs, leaderboard, totalTvmUsd = 0 }: StatsBar
               viewport={{ once: true }}
               transition={{ duration: 0.45, delay: i * 0.09, ease: "easeOut" }}
               data-testid={stat.testId}
-              className="group relative flex items-center gap-3"
+              className="group relative flex flex-col gap-3 p-5 rounded-xl border border-white/5 bg-card/40 hover:border-primary/30 transition-colors"
             >
-              <div className={`p-2.5 rounded-xl ${stat.bg} shrink-0 transition-all duration-300 ${stat.glow}`}>
-                <stat.icon className={`w-5 h-5 ${stat.color}`} />
+              <div className={`w-8 h-8 rounded border border-white/10 flex items-center justify-center shrink-0 transition-all duration-300 ${stat.bg} ${stat.glow}`}>
+                <stat.icon className={`w-4 h-4 ${stat.color}`} />
               </div>
-              <div>
-                <p className="text-2xl font-bold tabular-nums">
+              <div className="mt-1">
+                <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/60 mb-1">{stat.label}</p>
+                <p className="text-2xl font-black tabular-nums tracking-tight text-white drop-shadow-md">
                   {stat.isUsd ? (
                     <AnimatedUsd value={stat.value} duration={0.9} />
                   ) : (
                     <AnimatedNumber value={stat.value} duration={0.9} />
                   )}
                 </p>
-                <p className="text-xs text-muted-foreground">{stat.label}</p>
               </div>
-
-              {/* Vertical divider except after last */}
-              {i < stats.length - 1 && (
-                <div className="hidden lg:block absolute right-0 top-1/4 bottom-1/4 w-px bg-border/50" />
-              )}
             </motion.div>
           ))}
         </div>
       </div>
 
       {/* Subtle bottom glow */}
-      <div className="absolute bottom-0 left-1/4 right-1/4 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+      <div className="absolute bottom-0 left-1/4 right-1/4 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent shadow-[0_0_15px_rgba(0,212,255,0.4)]" />
     </section>
   );
 }

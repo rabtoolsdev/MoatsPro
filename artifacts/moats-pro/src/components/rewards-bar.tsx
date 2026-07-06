@@ -101,13 +101,15 @@ export function RewardsBar({ usdc, wavax, btcb, community }: RewardsBarProps) {
   return (
     <section
       data-testid="rewards-bar"
-      className="relative border-b border-border/50 bg-card/10 backdrop-blur-sm overflow-hidden"
+      className="relative border-b border-white/5 bg-black/60 backdrop-blur-xl overflow-hidden cyber-lines"
     >
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="flex items-end justify-between mb-4 flex-wrap gap-2">
+      <div className="max-w-7xl mx-auto px-4 py-8 relative z-10">
+        <div className="flex items-end justify-between mb-6 flex-wrap gap-2">
           <div>
-            <h3 className="text-sm font-semibold text-foreground">Rewards Distributed</h3>
-            <p className="text-xs text-muted-foreground">
+            <h3 className="text-[10px] font-mono font-bold text-primary uppercase tracking-widest flex items-center gap-2">
+              <span className="w-1 h-3 bg-primary" /> Rewards Distributed
+            </h3>
+            <p className="text-xs text-muted-foreground mt-1">
               Lifetime emissions across every Moat
             </p>
           </div>
@@ -122,36 +124,39 @@ export function RewardsBar({ usdc, wavax, btcb, community }: RewardsBarProps) {
               viewport={{ once: true }}
               transition={{ duration: 0.4, delay: i * 0.06, ease: "easeOut" }}
               data-testid={card.testId}
-              className="group rounded-2xl border border-border/60 bg-card/40 p-4 hover:border-primary/40 transition-colors"
+              className="group rounded-xl border border-white/5 bg-card/30 p-5 hover:border-primary/40 transition-colors relative overflow-hidden"
             >
-              <div className="flex items-start gap-3">
-                <div
-                  className={`p-2 rounded-xl ${card.bg} shrink-0 transition-all duration-300 ${card.glow} flex items-center justify-center`}
-                >
-                  {card.bucket.logoUrl ? (
-                    <img
-                      src={card.bucket.logoUrl}
-                      alt={card.bucket.symbol}
-                      className="w-5 h-5 rounded-full object-contain"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).style.display = "none";
-                      }}
-                    />
-                  ) : (
-                    <card.icon className={`w-5 h-5 ${card.color}`} />
-                  )}
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+              <div className="relative flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`w-6 h-6 rounded flex items-center justify-center border border-white/10 ${card.bg} transition-all duration-300 ${card.glow}`}
+                  >
+                    {card.bucket.logoUrl ? (
+                      <img
+                        src={card.bucket.logoUrl}
+                        alt={card.bucket.symbol}
+                        className="w-3.5 h-3.5 rounded-full object-contain"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <card.icon className={`w-3.5 h-3.5 ${card.color}`} />
+                    )}
+                  </div>
+                  <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/60 truncate">{card.label}</p>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs text-muted-foreground truncate">{card.label}</p>
-                  <p className="text-xl font-bold tabular-nums leading-tight mt-0.5">
+                <div className="min-w-0">
+                  <p className="text-2xl font-black tabular-nums leading-none tracking-tight text-white mb-1">
                     <AnimatedValue value={card.bucket.amount} format={formatCompactAmount} />
-                    <span className="text-xs font-normal text-muted-foreground ml-1">
+                    <span className="text-sm font-bold text-muted-foreground ml-1.5">
                       {card.bucket.symbol}
                     </span>
                   </p>
-                  <p className="text-xs text-emerald-400 tabular-nums mt-0.5">
+                  <p className="text-[11px] font-mono text-emerald-400 tabular-nums">
                     <AnimatedValue value={card.bucket.usd} format={formatCompactUsd} />
-                    <span className="text-muted-foreground ml-1.5">
+                    <span className="text-muted-foreground/60 ml-1.5">
                       @ {formatPrice(card.bucket.price)}
                     </span>
                   </p>
@@ -166,22 +171,24 @@ export function RewardsBar({ usdc, wavax, btcb, community }: RewardsBarProps) {
             viewport={{ once: true }}
             transition={{ duration: 0.4, delay: cards.length * 0.06, ease: "easeOut" }}
             data-testid="stat-rewards-community"
-            className="group rounded-2xl border border-border/60 bg-card/40 p-4 hover:border-primary/40 transition-colors"
+            className="group rounded-xl border border-white/5 bg-card/30 p-5 hover:border-primary/40 transition-colors relative overflow-hidden"
           >
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-xl bg-violet-400/10 shrink-0 transition-all duration-300 group-hover:shadow-[0_0_14px_rgba(167,139,250,0.25)]">
-                <Sparkles className="w-5 h-5 text-violet-400" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs text-muted-foreground truncate">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+            <div className="relative flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded border border-white/10 flex items-center justify-center bg-violet-400/10 transition-all duration-300 group-hover:shadow-[0_0_14px_rgba(167,139,250,0.25)]">
+                  <Sparkles className="w-3.5 h-3.5 text-violet-400" />
+                </div>
+                <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/60 truncate">
                   Community Assets Distributed
                 </p>
-                <p className="text-xl font-bold tabular-nums leading-tight mt-0.5">
+              </div>
+              <div className="min-w-0">
+                <p className="text-2xl font-black tabular-nums leading-none tracking-tight text-white mb-1">
                   <AnimatedValue value={community.usd} format={formatCompactUsd} />
                 </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Across {community.tokenCount} project token
-                  {community.tokenCount === 1 ? "" : "s"}
+                <p className="text-[11px] font-mono text-muted-foreground/60 mt-1">
+                  Across {community.tokenCount} project token{community.tokenCount === 1 ? "" : "s"}
                 </p>
               </div>
             </div>
