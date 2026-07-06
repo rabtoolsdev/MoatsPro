@@ -6,6 +6,7 @@ import {
 import { Download, BarChart2, TrendingUp, TrendingDown, Minus, Copy, Check, Image as ImageIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import { formatUSD } from "@/lib/moat-metadata";
+import { buildSources } from "@/components/swap/token-logo";
 import type { MoatEvent } from "@/lib/moats-api";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -19,7 +20,7 @@ const TIMEFRAME_MS: Record<Timeframe, number> = {
   "All": Infinity,
 };
 
-interface TokenRow { symbol: string; amount: number; usd: number; logoUrl?: string; }
+interface TokenRow { symbol: string; amount: number; usd: number; logoUrl?: string; address?: string; network?: string; }
 interface ClaimedAggregate {
   featured: Record<"usdc" | "wavax" | "btcb", TokenRow>;
   community: TokenRow[];
@@ -126,6 +127,15 @@ function loadImg(src: string): Promise<HTMLImageElement | null> {
     const bust = src.includes("?") ? `${src}&_cors=1` : `${src}?_cors=1`;
     img.src = bust;
   });
+}
+
+// Try each URL in the priority list in sequence; return the first that loads.
+async function loadFirstImg(sources: string[]): Promise<HTMLImageElement | null> {
+  for (const src of sources) {
+    const img = await loadImg(src);
+    if (img) return img;
+  }
+  return null;
 }
 
 function drawCircleLogo(
@@ -293,8 +303,12 @@ async function buildCard(
     if (tokens.length === 0) {
       ctx.font = `14px ${mono}`; ctx.fillStyle = "rgba(255,255,255,0.2)"; ctx.fillText("No rewards claimed yet", 36, 280);
     } else {
-      // Load all logos in parallel before drawing
-      const logos = await Promise.all(tokens.map(t => t.logoUrl ? loadImg(t.logoUrl) : Promise.resolve(null)));
+      // Load all logos in parallel, walking the full priority chain per token:
+      // SYMBOL_LOGOS → TrustWallet → DefiLlama (via buildSources), with the
+      // DexScreener imageUrl passed as the highest-priority hint.
+      const logos = await Promise.all(tokens.map(t =>
+        loadFirstImg(buildSources(t.address ?? "", t.network ?? "avalanche", t.symbol, t.logoUrl))
+      ));
 
       // 2×2 grid: col0=36, col1=416 | row0 cy=268, row1 cy=358
       const cols = [36, 416];

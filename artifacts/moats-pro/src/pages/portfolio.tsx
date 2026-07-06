@@ -379,6 +379,7 @@ export default function Portfolio() {
     usd: number;
     price: number;
     logoUrl?: string;
+    network?: string;
   };
   const claimedAggregate = useMemo(() => {
     const featured: Record<"usdc" | "wavax" | "btcb", ClaimedRow> = {
@@ -437,7 +438,7 @@ export default function Portfolio() {
         featured.btcb.price = price;
       } else {
         const logoUrl = rewardDexInfoMap?.[addr]?.imageUrl || llamaIconUrl(network, addr);
-        community.set(addr, { address: addr, symbol, amount, usd, price, logoUrl });
+        community.set(addr, { address: addr, symbol, amount, usd, price, logoUrl, network });
       }
     }
 

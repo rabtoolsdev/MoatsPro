@@ -151,7 +151,7 @@ function safeChecksum(address: string): string | null {
   }
 }
 
-function buildSources(
+export function buildSources(
   address: string,
   network: string,
   symbol: string,
