@@ -29,7 +29,7 @@ export interface PortfolioReportsProps {
   address?: string;
   mapsScore?: { points: number; rank?: number } | null;
   totalPortfolioValueUSD: number;
-  totalDailyUSD: number;
+  swapPoints?: number;
   ownTransactions: MoatEvent[];
   claimedAggregate: ClaimedAggregate;
   activePositionCount: number;
@@ -183,7 +183,7 @@ function exportCard(
     ctx.beginPath(); ctx.moveTo(36, 220); ctx.lineTo(W - 36, 220); ctx.stroke();
     const cols = [
       { label: "MAPS SCORE", value: props.mapsScore?.points?.toLocaleString() ?? "—", sub: props.mapsScore?.rank ? `RANK #${props.mapsScore.rank}` : "", color: "#a78bfa" },
-      { label: "DAILY YIELD", value: formatUSD(props.totalDailyUSD), sub: "EST. PER DAY", color: "#34d399" },
+      { label: "SWAP POINTS", value: (props.swapPoints ?? 0).toLocaleString(), sub: "TOTAL EARNED", color: "#34d399" },
       { label: "REWARDS EARNED", value: formatUSD(props.claimedAggregate.totalUsd), sub: "LIFETIME", color: "#00d4ff" },
     ];
     cols.forEach((c, i) => {
@@ -275,7 +275,7 @@ function CyberTooltip({ active, payload, label }: { active?: boolean; payload?: 
 const TIMEFRAMES: Timeframe[] = ["7D", "30D", "90D", "All"];
 
 export function PortfolioReports(props: PortfolioReportsProps) {
-  const { ownTransactions, claimedAggregate, mapsScore, totalPortfolioValueUSD, totalDailyUSD, activePositionCount } = props;
+  const { ownTransactions, claimedAggregate, mapsScore, totalPortfolioValueUSD, swapPoints, activePositionCount } = props;
 
   const [tf, setTf] = useState<Timeframe>("30D");
   const [activeCard, setActiveCard] = useState<"portfolio" | "rewards" | "activity">("portfolio");
@@ -300,7 +300,7 @@ export function PortfolioReports(props: PortfolioReportsProps) {
       key: "portfolio",
       label: "Portfolio Summary",
       headline: formatUSD(totalPortfolioValueUSD),
-      sub: `MAPS ${mapsScore?.points?.toLocaleString() ?? "—"} · ${formatUSD(totalDailyUSD)}/day`,
+      sub: `MAPS ${mapsScore?.points?.toLocaleString() ?? "—"} · ${(swapPoints ?? 0).toLocaleString()} swap pts`,
     },
     {
       key: "rewards",

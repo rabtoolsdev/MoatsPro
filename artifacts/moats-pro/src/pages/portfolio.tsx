@@ -1003,7 +1003,7 @@ export default function Portfolio() {
                 address={address}
                 mapsScore={mapsScore}
                 totalPortfolioValueUSD={totalPortfolioValueUSD}
-                totalDailyUSD={totalDailyUSD}
+                swapPoints={swapPoints?.points}
                 ownTransactions={ownTransactions}
                 claimedAggregate={claimedAggregate}
                 activePositionCount={activePositions.length}
