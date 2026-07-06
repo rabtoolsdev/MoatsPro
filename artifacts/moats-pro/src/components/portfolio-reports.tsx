@@ -1,9 +1,9 @@
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import {
   BarChart, Bar, AreaChart, Area, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid, Legend,
 } from "recharts";
-import { Download, BarChart2, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Download, BarChart2, TrendingUp, TrendingDown, Minus, Copy, Check, Image } from "lucide-react";
 import { motion } from "framer-motion";
 import { formatUSD } from "@/lib/moat-metadata";
 import type { MoatEvent } from "@/lib/moats-api";
@@ -156,10 +156,10 @@ function drawCircleLogo(
   ctx.restore();
 }
 
-async function exportCard(
+async function buildCard(
   type: "portfolio" | "rewards" | "activity",
   props: PortfolioReportsProps,
-) {
+): Promise<HTMLCanvasElement> {
   const W = 800, H = 440, DPR = 2;
   const canvas = document.createElement("canvas");
   canvas.width = W * DPR; canvas.height = H * DPR;
@@ -329,10 +329,21 @@ async function exportCard(
   ctx.font = `8px ${mono}`; ctx.fillStyle = "rgba(255,255,255,0.18)";
   ctx.fillText("BUILT ON MOATS PROTOCOL · PRO.MOATS.APP", 36, H - 16);
 
+  return canvas;
+}
+
+function downloadCard(canvas: HTMLCanvasElement, type: string) {
   const link = document.createElement("a");
   link.download = `moats-${type}-${new Date().toISOString().slice(0, 10)}.png`;
   link.href = canvas.toDataURL("image/png");
   link.click();
+}
+
+async function copyCardToClipboard(canvas: HTMLCanvasElement): Promise<void> {
+  const blob = await new Promise<Blob>((resolve, reject) =>
+    canvas.toBlob(b => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/png"),
+  );
+  await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
 }
 
 // ── Custom tooltip ───────────────────────────────────────────────────────────
@@ -372,7 +383,33 @@ export function PortfolioReports(props: PortfolioReportsProps) {
   const hasActivity   = activityData.length > 0;
   const hasCumulative = cumulativeData.length > 0;
 
-  const doExport = useCallback(() => { exportCard(activeCard, props).catch(console.error); }, [activeCard, props]);
+  const [previewUrl, setPreviewUrl]   = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [copied, setCopied]           = useState(false);
+
+  // Regenerate preview whenever the active card type or key data changes
+  useEffect(() => {
+    let cancelled = false;
+    setPreviewLoading(true);
+    setPreviewUrl(null);
+    buildCard(activeCard, props).then(canvas => {
+      if (!cancelled) setPreviewUrl(canvas.toDataURL("image/png"));
+    }).catch(() => {}).finally(() => { if (!cancelled) setPreviewLoading(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCard, props.claimedAggregate, props.mapsScore, props.totalPortfolioValueUSD, props.swapPoints, props.ownTransactions.length]);
+
+  const doDownload = useCallback(() => {
+    buildCard(activeCard, props).then(canvas => downloadCard(canvas, activeCard)).catch(console.error);
+  }, [activeCard, props]);
+
+  const doCopy = useCallback(() => {
+    buildCard(activeCard, props).then(async canvas => {
+      await copyCardToClipboard(canvas);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    }).catch(console.error);
+  }, [activeCard, props]);
 
   const pctLabel = (pct: number | null) => {
     if (pct === null) return null;
@@ -542,56 +579,81 @@ export function PortfolioReports(props: PortfolioReportsProps) {
         <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
         <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Download size={14} className="text-primary/70" />
-            <p className="text-[11px] font-mono text-white font-bold uppercase tracking-widest">Export Social Card</p>
+            <Image size={14} className="text-primary/70" />
+            <p className="text-[11px] font-mono text-white font-bold uppercase tracking-widest">Social Card Export</p>
           </div>
           <p className="text-[9px] font-mono text-muted-foreground/40 uppercase tracking-widest">PNG · 800×440 · 2×</p>
         </div>
 
-        <div className="p-5">
-          {/* Card picker */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+        <div className="p-5 space-y-4">
+          {/* Card type picker */}
+          <div className="grid grid-cols-3 gap-2">
             {cardPreviews.map((card) => (
               <button
                 key={card.key}
                 onClick={() => setActiveCard(card.key)}
-                className={`relative rounded-xl border p-4 text-left transition-all duration-200 overflow-hidden group ${
+                className={`relative rounded-xl border px-3 py-2.5 text-left transition-all duration-200 overflow-hidden group ${
                   activeCard === card.key
-                    ? "border-primary/60 bg-primary/5 shadow-[0_0_20px_rgba(0,212,255,0.12)]"
+                    ? "border-primary/60 bg-primary/5 shadow-[0_0_16px_rgba(0,212,255,0.12)]"
                     : "border-white/10 bg-black/30 hover:border-white/20 hover:bg-white/[0.03]"
                 }`}
               >
                 {activeCard === card.key && (
                   <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
                 )}
-
-                {/* Mini card preview */}
-                <div className="rounded-lg bg-black/60 border border-white/5 p-3 mb-3 relative overflow-hidden h-[72px] flex flex-col justify-between">
-                  <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
-                  <div className="flex items-center gap-1">
-                    <span className="text-[7px] font-mono text-primary tracking-widest">/// MOATS PRO</span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-black text-white tabular-nums leading-none">{card.headline}</p>
-                    <p className="text-[7px] font-mono text-muted-foreground/50 mt-0.5 truncate">{card.sub}</p>
-                  </div>
-                </div>
-
                 <p className={`text-[10px] font-mono font-bold uppercase tracking-widest transition-colors ${
-                  activeCard === card.key ? "text-primary" : "text-muted-foreground/60 group-hover:text-white"
+                  activeCard === card.key ? "text-primary" : "text-muted-foreground/50 group-hover:text-white"
                 }`}>{card.label}</p>
+                <p className="text-[9px] font-mono text-muted-foreground/30 mt-0.5 truncate">{card.headline}</p>
               </button>
             ))}
           </div>
 
-          {/* Export button */}
-          <button
-            onClick={doExport}
-            className="btn-shimmer w-full py-3.5 rounded-xl bg-primary/10 border border-primary/40 text-primary font-black uppercase tracking-widest text-[11px] hover:bg-primary/20 hover:border-primary/70 transition-all duration-200 hover:shadow-[0_0_24px_rgba(0,212,255,0.25)] flex items-center justify-center gap-2"
-          >
-            <Download size={14} />
-            Download {cardPreviews.find(c => c.key === activeCard)?.label ?? ""} PNG
-          </button>
+          {/* Live canvas preview */}
+          <div className="rounded-xl overflow-hidden border border-white/8 bg-black/60 relative" style={{ aspectRatio: "800/440" }}>
+            {previewLoading && (
+              <div className="absolute inset-0 flex items-center justify-center gap-2 text-[10px] font-mono text-muted-foreground/40 uppercase tracking-widest">
+                <span className="w-3 h-3 rounded-full border border-primary/40 border-t-primary animate-spin" />
+                Rendering…
+              </div>
+            )}
+            {previewUrl && !previewLoading && (
+              <img
+                src={previewUrl}
+                alt={`${activeCard} card preview`}
+                className="w-full h-full object-contain"
+                draggable={false}
+              />
+            )}
+            {!previewUrl && !previewLoading && (
+              <div className="absolute inset-0 flex items-center justify-center text-[10px] font-mono text-muted-foreground/30 uppercase tracking-widest">
+                Preview unavailable
+              </div>
+            )}
+          </div>
+
+          {/* Action buttons */}
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={doCopy}
+              className={`relative overflow-hidden py-3 rounded-xl border font-black uppercase tracking-widest text-[11px] transition-all duration-200 flex items-center justify-center gap-2 ${
+                copied
+                  ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.2)]"
+                  : "border-white/20 bg-white/5 text-white/70 hover:border-white/40 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              {copied ? <Check size={14} /> : <Copy size={14} />}
+              {copied ? "Copied!" : "Copy to Clipboard"}
+            </button>
+
+            <button
+              onClick={doDownload}
+              className="btn-shimmer py-3 rounded-xl bg-primary/10 border border-primary/40 text-primary font-black uppercase tracking-widest text-[11px] hover:bg-primary/20 hover:border-primary/70 transition-all duration-200 hover:shadow-[0_0_20px_rgba(0,212,255,0.25)] flex items-center justify-center gap-2"
+            >
+              <Download size={14} />
+              Download PNG
+            </button>
+          </div>
         </div>
       </div>
     </motion.div>

@@ -436,7 +436,8 @@ export default function Portfolio() {
         featured.btcb.usd += usd;
         featured.btcb.price = price;
       } else {
-        community.set(addr, { address: addr, symbol, amount, usd, price, logoUrl: llamaIconUrl(network, addr) });
+        const logoUrl = rewardDexInfoMap?.[addr]?.imageUrl || llamaIconUrl(network, addr);
+        community.set(addr, { address: addr, symbol, amount, usd, price, logoUrl });
       }
     }
 
