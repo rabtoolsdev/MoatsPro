@@ -558,7 +558,7 @@ export default function Home() {
             className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/30 bg-primary/10 text-primary mb-6 shadow-[0_0_15px_rgba(0,212,255,0.2)] backdrop-blur-md"
           >
             <span className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(0,212,255,0.8)]" />
-            <span className="text-[10px] font-mono uppercase tracking-widest font-bold">Moats Pro Terminal v3.0</span>
+            <span className="text-[10px] font-mono uppercase tracking-widest font-bold">Moats Pro Terminal</span>
           </motion.div>
 
           {/* Staggered headline words */}
