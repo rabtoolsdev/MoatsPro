@@ -1974,6 +1974,7 @@ export default function MoatDetail() {
                                     address={t.tokenAddress}
                                     symbol={t.symbol}
                                     network={moatConfig?.network ?? "avalanche"}
+                                    hint={dexInfoMap?.[t.tokenAddress.toLowerCase()]?.imageUrl || getTokenLogoUrl(t.tokenAddress) || undefined}
                                     size={32}
                                     className="ring-1 ring-white/10"
                                   />
@@ -2048,6 +2049,7 @@ export default function MoatDetail() {
                                     address={r.token}
                                     symbol={r.cfg?.symbol ?? formatAddress(r.token)}
                                     network={moatConfig?.network ?? "avalanche"}
+                                    hint={dexInfoMap?.[r.token.toLowerCase()]?.imageUrl || getTokenLogoUrl(r.token) || undefined}
                                     size={32}
                                     className="ring-1 ring-white/10"
                                   />
