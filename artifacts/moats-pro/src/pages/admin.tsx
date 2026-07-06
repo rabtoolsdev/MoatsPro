@@ -84,9 +84,6 @@ export default function Admin() {
   const isFetching = stats.isFetching || swaps.isFetching || users.isFetching;
   const lastUpdated = stats.dataUpdatedAt;
 
-  // On-chain moat token logos (mirrors Explore/Portfolio/Swap recipe). Swap
-  // rows store the underlying ERC20 token address, so we resolve each moat
-  // config's getLogoURL() and key the result by that token address.
   const { data: moatConfigs } = useAllMoatConfigs();
   const logoContracts = useMemo(() => {
     if (!moatConfigs) return [];
@@ -111,7 +108,7 @@ export default function Admin() {
       const meta = getMoatMeta(c.contractAddress);
       if (!meta.tokenAddress) return;
       const tokenKey = meta.tokenAddress.toLowerCase();
-      if (m[tokenKey]) return; // first non-empty logo wins
+      if (m[tokenKey]) return;
       const r = logoData?.[i];
       if (r?.status === "success" && typeof r.result === "string" && r.result.length > 0) {
         m[tokenKey] = r.result;
@@ -124,11 +121,19 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen bg-background text-foreground relative overflow-hidden">
-      {/* Ambient glow */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,hsl(195_100%_50%/0.10),transparent_70%)]" />
-      <div className="pointer-events-none absolute -left-32 top-1/3 h-[420px] w-[420px] rounded-full bg-primary/5 blur-3xl" />
+      {/* cyber grid */}
+      <div className="cyber-grid pointer-events-none" />
+
+      {/* ambient glows */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[500px] bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,hsl(195_100%_50%/0.12),transparent_70%)]" />
+      <div className="pointer-events-none absolute -left-40 top-1/3 h-[500px] w-[500px] rounded-full bg-primary/5 blur-[80px]" />
+      <div className="pointer-events-none absolute -right-40 bottom-1/4 h-[400px] w-[400px] rounded-full bg-violet-500/4 blur-[80px]" />
+
       <Navbar />
-      <div className="relative pt-24 sm:pt-28 pb-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto" data-testid="admin-page">
+      <div
+        className="relative pt-24 sm:pt-28 pb-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto"
+        data-testid="admin-page"
+      >
         <Header
           isFetching={isFetching}
           lastUpdated={lastUpdated}
@@ -147,10 +152,6 @@ export default function Admin() {
             let finalRemaining = 0;
             let walkedToEnd = false;
             try {
-              // Cursor-paginate in 50-row chunks until the server says
-              // `done` (we've walked off the end of the missing set). 40
-              // iterations = 2,000 rows of safety net; partial completion
-              // is reported below if we hit the cap.
               for (let i = 0; i < 40; i++) {
                 const r = await backfillUsd(50, cursor);
                 totalUpdated += r.updated;
@@ -207,14 +208,15 @@ export default function Admin() {
 
         <ChainBreakdown data={stats.data} />
 
-        <div className="mt-10">
-          <div className="flex items-center justify-between border-b border-border/40 mb-4 flex-wrap gap-3">
+        <div className="mt-12">
+          {/* Tab bar */}
+          <div className="flex items-center justify-between border-b border-white/[0.06] mb-5 flex-wrap gap-3">
             <div className="flex items-center gap-1">
               <TabButton active={tab === "transactions"} onClick={() => setTab("transactions")}>
-                <TrendingUp size={14} /> Transactions
+                <TrendingUp size={13} /> Transactions
               </TabButton>
               <TabButton active={tab === "users"} onClick={() => setTab("users")}>
-                <UsersIcon size={14} /> Users
+                <UsersIcon size={13} /> Users
               </TabButton>
             </div>
           </div>
@@ -271,36 +273,47 @@ function Header({
     const id = setInterval(() => force((n) => n + 1), 5_000);
     return () => clearInterval(id);
   }, []);
+
   return (
-    <div className="flex items-end justify-between mb-7 gap-3 flex-wrap">
+    <div className="flex items-end justify-between mb-8 gap-4 flex-wrap">
       <div>
-        <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-primary/80 font-semibold mb-1.5">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+        {/* terminal badge */}
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/25 bg-primary/8 mb-3">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-70" />
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
           </span>
-          Live · Moat Swap
+          <span className="text-[10px] font-mono uppercase tracking-[0.25em] text-primary/80">
+            Live · Moat Swap
+          </span>
         </div>
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent">
+
+        <h1 className="text-3xl sm:text-4xl font-black tracking-tight bg-gradient-to-br from-foreground via-foreground/90 to-foreground/50 bg-clip-text text-transparent">
           Admin Dashboard
         </h1>
-        <div className="mt-1.5 text-xs text-muted-foreground/80">
-          Real-time platform analytics. Auto-refresh every 30s.
+
+        <div className="mt-1.5 flex items-center gap-2 text-[11px] font-mono text-muted-foreground/60">
+          <span>Real-time platform analytics. Auto-refresh every 30s.</span>
           {lastUpdated > 0 && (
-            <span className="ml-2 text-muted-foreground/60">
-              · Updated {formatRelative(new Date(lastUpdated).toISOString())}
-            </span>
+            <>
+              <span className="text-white/10">·</span>
+              <span className="text-muted-foreground/40">
+                Updated {formatRelative(new Date(lastUpdated).toISOString())}
+              </span>
+            </>
           )}
         </div>
       </div>
+
       <div className="flex items-center gap-2">
         <button
           onClick={onBackfill}
           disabled={isBackfilling}
           data-testid="btn-admin-backfill"
           title="Re-price any non-USDC swaps that are missing a USD volume value (uses current DexScreener prices)."
-          className="group flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-border/60 bg-card/40 hover:border-primary/60 hover:bg-card/70 hover:shadow-[0_0_24px_-8px_hsl(195_100%_50%/0.6)] disabled:opacity-60 disabled:cursor-not-allowed transition-all text-xs font-medium"
+          className="group relative flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-white/10 bg-black/30 hover:border-primary/50 hover:bg-primary/5 hover:shadow-[0_0_20px_hsl(195_100%_50%/0.15)] disabled:opacity-40 disabled:cursor-not-allowed transition-all text-xs font-mono font-medium overflow-hidden"
         >
+          <span className="absolute inset-0 btn-shimmer opacity-0 group-hover:opacity-100" />
           {isBackfilling ? (
             <Loader2 size={12} className="animate-spin text-primary" />
           ) : (
@@ -308,11 +321,13 @@ function Header({
           )}
           {isBackfilling ? "Backfilling…" : "Backfill USD"}
         </button>
+
         <button
           onClick={onRefresh}
           data-testid="btn-admin-refresh"
-          className="group flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-border/60 bg-card/40 hover:border-primary/60 hover:bg-card/70 hover:shadow-[0_0_24px_-8px_hsl(195_100%_50%/0.6)] transition-all text-xs font-medium"
+          className="group relative flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-white/10 bg-black/30 hover:border-primary/50 hover:bg-primary/5 hover:shadow-[0_0_20px_hsl(195_100%_50%/0.15)] transition-all text-xs font-mono font-medium overflow-hidden"
         >
+          <span className="absolute inset-0 btn-shimmer opacity-0 group-hover:opacity-100" />
           {isFetching ? (
             <Loader2 size={12} className="animate-spin text-primary" />
           ) : (
@@ -343,34 +358,38 @@ function Filters({
     [],
   );
   return (
-    <div className="flex items-center gap-3 mb-6 flex-wrap">
-      <div className="flex items-center gap-1 p-1 rounded-xl border border-border/60 bg-card/40 backdrop-blur-sm">
+    <div className="flex items-center gap-3 mb-7 flex-wrap">
+      {/* range pill group */}
+      <div className="flex items-center gap-0.5 p-1 rounded-xl border border-white/8 bg-black/30 backdrop-blur-sm">
         {RANGE_LABELS.map((r) => (
           <button
             key={r.value}
             onClick={() => setRange(r.value)}
             data-testid={`range-${r.value}`}
-            className={`relative px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`relative px-3.5 py-1.5 rounded-lg text-[11px] font-mono font-semibold tracking-wider transition-all ${
               range === r.value
-                ? "bg-primary/15 text-primary shadow-[inset_0_0_0_1px_hsl(195_100%_50%/0.3)]"
-                : "text-muted-foreground hover:text-foreground"
+                ? "bg-primary/15 text-primary shadow-[inset_0_0_0_1px_hsl(195_100%_50%/0.35)] shadow-[0_0_12px_hsl(195_100%_50%/0.12)]"
+                : "text-muted-foreground/70 hover:text-foreground"
             }`}
           >
             {r.label}
           </button>
         ))}
       </div>
-      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
-        <Filter size={11} /> Chain
+
+      <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground/50">
+        <Filter size={10} /> Chain
       </div>
-      <div className="flex items-center gap-1 p-1 rounded-xl border border-border/60 bg-card/40 backdrop-blur-sm flex-wrap">
+
+      {/* chain pill group */}
+      <div className="flex items-center gap-0.5 p-1 rounded-xl border border-white/8 bg-black/30 backdrop-blur-sm flex-wrap">
         <button
           onClick={() => setChainFilter(null)}
           data-testid="chain-all"
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+          className={`px-3 py-1.5 rounded-lg text-[11px] font-mono font-semibold transition-all ${
             chainFilter === null
-              ? "bg-primary/15 text-primary shadow-[inset_0_0_0_1px_hsl(195_100%_50%/0.3)]"
-              : "text-muted-foreground hover:text-foreground"
+              ? "bg-primary/15 text-primary shadow-[inset_0_0_0_1px_hsl(195_100%_50%/0.35)]"
+              : "text-muted-foreground/70 hover:text-foreground"
           }`}
         >
           All
@@ -380,10 +399,10 @@ function Filters({
             key={c.id}
             onClick={() => setChainFilter(c.id)}
             data-testid={`chain-${c.network}`}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-mono font-semibold transition-all ${
               chainFilter === c.id
-                ? "bg-primary/15 text-primary shadow-[inset_0_0_0_1px_hsl(195_100%_50%/0.3)]"
-                : "text-muted-foreground hover:text-foreground"
+                ? "bg-primary/15 text-primary shadow-[inset_0_0_0_1px_hsl(195_100%_50%/0.35)]"
+                : "text-muted-foreground/70 hover:text-foreground"
             }`}
           >
             <img src={c.logo} alt="" className="w-4 h-4 rounded-full" />
@@ -414,8 +433,10 @@ function StatsGrid({
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       <Stat
-        icon={<DollarSign size={14} />}
-        accent="from-cyan-400/20 via-cyan-400/0 to-cyan-400/0"
+        icon={<DollarSign size={13} />}
+        accentColor="from-cyan-500/25 via-cyan-500/5 to-transparent"
+        borderGlow="hover:border-cyan-500/40 hover:shadow-[0_0_20px_hsl(195_100%_50%/0.1)]"
+        topBar="bg-cyan-400/60"
         label="Volume (USD)"
         value={t ? formatUsd(t.volumeUsd) : "—"}
         sub={all ? `All time ${formatUsd(all.volumeUsd)}` : undefined}
@@ -423,8 +444,10 @@ function StatsGrid({
         testId="stat-volume"
       />
       <Stat
-        icon={<Activity size={14} />}
-        accent="from-emerald-400/20 via-emerald-400/0 to-emerald-400/0"
+        icon={<Activity size={13} />}
+        accentColor="from-emerald-500/25 via-emerald-500/5 to-transparent"
+        borderGlow="hover:border-emerald-500/40 hover:shadow-[0_0_20px_hsl(160_100%_50%/0.1)]"
+        topBar="bg-emerald-400/60"
         label="Swaps"
         value={t ? formatInt(t.count) : "—"}
         sub={all ? `All time ${formatInt(all.count)}` : undefined}
@@ -432,8 +455,10 @@ function StatsGrid({
         testId="stat-count"
       />
       <Stat
-        icon={<Coins size={14} />}
-        accent="from-amber-400/20 via-amber-400/0 to-amber-400/0"
+        icon={<Coins size={13} />}
+        accentColor="from-amber-500/25 via-amber-500/5 to-transparent"
+        borderGlow="hover:border-amber-500/40 hover:shadow-[0_0_20px_hsl(40_100%_50%/0.1)]"
+        topBar="bg-amber-400/60"
         label="Fees collected"
         value={t ? formatUsd(t.feeUsd) : "—"}
         sub={all ? `All time ${formatUsd(all.feeUsd)}` : undefined}
@@ -441,8 +466,10 @@ function StatsGrid({
         testId="stat-fees"
       />
       <Stat
-        icon={<UsersIcon size={14} />}
-        accent="from-violet-400/20 via-violet-400/0 to-violet-400/0"
+        icon={<UsersIcon size={13} />}
+        accentColor="from-violet-500/25 via-violet-500/5 to-transparent"
+        borderGlow="hover:border-violet-500/40 hover:shadow-[0_0_20px_hsl(270_100%_65%/0.1)]"
+        topBar="bg-violet-400/60"
         label="Unique users"
         value={t ? formatInt(t.uniqueUsers) : "—"}
         sub={
@@ -461,7 +488,9 @@ function StatsGrid({
 
 function Stat({
   icon,
-  accent,
+  accentColor,
+  borderGlow,
+  topBar,
   label,
   value,
   sub,
@@ -469,7 +498,9 @@ function Stat({
   testId,
 }: {
   icon: React.ReactNode;
-  accent: string;
+  accentColor: string;
+  borderGlow: string;
+  topBar: string;
   label: string;
   value: string;
   sub?: string;
@@ -477,34 +508,39 @@ function Stat({
   testId?: string;
 }) {
   return (
-    <div
-      className="group relative rounded-2xl border border-border/60 bg-card/50 backdrop-blur-sm p-4 overflow-hidden hover:border-primary/40 transition-colors"
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className={`group relative rounded-xl border border-white/8 bg-black/40 backdrop-blur-sm p-4 overflow-hidden transition-all ${borderGlow}`}
       data-testid={testId}
     >
-      <div
-        className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${accent} opacity-60 group-hover:opacity-100 transition-opacity`}
-      />
+      {/* top accent bar */}
+      <div className={`absolute top-0 left-0 right-0 h-[2px] ${topBar} opacity-70 group-hover:opacity-100 transition-opacity`} />
+      {/* gradient fill */}
+      <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${accentColor} opacity-50 group-hover:opacity-80 transition-opacity`} />
+
       <div className="relative">
-        <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-semibold">
-          <span className="text-primary/70">{icon}</span>
+        <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-[0.22em] text-muted-foreground/60 font-mono mb-2">
+          <span className="text-primary/60">{icon}</span>
           {label}
         </div>
-        <div className="mt-2 text-3xl font-bold tracking-tight tabular-nums">
+        <div className="text-2xl sm:text-3xl font-black tracking-tight tabular-nums font-mono">
           {loading ? (
-            <span className="inline-block w-24 h-8 rounded bg-muted/30 animate-pulse" />
+            <span className="inline-block w-24 h-8 rounded-lg bg-white/5 animate-pulse" />
           ) : (
             value
           )}
         </div>
         {sub && (
-          <div className="mt-1 text-[11px] text-muted-foreground/70 font-mono">{sub}</div>
+          <div className="mt-1 text-[10px] text-muted-foreground/50 font-mono tabular-nums">{sub}</div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
-// ─────────────────────────────────────── Chain / Routes ───────────────────────────────────────
+// ─────────────────────────────────────────── Chain / Routes ───────────────────────────────────────────
 
 function ChainBreakdown({
   data,
@@ -523,11 +559,11 @@ function ChainBreakdown({
   const totalRouterCount = byRouter.reduce((s, r) => s + r.count, 0);
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-      <Panel title="Volume by chain" icon={<TrendingUp size={12} />}>
+      <Panel title="Volume by chain" icon={<TrendingUp size={11} />}>
         {byChain.length === 0 ? (
           <Empty>No swaps in this range.</Empty>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3.5">
             {byChain
               .slice()
               .sort((a, b) => b.volumeUsd - a.volumeUsd)
@@ -541,28 +577,28 @@ function ChainBreakdown({
                         {display && (
                           <img src={display.logo} alt="" className="w-5 h-5 rounded-full" />
                         )}
-                        <span className="text-xs font-semibold truncate">
+                        <span className="text-xs font-mono font-semibold truncate">
                           {display?.label ?? c.network}
                         </span>
-                        <span className="text-[10px] text-muted-foreground/70">
+                        <span className="text-[10px] font-mono text-muted-foreground/50">
                           {c.count} {c.count === 1 ? "swap" : "swaps"}
                         </span>
                       </div>
                       <div className="flex items-baseline gap-2 shrink-0">
-                        <span className="text-sm font-mono font-semibold tabular-nums">
+                        <span className="text-sm font-mono font-bold tabular-nums">
                           {formatUsd(c.volumeUsd)}
                         </span>
-                        <span className="text-[10px] text-muted-foreground/70 tabular-nums w-10 text-right">
+                        <span className="text-[10px] font-mono text-muted-foreground/50 tabular-nums w-10 text-right">
                           {pct.toFixed(0)}%
                         </span>
                       </div>
                     </div>
-                    <div className="h-1.5 rounded-full bg-muted/20 overflow-hidden">
+                    <div className="h-1 rounded-full bg-white/5 overflow-hidden">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${pct}%` }}
-                        transition={{ duration: 0.6, ease: "easeOut" }}
-                        className="h-full rounded-full bg-gradient-to-r from-primary/80 to-cyan-400/80"
+                        transition={{ duration: 0.7, ease: "easeOut" }}
+                        className="h-full rounded-full bg-gradient-to-r from-primary to-cyan-400/70"
                       />
                     </div>
                   </div>
@@ -572,11 +608,11 @@ function ChainBreakdown({
         )}
       </Panel>
 
-      <Panel title="Routes used" icon={<Activity size={12} />}>
+      <Panel title="Routes used" icon={<Activity size={11} />}>
         {byRouter.length === 0 ? (
           <Empty>No swaps in this range.</Empty>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3.5">
             {byRouter
               .slice()
               .sort((a, b) => b.count - a.count)
@@ -585,24 +621,24 @@ function ChainBreakdown({
                 return (
                   <div key={r.router} className="space-y-1.5">
                     <div className="flex items-center justify-between gap-3">
-                      <div className="text-xs font-semibold uppercase tracking-wider">
+                      <div className="text-xs font-mono font-semibold uppercase tracking-wider">
                         {prettyRouter(r.router)}
                       </div>
                       <div className="flex items-baseline gap-2">
-                        <span className="text-sm font-mono font-semibold tabular-nums">
+                        <span className="text-sm font-mono font-bold tabular-nums">
                           {r.count}
                         </span>
-                        <span className="text-[10px] text-muted-foreground/70 tabular-nums w-10 text-right">
+                        <span className="text-[10px] font-mono text-muted-foreground/50 tabular-nums w-10 text-right">
                           {pct.toFixed(0)}%
                         </span>
                       </div>
                     </div>
-                    <div className="h-1.5 rounded-full bg-muted/20 overflow-hidden">
+                    <div className="h-1 rounded-full bg-white/5 overflow-hidden">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${pct}%` }}
-                        transition={{ duration: 0.6, ease: "easeOut" }}
-                        className="h-full rounded-full bg-gradient-to-r from-violet-400/80 to-primary/70"
+                        transition={{ duration: 0.7, ease: "easeOut" }}
+                        className="h-full rounded-full bg-gradient-to-r from-violet-400 to-primary/70"
                       />
                     </div>
                   </div>
@@ -625,9 +661,11 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-border/60 bg-card/50 backdrop-blur-sm p-5">
-      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.18em] text-muted-foreground font-semibold mb-4">
-        {icon && <span className="text-primary/70">{icon}</span>}
+    <div className="rounded-xl border border-white/8 bg-black/40 backdrop-blur-sm p-5 relative overflow-hidden">
+      {/* top accent */}
+      <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+      <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-[0.22em] text-muted-foreground/50 font-mono mb-5">
+        {icon && <span className="text-primary/50">{icon}</span>}
         {title}
       </div>
       {children}
@@ -636,7 +674,9 @@ function Panel({
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
-  return <div className="text-xs text-muted-foreground/70 py-4 text-center">{children}</div>;
+  return (
+    <div className="text-[11px] font-mono text-muted-foreground/50 py-6 text-center">{children}</div>
+  );
 }
 
 // ─────────────────────────────────────────── Tabs ───────────────────────────────────────────
@@ -653,15 +693,15 @@ function TabButton({
   return (
     <button
       onClick={onClick}
-      className={`relative flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold transition-all ${
-        active ? "text-primary" : "text-muted-foreground hover:text-foreground"
+      className={`relative flex items-center gap-1.5 px-4 py-2.5 text-[11px] font-mono font-bold uppercase tracking-wider transition-all ${
+        active ? "text-primary" : "text-muted-foreground/50 hover:text-foreground"
       }`}
     >
       {children}
       {active && (
         <motion.span
           layoutId="admin-tab-underline"
-          className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary"
+          className="absolute left-0 right-0 -bottom-px h-[2px] bg-gradient-to-r from-primary/50 via-primary to-primary/50 shadow-[0_0_8px_hsl(195_100%_50%/0.6)]"
         />
       )}
     </button>
@@ -686,29 +726,34 @@ function TransactionsTable({
   moatLogoByTokenAddress: Record<string, string>;
 }) {
   return (
-    <div className="rounded-2xl border border-border/60 bg-card/50 backdrop-blur-sm overflow-hidden">
-      <div className="flex items-center justify-between p-4 border-b border-border/40 gap-3 flex-wrap">
-        <div className="text-sm font-semibold">
+    <div className="rounded-xl border border-white/8 bg-black/40 backdrop-blur-sm overflow-hidden relative">
+      {/* top accent */}
+      <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-primary/25 to-transparent" />
+
+      {/* table header bar */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.05] gap-3 flex-wrap">
+        <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground/50">
           {loading
             ? "Loading…"
             : `${formatInt(rows.length)} of ${formatInt(total)} ${total === 1 ? "swap" : "swaps"}`}
         </div>
         <div className="relative flex-1 max-w-xs min-w-[200px]">
-          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/40" />
           <input
             type="text"
             placeholder="Filter by wallet 0x…"
             value={addressFilter}
             onChange={(e) => setAddressFilter(e.target.value)}
             data-testid="input-address-filter"
-            className="w-full pl-7 pr-2 py-2 rounded-lg bg-muted/20 border border-border/60 focus:border-primary/60 focus:ring-1 focus:ring-primary/40 focus:outline-none text-xs font-mono transition-colors"
+            className="w-full pl-7 pr-3 py-2 rounded-lg bg-black/40 border border-white/8 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 focus:shadow-[0_0_12px_hsl(195_100%_50%/0.1)] focus:outline-none text-[11px] font-mono tracking-wider text-foreground placeholder:text-muted-foreground/30 transition-all"
           />
         </div>
       </div>
+
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="sticky top-0 z-10 bg-card/80 backdrop-blur">
-            <tr className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground border-b border-border/40">
+          <thead className="sticky top-0 z-10 bg-black/70 backdrop-blur border-b border-white/[0.05]">
+            <tr className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/40 font-mono">
               <Th>Time</Th>
               <Th>User</Th>
               <Th>Chain</Th>
@@ -725,9 +770,9 @@ function TransactionsTable({
               <SkeletonRows cols={9} />
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-3 py-12 text-center">
-                  <div className="text-xs text-muted-foreground/70">No swaps yet for this filter.</div>
-                  <div className="text-[10px] text-muted-foreground/50 mt-1">
+                <td colSpan={9} className="px-3 py-14 text-center">
+                  <div className="text-[11px] font-mono text-muted-foreground/40 uppercase tracking-wider">No swaps yet for this filter.</div>
+                  <div className="text-[10px] font-mono text-muted-foreground/30 mt-1">
                     Activity will appear here as users swap.
                   </div>
                 </td>
@@ -760,22 +805,22 @@ function TxRow({
   const toLogoHint = moatLogoByTokenAddress[r.toTokenAddress.toLowerCase()];
   return (
     <tr
-      className="border-b border-border/20 hover:bg-primary/[0.04] transition-colors"
+      className="border-b border-white/[0.04] hover:bg-primary/[0.03] transition-colors group"
       data-testid={`row-swap-${r.id}`}
     >
-      <td className="px-3 py-3 text-xs whitespace-nowrap text-muted-foreground tabular-nums">
+      <td className="px-3 py-3 text-[11px] font-mono whitespace-nowrap text-muted-foreground/50 tabular-nums">
         {formatRelative(r.createdAt)}
       </td>
-      <td className="px-3 py-3 text-xs">
+      <td className="px-3 py-3 text-[11px] font-mono">
         <CopyableAddress address={r.walletAddress} chainId={r.chainId} />
       </td>
       <td className="px-3 py-3">
-        <div className="flex items-center gap-1.5 text-xs">
+        <div className="flex items-center gap-1.5 text-[11px] font-mono">
           {display && <img src={display.logo} alt="" className="w-4 h-4 rounded-full" />}
-          <span className="font-medium">{display?.label ?? r.network}</span>
+          <span className="font-semibold text-foreground/70">{display?.label ?? r.network}</span>
         </div>
       </td>
-      <td className="px-3 py-3 text-xs">
+      <td className="px-3 py-3 text-[11px] font-mono">
         <div className="flex items-center gap-2">
           <div className="flex -space-x-1.5">
             <TokenLogo
@@ -784,7 +829,7 @@ function TxRow({
               network={r.network}
               hint={fromLogoHint}
               size={20}
-              className="ring-2 ring-card bg-card"
+              className="ring-2 ring-black bg-black"
             />
             <TokenLogo
               address={r.toTokenAddress}
@@ -792,36 +837,36 @@ function TxRow({
               network={r.network}
               hint={toLogoHint}
               size={20}
-              className="ring-2 ring-card bg-card"
+              className="ring-2 ring-black bg-black"
             />
           </div>
           <div className="leading-tight">
-            <div className="font-medium tabular-nums">
+            <div className="font-semibold tabular-nums text-foreground/90">
               {formatAmount(r.fromAmount)} {r.fromTokenSymbol}
             </div>
-            <div className="text-[10px] text-muted-foreground/70 tabular-nums">
+            <div className="text-[10px] text-muted-foreground/40 tabular-nums">
               → {formatAmount(r.toAmount)} {r.toTokenSymbol}
             </div>
           </div>
         </div>
       </td>
-      <td className="px-3 py-3 text-xs text-right font-mono tabular-nums whitespace-nowrap">
+      <td className="px-3 py-3 text-[11px] text-right font-mono tabular-nums whitespace-nowrap text-foreground/80">
         {r.fromUsd != null ? formatUsd(r.fromUsd) : "—"}
       </td>
-      <td className="px-3 py-3 text-xs text-right font-mono whitespace-nowrap">
+      <td className="px-3 py-3 text-[11px] text-right font-mono whitespace-nowrap">
         <div className="flex items-center justify-end gap-1.5">
           <div className="flex flex-col items-end leading-tight">
             {r.feeAmount != null && (
-              <span className="text-primary/90 tabular-nums">
+              <span className="text-primary/80 tabular-nums">
                 {formatTokenAmount(r.feeAmount)} {r.fromTokenSymbol}
               </span>
             )}
             {r.feeUsd != null && (
-              <span className="text-[10px] text-muted-foreground/70 tabular-nums">
+              <span className="text-[10px] text-muted-foreground/40 tabular-nums">
                 {formatUsd(r.feeUsd)}
               </span>
             )}
-            {r.feeAmount == null && r.feeUsd == null && <span>—</span>}
+            {r.feeAmount == null && r.feeUsd == null && <span className="text-muted-foreground/30">—</span>}
           </div>
           {r.feeTxHash && (
             <a
@@ -830,20 +875,20 @@ function TxRow({
               rel="noreferrer"
               data-testid={`link-fee-tx-${r.id}`}
               title="View fee transfer on explorer"
-              className="text-primary/70 hover:text-primary"
+              className="text-primary/50 hover:text-primary transition-colors"
             >
               <ArrowUpRight size={11} />
             </a>
           )}
         </div>
       </td>
-      <td className="px-3 py-3 text-[10px] uppercase">
+      <td className="px-3 py-3 text-[10px] uppercase font-mono">
         <div className="flex flex-col items-start gap-0.5">
-          <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary font-bold tracking-wider">
+          <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary font-bold tracking-widest border border-primary/15">
             {prettyRouter(r.router)}
           </span>
           {r.toolName && (
-            <span className="text-muted-foreground/60 lowercase tracking-normal text-[10px]">
+            <span className="text-muted-foreground/40 lowercase tracking-normal text-[10px]">
               via {r.toolName}
             </span>
           )}
@@ -858,9 +903,9 @@ function TxRow({
           target="_blank"
           rel="noreferrer"
           data-testid={`link-tx-${r.id}`}
-          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-primary hover:bg-primary/10 hover:text-primary transition-colors text-xs font-medium"
+          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-primary/70 hover:text-primary hover:bg-primary/10 transition-colors text-[11px] font-mono font-medium"
         >
-          View <ArrowUpRight size={11} />
+          View <ArrowUpRight size={10} />
         </a>
       </td>
     </tr>
@@ -871,13 +916,13 @@ function StatusPill({ status }: { status: string }) {
   const ok = status === "success";
   return (
     <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-mono font-bold uppercase tracking-widest ${
         ok
           ? "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20"
           : "bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/20"
       }`}
     >
-      {ok && <CheckCircle2 size={10} />}
+      {ok && <CheckCircle2 size={9} />}
       {status}
     </span>
   );
@@ -909,20 +954,20 @@ function CopyableAddress({
           href={explorerAddr(chainId, address)}
           target="_blank"
           rel="noreferrer"
-          className="text-foreground hover:text-primary transition-colors"
+          className="text-foreground/70 hover:text-primary transition-colors"
         >
           {shortAddr(address)}
         </a>
       ) : (
-        <span className="text-foreground">{shortAddr(address)}</span>
+        <span className="text-foreground/70">{shortAddr(address)}</span>
       )}
       <button
         onClick={onCopy}
         aria-label={copied ? "Address copied" : "Copy wallet address"}
         title={copied ? "Copied!" : "Copy address"}
-        className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/60 rounded transition-opacity text-muted-foreground hover:text-primary"
+        className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/60 rounded transition-opacity text-muted-foreground/40 hover:text-primary"
       >
-        {copied ? <CheckCircle2 size={11} className="text-emerald-400" /> : <Copy size={11} />}
+        {copied ? <CheckCircle2 size={10} className="text-emerald-400" /> : <Copy size={10} />}
       </button>
     </span>
   );
@@ -932,11 +977,11 @@ function SkeletonRows({ cols, rows = 5 }: { cols: number; rows?: number }) {
   return (
     <>
       {Array.from({ length: rows }).map((_, i) => (
-        <tr key={i} className="border-b border-border/20">
+        <tr key={i} className="border-b border-white/[0.04]">
           {Array.from({ length: cols }).map((_, j) => (
             <td key={j} className="px-3 py-3.5">
               <div
-                className="h-3 rounded bg-muted/20 animate-pulse"
+                className="h-2.5 rounded bg-white/5 animate-pulse"
                 style={{ width: `${50 + ((i * 7 + j * 11) % 40)}%` }}
               />
             </td>
@@ -972,19 +1017,23 @@ function UsersTable({
 }) {
   const topVolume = rows[0]?.volumeUsd ?? 0;
   return (
-    <div className="rounded-2xl border border-border/60 bg-card/50 backdrop-blur-sm overflow-hidden">
-      <div className="p-4 border-b border-border/40 flex items-center justify-between">
-        <div className="text-sm font-semibold">
+    <div className="rounded-xl border border-white/8 bg-black/40 backdrop-blur-sm overflow-hidden relative">
+      {/* top accent */}
+      <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-primary/25 to-transparent" />
+
+      <div className="px-4 py-3 border-b border-white/[0.05] flex items-center justify-between">
+        <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground/50">
           {loading ? "Loading…" : `${formatInt(rows.length)} ${rows.length === 1 ? "user" : "users"}`}
         </div>
-        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+        <div className="text-[9px] font-mono uppercase tracking-[0.2em] text-muted-foreground/30">
           Sorted by volume
         </div>
       </div>
+
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="sticky top-0 bg-card/80 backdrop-blur">
-            <tr className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground border-b border-border/40">
+          <thead className="sticky top-0 bg-black/70 backdrop-blur border-b border-white/[0.05]">
+            <tr className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/40 font-mono">
               <Th>Rank</Th>
               <Th>Wallet</Th>
               <Th align="right">Swaps</Th>
@@ -999,7 +1048,7 @@ function UsersTable({
               <SkeletonRows cols={7} />
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-3 py-12 text-center text-muted-foreground/70 text-xs">
+                <td colSpan={7} className="px-3 py-14 text-center text-[11px] font-mono text-muted-foreground/40 uppercase tracking-wider">
                   No users yet.
                 </td>
               </tr>
@@ -1009,39 +1058,39 @@ function UsersTable({
                 return (
                   <tr
                     key={u.walletAddress}
-                    className="border-b border-border/20 hover:bg-primary/[0.04] transition-colors"
+                    className="border-b border-white/[0.04] hover:bg-primary/[0.03] transition-colors"
                     data-testid={`row-user-${u.walletAddress}`}
                   >
-                    <td className="px-3 py-3 text-xs">
+                    <td className="px-3 py-3">
                       <RankBadge rank={i + 1} />
                     </td>
-                    <td className="px-3 py-3 text-xs">
+                    <td className="px-3 py-3 text-[11px] font-mono">
                       <div className="flex items-center gap-1.5">
-                        <Wallet size={11} className="text-primary/70" />
+                        <Wallet size={10} className="text-primary/50" />
                         <CopyableAddress address={u.walletAddress} chainId={chainFilter} />
                       </div>
                     </td>
-                    <td className="px-3 py-3 text-xs text-right font-mono tabular-nums">
+                    <td className="px-3 py-3 text-[11px] text-right font-mono tabular-nums text-foreground/70">
                       {formatInt(u.swapCount)}
                     </td>
-                    <td className="px-3 py-3 text-xs text-right font-mono tabular-nums">
+                    <td className="px-3 py-3 text-[11px] text-right font-mono tabular-nums">
                       <div className="flex flex-col items-end gap-1">
-                        <span>{formatUsd(u.volumeUsd)}</span>
-                        <div className="w-20 h-1 rounded-full bg-muted/20 overflow-hidden">
+                        <span className="text-foreground/80">{formatUsd(u.volumeUsd)}</span>
+                        <div className="w-20 h-0.5 rounded-full bg-white/5 overflow-hidden">
                           <div
-                            className="h-full bg-gradient-to-r from-primary/80 to-cyan-400/80"
+                            className="h-full bg-gradient-to-r from-primary/80 to-cyan-400/60"
                             style={{ width: `${pct}%` }}
                           />
                         </div>
                       </div>
                     </td>
-                    <td className="px-3 py-3 text-xs text-right font-mono tabular-nums text-primary/90">
+                    <td className="px-3 py-3 text-[11px] text-right font-mono tabular-nums text-primary/70">
                       {formatUsd(u.feeUsd)}
                     </td>
-                    <td className="px-3 py-3 text-xs text-right text-muted-foreground whitespace-nowrap tabular-nums">
+                    <td className="px-3 py-3 text-[11px] text-right font-mono text-muted-foreground/40 whitespace-nowrap tabular-nums">
                       {formatDate(u.firstSwap)}
                     </td>
-                    <td className="px-3 py-3 text-xs text-right text-muted-foreground whitespace-nowrap tabular-nums">
+                    <td className="px-3 py-3 text-[11px] text-right font-mono text-muted-foreground/40 whitespace-nowrap tabular-nums">
                       {formatRelative(u.lastSwap)}
                     </td>
                   </tr>
@@ -1063,10 +1112,10 @@ function RankBadge({ rank }: { rank: number }) {
         ? "bg-gradient-to-br from-slate-300/30 to-slate-500/20 text-slate-200 ring-slate-400/30"
         : rank === 3
           ? "bg-gradient-to-br from-orange-400/30 to-orange-600/20 text-orange-300 ring-orange-400/30"
-          : "bg-muted/30 text-muted-foreground ring-border/40";
+          : "bg-white/4 text-muted-foreground/40 ring-white/8";
   return (
     <span
-      className={`inline-flex items-center justify-center w-6 h-6 rounded-md text-[11px] font-bold tabular-nums ring-1 ${variant}`}
+      className={`inline-flex items-center justify-center w-6 h-6 rounded-md text-[10px] font-mono font-bold tabular-nums ring-1 ${variant}`}
     >
       {rank}
     </span>

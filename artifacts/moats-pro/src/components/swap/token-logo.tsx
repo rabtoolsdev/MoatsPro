@@ -69,6 +69,9 @@ const SYMBOL_LOGOS: Record<string, string> = {
   WAVAX:
     "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/avalanchec/assets/0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7/logo.png",
   WBTC: "https://assets.coingecko.com/coins/images/7598/large/wrapped_bitcoin_wbtc.png",
+  // BTC.b — Avalanche-bridged Bitcoin; TrustWallet has no entry for it.
+  "BTC.B": "https://assets.coingecko.com/coins/images/26115/small/btcb.png",
+  BTCB: "https://assets.coingecko.com/coins/images/26115/small/btcb.png",
 };
 
 function safeChecksum(address: string): string | null {
