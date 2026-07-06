@@ -559,7 +559,7 @@ export default function Home() {
           </motion.div>
 
           {/* Staggered headline words */}
-          <div className="text-5xl md:text-7xl font-bold tracking-tight mb-4 flex flex-wrap justify-center gap-x-4">
+          <div className="text-5xl md:text-7xl font-black tracking-tight mb-4 flex flex-wrap justify-center gap-x-4">
             {heroWords.map((word, i) => (
               <motion.span
                 key={word}
