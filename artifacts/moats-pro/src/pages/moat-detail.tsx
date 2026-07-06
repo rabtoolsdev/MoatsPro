@@ -1034,7 +1034,7 @@ export default function MoatDetail() {
                                   <span className="flex flex-col">
                                     <span className="text-sm">{fmt} {token.symbol}</span>
                                     {totalUSD > 0 && (
-                                      <span className="text-xs text-muted-foreground font-mono mt-0.5">
+                                      <span className="text-xs text-emerald-500/70 font-mono mt-0.5">
                                         ≈ {formatUSD(totalUSD)}
                                       </span>
                                     )}
