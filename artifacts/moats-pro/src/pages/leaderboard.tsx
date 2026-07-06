@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Trophy, Medal, Crown, Search, Share2, Wallet, Clock } from "lucide-react";
+import { Trophy, Medal, Crown, Search, Share2, Wallet, Clock, Activity } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useAppKit } from "@reown/appkit/react";
 import { useMapsLeaderboard, useMapsEpoch } from "@/hooks/use-moats-api";
@@ -21,24 +21,24 @@ export default function Leaderboard() {
   const rankBadge = (rank: number) => {
     if (rank === 0)
       return (
-        <span className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center shadow-[0_0_10px_rgba(251,191,36,0.2)]">
-          <Crown size={15} className="text-amber-400" />
+        <span className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-amber-500/20 border border-amber-500/50 flex items-center justify-center shadow-[0_0_15px_rgba(251,191,36,0.3)]">
+          <Crown size={16} className="text-amber-400 drop-shadow-[0_0_5px_rgba(251,191,36,0.8)]" />
         </span>
       );
     if (rank === 1)
       return (
-        <span className="w-8 h-8 rounded-full bg-zinc-500/20 border border-zinc-400/30 flex items-center justify-center">
-          <Medal size={15} className="text-zinc-300" />
+        <span className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-zinc-500/20 border border-zinc-400/50 flex items-center justify-center shadow-[0_0_12px_rgba(212,212,216,0.2)]">
+          <Medal size={16} className="text-zinc-300 drop-shadow-[0_0_5px_rgba(212,212,216,0.6)]" />
         </span>
       );
     if (rank === 2)
       return (
-        <span className="w-8 h-8 rounded-full bg-amber-900/20 border border-amber-700/30 flex items-center justify-center">
-          <Medal size={15} className="text-amber-600" />
+        <span className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-amber-900/30 border border-amber-600/50 flex items-center justify-center shadow-[0_0_12px_rgba(180,83,9,0.3)]">
+          <Medal size={16} className="text-amber-500 drop-shadow-[0_0_5px_rgba(180,83,9,0.8)]" />
         </span>
       );
     return (
-      <span className="w-8 h-8 rounded-full bg-muted/50 flex items-center justify-center text-sm font-bold text-muted-foreground">
+      <span className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-sm font-mono font-bold text-muted-foreground shadow-[inset_0_0_10px_rgba(255,255,255,0.02)]">
         {rank + 1}
       </span>
     );
@@ -86,104 +86,135 @@ export default function Leaderboard() {
   }, [userEntry]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
+    <div className="min-h-screen bg-background text-foreground flex flex-col cyber-grid relative overflow-hidden">
+      {/* Ambient background glows */}
+      <div className="absolute top-0 left-1/4 w-[800px] h-[500px] bg-primary/10 rounded-full blur-[120px] pointer-events-none -z-10 mix-blend-screen" />
+      <div className="absolute top-1/2 right-1/4 w-[600px] h-[400px] bg-cyan-500/5 rounded-full blur-[100px] pointer-events-none -z-10 mix-blend-screen" />
+
       <Navbar />
 
-      <main className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-24 sm:pt-28 pb-16">
+      <main className="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-24 sm:pt-32 pb-24 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
+          className="mb-10 relative"
         >
-          <h1 className="text-4xl font-bold mb-3">Leaderboard</h1>
+          {/* Header left accent */}
+          <div className="absolute -left-4 sm:-left-6 top-2 bottom-2 w-px bg-gradient-to-b from-transparent via-primary/50 to-transparent" />
+          
+          <div className="flex items-center gap-3 mb-2">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-[10px] font-mono uppercase tracking-widest text-primary/80">
+              <Activity size={10} className="text-primary" />
+              MAPS TERMINAL
+            </span>
+          </div>
+          
+          <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white drop-shadow-md mb-4">
+            Leaderboard
+          </h1>
+          
           <EpochCountdown />
-          <div className="flex items-center gap-3 mt-5">
-            <p className="text-muted-foreground">
+          
+          <div className="flex flex-wrap items-center gap-3 mt-6">
+            <p className="text-muted-foreground/80 font-mono text-sm tracking-wide">
               Top MAPS scorers across all Moats
             </p>
             {currentEpoch && (
-              <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border font-medium ${
+              <span className={`inline-flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-widest px-2.5 py-1 rounded-md border ${
                 currentEpoch.isComplete
                   ? "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
-                  : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                  : "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 shadow-[0_0_10px_rgba(52,211,153,0.15)]"
               }`}>
                 {!currentEpoch.isComplete && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 live-dot" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_5px_rgba(52,211,153,0.8)] animate-pulse" />
                 )}
                 Epoch {currentEpoch.epochNumber} {currentEpoch.isComplete ? "Complete" : "Live"}
               </span>
             )}
           </div>
           {currentEpoch && (
-            <p className="text-xs text-muted-foreground mt-2">
+            <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/60 mt-2 ml-1">
               {currentEpoch.isComplete
-                ? `Ended ${timeAgo(new Date(currentEpoch.endTime).getTime())}`
-                : `Started ${timeAgo(new Date(currentEpoch.startTime).getTime())}`}
+                ? `ENDED ${timeAgo(new Date(currentEpoch.endTime).getTime())}`
+                : `STARTED ${timeAgo(new Date(currentEpoch.startTime).getTime())}`}
             </p>
           )}
         </motion.div>
 
         {/* Podium top-3 */}
         {mapsScores && mapsScores.length >= 3 && (
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-10 max-w-2xl mx-auto">
+          <div className="grid grid-cols-3 gap-3 sm:gap-5 mb-12 max-w-3xl mx-auto items-end pt-8">
             {podiumOrder.map((idx) => {
               const entry = mapsScores[idx];
               if (!entry) return null;
               const isGold = idx === 0;
               const isSilver = idx === 1;
               const isBronze = idx === 2;
+              
+              const medalColorClass = isGold ? "text-amber-400" : isSilver ? "text-zinc-300" : "text-amber-600";
+              const borderAccentColor = isGold ? "from-amber-400/50" : isSilver ? "from-zinc-400/50" : "from-amber-600/50";
+              const shadowGlow = isGold ? "shadow-[0_10px_40px_-10px_rgba(251,191,36,0.3)]" : isSilver ? "shadow-[0_8px_30px_-10px_rgba(212,212,216,0.15)]" : "shadow-[0_8px_30px_-10px_rgba(180,83,9,0.2)]";
+
               return (
                 <motion.div
                   key={entry.address}
-                  initial={{ opacity: 0, y: 30, scale: isGold ? 0.88 : 0.94 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  initial={{ opacity: 0, y: 40 }}
+                  animate={{ opacity: 1, y: 0 }}
                   transition={{
-                    delay: isGold ? 0.45 : isSilver ? 0.1 : 0.25,
-                    duration: isGold ? 0.6 : 0.45,
+                    delay: isGold ? 0.3 : isSilver ? 0.1 : 0.2,
+                    duration: 0.6,
                     ease: [0.22, 1, 0.36, 1],
                   }}
-                  className="w-full min-w-0 overflow-hidden rounded-2xl border border-transparent p-3 sm:p-5 text-center flex flex-col items-center"
+                  className={`relative w-full min-w-0 rounded-2xl border border-white/5 bg-card/40 backdrop-blur-xl p-4 sm:p-6 text-center flex flex-col items-center group overflow-hidden ${shadowGlow}`}
                   style={{
-                    background: isGold
-                      ? "linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box, linear-gradient(135deg, rgba(251,191,36,0.7) 0%, rgba(251,191,36,0.15) 60%, transparent 100%) border-box"
-                      : isSilver
-                      ? "linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box, linear-gradient(135deg, rgba(212,212,216,0.6) 0%, rgba(212,212,216,0.12) 60%, transparent 100%) border-box"
-                      : "linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box, linear-gradient(135deg, rgba(180,83,9,0.55) 0%, rgba(180,83,9,0.1) 60%, transparent 100%) border-box",
-                    boxShadow: isGold
-                      ? "0 0 28px rgba(251,191,36,0.12)"
-                      : isSilver
-                      ? "0 0 18px rgba(212,212,216,0.08)"
-                      : "0 0 16px rgba(180,83,9,0.08)",
+                    height: isGold ? '100%' : '90%',
+                    transform: isGold ? 'scale(1.05)' : 'scale(1)',
+                    transformOrigin: 'bottom'
                   }}
                 >
-                  <div className="mb-3">
+                  <div className="absolute inset-0 cyber-grid opacity-20 pointer-events-none" />
+                  <div className={`absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r ${borderAccentColor} via-transparent to-transparent opacity-80`} />
+                  
+                  {isGold && (
+                    <div className="absolute inset-0 bg-gradient-to-b from-amber-500/10 to-transparent pointer-events-none" />
+                  )}
+                  
+                  <div className="mb-4 relative z-10">
                     {isGold ? (
-                      <Crown
-                        size={28}
-                        className="text-amber-400 mx-auto"
-                        style={{ filter: "drop-shadow(0 0 6px rgba(251,191,36,0.5))" }}
-                      />
+                      <div className="relative">
+                        <div className="absolute inset-0 bg-amber-400/20 blur-xl rounded-full" />
+                        <Crown
+                          size={36}
+                          className="text-amber-400 mx-auto drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]"
+                        />
+                      </div>
                     ) : (
                       <Medal
-                        size={24}
-                        className={`mx-auto ${isSilver ? "text-zinc-300" : "text-amber-600"}`}
+                        size={28}
+                        className={`mx-auto ${medalColorClass} drop-shadow-[0_0_5px_currentColor]`}
                       />
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground mb-1 font-medium">
-                    #{isGold ? 1 : isSilver ? 2 : 3}
-                  </p>
-                  <p className="w-full font-mono text-[10px] sm:text-sm font-bold leading-tight mb-2 truncate px-0.5 sm:px-1">
-                    {entry.username && !entry.username.startsWith("0x")
-                      ? entry.username
-                      : formatAddress(entry.address)}
-                  </p>
-                  <p className={`w-full font-bold text-base sm:text-xl tabular-nums truncate ${
-                    isGold ? "text-amber-400" : isSilver ? "text-zinc-300" : "text-amber-600"
-                  }`}>
-                    {(entry.points ?? 0).toLocaleString()}
-                  </p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground">MAPS pts</p>
+                  
+                  <div className="relative z-10 w-full">
+                    <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-widest mb-3 ${
+                      isGold ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 
+                      isSilver ? 'bg-zinc-500/10 text-zinc-300 border border-zinc-500/20' : 
+                      'bg-amber-900/20 text-amber-500 border border-amber-700/30'
+                    }`}>
+                      {isGold ? "1ST" : isSilver ? "2ND" : "3RD"}
+                    </span>
+                    
+                    <p className="w-full font-mono text-[11px] sm:text-sm font-bold text-white mb-2 truncate px-1">
+                      {entry.username && !entry.username.startsWith("0x")
+                        ? entry.username
+                        : formatAddress(entry.address)}
+                    </p>
+                    <p className={`w-full font-mono font-black text-xl sm:text-2xl tabular-nums truncate ${medalColorClass} drop-shadow-md`}>
+                      {(entry.points ?? 0).toLocaleString()}
+                    </p>
+                    <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mt-1">MAPS PTS</p>
+                  </div>
                 </motion.div>
               );
             })}
@@ -192,128 +223,143 @@ export default function Leaderboard() {
 
         {/* Find My Rank */}
         {mapsScores && mapsScores.length > 0 && (
-          <div className="flex justify-center mb-6">
+          <div className="flex flex-col items-center justify-center mb-10 relative">
+            <div className="absolute inset-x-0 top-1/2 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent -z-10" />
             <button
               onClick={handleFindMyRank}
               data-testid="btn-find-my-rank"
-              className="btn-shimmer inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary/10 border border-primary/40 text-primary text-sm font-semibold hover:bg-primary/20 hover:shadow-[0_0_18px_rgba(0,212,255,0.25)] transition-all"
+              className="btn-shimmer relative inline-flex items-center gap-2.5 px-6 py-3 rounded-xl bg-black/60 border border-primary/30 text-primary text-sm font-mono font-bold tracking-wide hover:bg-primary/10 hover:border-primary/60 hover:shadow-[0_0_25px_rgba(0,212,255,0.25)] transition-all"
             >
               {isConnected ? (
                 <>
-                  <Search size={15} />
-                  Find My Rank
+                  <Search size={16} />
+                  FIND MY RANK
                 </>
               ) : (
                 <>
-                  <Wallet size={15} />
-                  Connect Wallet to Find My Rank
+                  <Wallet size={16} />
+                  CONNECT WALLET TO FIND MY RANK
                 </>
               )}
             </button>
+            
+            {/* User-not-on-leaderboard hint */}
+            {isConnected && mapsScores && mapsScores.length > 0 && userIndex < 0 && (
+              <p className="text-center text-[10px] font-mono uppercase tracking-widest text-muted-foreground/80 mt-4">
+                Your wallet isn't ranked on the current leaderboard yet.
+              </p>
+            )}
           </div>
         )}
 
-        {/* User-not-on-leaderboard hint */}
-        {isConnected && mapsScores && mapsScores.length > 0 && userIndex < 0 && (
-          <p className="text-center text-xs text-muted-foreground mb-6">
-            Your wallet isn't ranked on the current leaderboard yet.
-          </p>
-        )}
-
         {/* Full Table */}
-        <div
-          data-testid="leaderboard-table"
-          className="rounded-2xl border border-border bg-card/30 backdrop-blur-sm overflow-hidden"
-        >
-          {mapsLoading ? (
-            <div className="p-8 space-y-3">
-              {[...Array(10)].map((_, i) => (
-                <div key={i} className="h-14 rounded-xl skeleton-shimmer" />
-              ))}
-            </div>
-          ) : (
-            <div className="divide-y divide-border/50">
-              <div className="px-3 sm:px-6 py-3 grid grid-cols-12 gap-2 sm:gap-4 text-[10px] sm:text-xs text-muted-foreground font-medium">
-                <span className="col-span-1">Rank</span>
-                <span className="col-span-6 sm:col-span-5 min-w-0">Wallet / Username</span>
-                <span className="col-span-3 text-right">MAPS</span>
-                <span className="col-span-2 sm:col-span-3 text-right">Weight</span>
+        <div className="relative group">
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-primary/50 to-transparent z-10" />
+          <div className="absolute -left-px top-0 bottom-0 w-px bg-gradient-to-b from-primary/50 via-transparent to-transparent z-10" />
+          
+          <div
+            data-testid="leaderboard-table"
+            className="rounded-xl border border-white/5 bg-card/30 backdrop-blur-xl overflow-hidden shadow-2xl relative"
+          >
+            <div className="absolute inset-0 cyber-grid opacity-20 pointer-events-none" />
+            
+            {mapsLoading ? (
+              <div className="p-8 space-y-3 relative z-10">
+                {[...Array(10)].map((_, i) => (
+                  <div key={i} className="h-14 rounded-lg skeleton-shimmer border border-white/5" />
+                ))}
               </div>
+            ) : (
+              <div className="divide-y divide-white/5 relative z-10">
+                <div className="px-4 sm:px-6 py-4 grid grid-cols-12 gap-2 sm:gap-4 text-[10px] sm:text-[11px] font-mono uppercase tracking-widest text-muted-foreground/80 border-b border-primary/20 bg-black/40">
+                  <span className="col-span-2 sm:col-span-1">RANK</span>
+                  <span className="col-span-5 sm:col-span-5 min-w-0">WALLET / USERNAME</span>
+                  <span className="col-span-3 text-right">MAPS</span>
+                  <span className="col-span-2 sm:col-span-3 text-right">WEIGHT</span>
+                </div>
 
-              {(mapsScores || []).map((entry, i) => {
-                const isUser =
-                  address && entry.address.toLowerCase() === address.toLowerCase();
-                const isHighlighted =
-                  highlightAddr && entry.address.toLowerCase() === highlightAddr;
-                return (
-                <motion.div
-                  key={entry.address}
-                  ref={isUser ? userRowRef : undefined}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: Math.min(i * 0.015, 0.4) }}
-                  data-testid={`row-leaderboard-${i}`}
-                  className={`px-3 sm:px-6 py-3.5 grid grid-cols-12 gap-2 sm:gap-4 items-center transition-colors ${
-                    isHighlighted
-                      ? "bg-primary/15 border-l-2 border-l-primary shadow-[inset_0_0_24px_rgba(0,212,255,0.15)]"
-                      : isUser
-                      ? "bg-primary/5 border-l-2 border-l-primary/40 hover:bg-primary/10"
-                      : i === 0
-                      ? "bg-amber-500/5 border-l-2 border-l-amber-500/50 hover:bg-muted/20"
-                      : i === 1
-                      ? "bg-zinc-500/5 border-l-2 border-l-zinc-400/40 hover:bg-muted/20"
-                      : i === 2
-                      ? "bg-amber-900/5 border-l-2 border-l-amber-700/40 hover:bg-muted/20"
-                      : "hover:bg-muted/20"
-                  }`}
-                >
-                  <div className="col-span-1">{rankBadge(i)}</div>
-                  <div className="col-span-6 sm:col-span-5 min-w-0 flex items-center gap-2">
-                    <div className="min-w-0 flex-1">
-                      {entry.username && !entry.username.startsWith("0x") ? (
-                        <>
-                          <p className="text-xs sm:text-sm font-medium truncate">{entry.username}</p>
-                          <p className="text-[10px] sm:text-xs font-mono text-muted-foreground/60 truncate">
-                            {formatAddress(entry.address)}
-                          </p>
-                        </>
-                      ) : (
-                        <span className="font-mono text-xs sm:text-sm truncate block">{formatAddress(entry.address)}</span>
+                {(mapsScores || []).map((entry, i) => {
+                  const isUser =
+                    address && entry.address.toLowerCase() === address.toLowerCase();
+                  const isHighlighted =
+                    highlightAddr && entry.address.toLowerCase() === highlightAddr;
+                    
+                  const isTop3 = i < 3;
+                  const scoreColor = i === 0 ? "text-amber-400" : i === 1 ? "text-zinc-300" : i === 2 ? "text-amber-500" : "text-primary";
+                  
+                  return (
+                  <motion.div
+                    key={entry.address}
+                    ref={isUser ? userRowRef : undefined}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: Math.min(i * 0.015, 0.4) }}
+                    data-testid={`row-leaderboard-${i}`}
+                    className={`px-4 sm:px-6 py-4 grid grid-cols-12 gap-2 sm:gap-4 items-center transition-all duration-300 relative overflow-hidden group/row ${
+                      isHighlighted
+                        ? "bg-primary/10 border-l-2 border-l-primary shadow-[inset_0_0_30px_rgba(0,212,255,0.15)]"
+                        : isUser
+                        ? "bg-primary/5 border-l-2 border-l-primary/50 hover:bg-primary/10"
+                        : i === 0
+                        ? "bg-amber-500/5 hover:bg-white/5"
+                        : i === 1
+                        ? "bg-zinc-500/5 hover:bg-white/5"
+                        : i === 2
+                        ? "bg-amber-900/5 hover:bg-white/5"
+                        : "hover:bg-white/5 hover:shadow-[inset_0_0_20px_rgba(0,212,255,0.05)]"
+                    }`}
+                  >
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary/0 group-hover/row:bg-primary/50 transition-colors" />
+                    
+                    <div className="col-span-2 sm:col-span-1 relative z-10">{rankBadge(i)}</div>
+                    
+                    <div className="col-span-5 sm:col-span-5 min-w-0 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 relative z-10">
+                      <div className="min-w-0">
+                        {entry.username && !entry.username.startsWith("0x") ? (
+                          <>
+                            <p className="text-xs sm:text-sm font-bold text-white truncate drop-shadow-sm">{entry.username}</p>
+                            <p className="text-[10px] font-mono text-muted-foreground/60 truncate">
+                              {formatAddress(entry.address)}
+                            </p>
+                          </>
+                        ) : (
+                          <span className="font-mono text-xs sm:text-sm text-white truncate block">{formatAddress(entry.address)}</span>
+                        )}
+                      </div>
+                      {isUser && (
+                        <button
+                          onClick={() => setShareOpen(true)}
+                          data-testid="btn-share-my-rank"
+                          title="Share my rank"
+                          className="btn-shimmer flex-shrink-0 inline-flex items-center gap-1.5 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded bg-primary/10 border border-primary/30 text-primary text-[10px] font-mono font-bold tracking-wide hover:bg-primary/20 hover:border-primary/50 hover:shadow-[0_0_10px_rgba(0,212,255,0.2)] transition-all mt-1 sm:mt-0"
+                        >
+                          <Share2 size={11} />
+                          <span className="hidden sm:inline">SHARE MY RANK</span>
+                          <span className="sm:hidden">SHARE</span>
+                        </button>
                       )}
                     </div>
-                    {isUser && (
-                      <button
-                        onClick={() => setShareOpen(true)}
-                        data-testid="btn-share-my-rank"
-                        title="Share my rank"
-                        className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-md bg-primary/15 border border-primary/40 text-primary text-[10px] sm:text-xs font-semibold hover:bg-primary/25 transition-colors"
-                      >
-                        <Share2 size={11} />
-                        <span className="hidden sm:inline">Share My Rank</span>
-                        <span className="sm:hidden">Share</span>
-                      </button>
-                    )}
-                  </div>
-                  <div className={`col-span-3 text-right font-bold tabular-nums text-xs sm:text-base truncate ${
-                    i === 0 ? "text-amber-400" : i === 1 ? "text-zinc-300" : i === 2 ? "text-amber-600" : "text-primary"
-                  }`}>
-                    {(entry.points ?? 0).toLocaleString()}
-                  </div>
-                  <div className="col-span-2 sm:col-span-3 text-right text-foreground text-xs sm:text-sm tabular-nums truncate">
-                    {formatWeight(entry.points ?? 0)}
-                  </div>
-                </motion.div>
-                );
-              })}
+                    
+                    <div className={`col-span-3 text-right font-mono font-bold tabular-nums text-sm sm:text-base truncate relative z-10 drop-shadow-sm ${scoreColor}`}>
+                      {(entry.points ?? 0).toLocaleString()}
+                    </div>
+                    
+                    <div className="col-span-2 sm:col-span-3 text-right font-mono text-muted-foreground/80 text-[11px] sm:text-xs tabular-nums truncate relative z-10">
+                      {formatWeight(entry.points ?? 0)}
+                    </div>
+                  </motion.div>
+                  );
+                })}
 
-              {(!mapsScores || mapsScores.length === 0) && (
-                <div className="p-12 text-center text-muted-foreground">
-                  <Trophy size={40} className="mx-auto mb-3 opacity-30" />
-                  <p>No MAPS scores available yet</p>
-                </div>
-              )}
-            </div>
-          )}
+                {(!mapsScores || mapsScores.length === 0) && (
+                  <div className="p-16 text-center">
+                    <Trophy size={48} className="mx-auto mb-4 text-muted-foreground/20" />
+                    <p className="text-sm font-mono text-muted-foreground tracking-wide">No MAPS scores available yet.</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </main>
 
@@ -371,10 +417,10 @@ function EpochCountdown() {
   const pad = (n: number) => n.toString().padStart(2, "0");
 
   const blocks = [
-    { label: "Days", value: pad(days) },
-    { label: "Hours", value: pad(hours) },
-    { label: "Minutes", value: pad(minutes) },
-    { label: "Seconds", value: pad(seconds) },
+    { label: "DAYS", value: pad(days) },
+    { label: "HOURS", value: pad(hours) },
+    { label: "MINS", value: pad(minutes) },
+    { label: "SECS", value: pad(seconds) },
   ];
 
   return (
@@ -382,29 +428,34 @@ function EpochCountdown() {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.1 }}
-      className="mt-4 rounded-lg border border-cyan-500/20 bg-gradient-to-br from-cyan-500/5 via-background to-background p-2.5 sm:p-3 max-w-sm"
+      className="mt-6 rounded-xl border border-cyan-500/30 bg-black/60 backdrop-blur-md p-3 sm:p-4 max-w-[320px] relative overflow-hidden shadow-[0_0_20px_rgba(0,212,255,0.1)] group"
       data-testid="epoch-countdown"
       role="timer"
       aria-live="off"
       aria-label={`Epoch ends in ${days} days, ${hours} hours, ${minutes} minutes, ${seconds} seconds`}
     >
-      <div className="flex items-center gap-1.5 mb-2">
-        <Clock size={11} className="text-cyan-400" />
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-          {ended ? "Epoch ended" : "Epoch ends in"}
+      <div className="absolute inset-0 cyber-grid opacity-30 pointer-events-none" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent" />
+      
+      <div className="flex items-center gap-2 mb-3 relative z-10">
+        <Clock size={12} className="text-cyan-400" />
+        <span className="text-[10px] uppercase tracking-widest text-cyan-300 font-mono font-bold drop-shadow-[0_0_5px_rgba(0,212,255,0.5)]">
+          {ended ? "EPOCH ENDED" : "EPOCH ENDS IN"}
         </span>
       </div>
-      <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+      
+      <div className="grid grid-cols-4 gap-2 relative z-10">
         {blocks.map((b) => (
           <div
             key={b.label}
-            className="rounded-md bg-card/50 border border-border/40 px-1.5 py-2 text-center"
+            className="rounded-lg bg-black/80 border border-cyan-500/20 px-1 py-2 sm:py-2.5 text-center shadow-[inset_0_0_10px_rgba(0,212,255,0.05)] flex flex-col items-center justify-center relative overflow-hidden group-hover:border-cyan-500/40 transition-colors"
             data-testid={`epoch-countdown-${b.label.toLowerCase()}`}
           >
-            <div className="font-mono font-bold text-base sm:text-xl text-cyan-300 tabular-nums leading-none">
+            <div className="absolute top-0 inset-x-0 h-[1px] bg-cyan-500/20" />
+            <div className="font-mono font-black text-lg sm:text-2xl text-cyan-300 tabular-nums leading-none drop-shadow-[0_0_8px_rgba(0,212,255,0.8)]">
               {b.value}
             </div>
-            <div className="text-[8px] sm:text-[10px] uppercase tracking-wider text-muted-foreground mt-1">
+            <div className="text-[8px] sm:text-[9px] font-mono uppercase tracking-widest text-cyan-500/80 mt-1.5 font-bold">
               {b.label}
             </div>
           </div>
