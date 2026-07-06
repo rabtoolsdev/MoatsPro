@@ -1221,9 +1221,9 @@ export default function MoatDetail() {
                   ].map((item) => {
                     const weightedPct = (item as { weightedPct?: number }).weightedPct ?? 0;
                     return (
-                      <div key={item.label} data-testid={item.testId} className="relative z-10 p-4 rounded-xl bg-black/20 border border-white/5 hover:border-white/10 transition-colors">
+                      <div key={item.label} data-testid={item.testId} className="relative z-10 p-4 rounded-xl bg-black/20 border border-white/5 hover:border-white/10 transition-colors min-w-0 overflow-hidden">
                         <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest mb-2">{item.label}</p>
-                        <p className="font-bold text-2xl tabular-nums tracking-tight text-white drop-shadow-sm">{item.value}</p>
+                        <p className="font-bold text-xl tabular-nums tracking-tight text-white drop-shadow-sm truncate" title={item.value}>{item.value}</p>
                         {item.usd > 0 && (
                           <p className="text-xs text-emerald-400/90 font-medium tabular-nums mt-1">{formatUSD(item.usd)}</p>
                         )}
