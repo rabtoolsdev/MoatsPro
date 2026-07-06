@@ -181,6 +181,14 @@ export function formatUSD(amount: number): string {
 }
 
 export function getTokenLogoUrl(tokenAddress: string): string {
+  // Explicit overrides for tokens missing from the TrustWallet assets repo.
+  const overrideMap: Record<string, string> = {
+    // BTC.b (Avalanche bridged Bitcoin) — TrustWallet has no logo for it.
+    "0x152b9d0fdc40c096757f570a51e494bd4b943e50":
+      "https://assets.coingecko.com/coins/images/26115/small/btcb.png",
+  };
+  const override = overrideMap[tokenAddress.toLowerCase()];
+  if (override) return override;
   const checksumMap: Record<string, string> = {
     "0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7": "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7",
     "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e": "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E",

@@ -7,6 +7,7 @@ import {
   ArrowLeft, Zap, Users, TrendingUp, Lock, Gift, Flame,
   AlertCircle, CheckCircle, Loader2, Coins, ExternalLink,
   Unlock, Clock, AlertTriangle, Wallet, Sparkles, Trophy, Activity,
+  Droplets,
 } from "lucide-react";
 import { Link } from "wouter";
 import { formatUnits, parseUnits } from "viem";
@@ -23,7 +24,7 @@ import { Footer } from "@/components/footer";
 import { ActivityFeed } from "@/components/activity-feed";
 import { MoatLogo } from "@/components/moat-card";
 import { SimilarMoats } from "@/components/similar-moats";
-import { formatAddress, formatPoints, timeAgo, getMoatMeta, formatUSD } from "@/lib/moat-metadata";
+import { formatAddress, formatPoints, timeAgo, getMoatMeta, formatUSD, getTokenLogoUrl } from "@/lib/moat-metadata";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
 import { useDexscreenerInfo } from "@/hooks/use-dexscreener";
 import { useResolveMoatMetas } from "@/hooks/use-resolve-moat-metas";
@@ -911,176 +912,238 @@ export default function MoatDetail() {
 
             {/* Moat Config Details */}
             {moatConfig && (
-              <div className="rounded-2xl border border-white/5 bg-card/40 backdrop-blur-xl p-6 relative overflow-hidden cyber-grid shadow-lg">
-                <div className="absolute inset-x-0 top-0 h-px cyber-lines opacity-40" />
-                <h3 className="font-bold flex items-center gap-2 mb-6 text-white text-lg tracking-tight">
-                  <Coins size={18} className="text-primary" />
-                  Reward Tokens
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {enabledRewardTokens.map((token) => (
-                    <div
-                      key={token._id}
-                      className="p-4 rounded-xl border border-transparent bg-card/40 backdrop-blur-sm transition-all duration-200"
-                      style={{
-                        background: "linear-gradient(hsl(var(--card) / 0.5), hsl(var(--card) / 0.5)) padding-box, linear-gradient(135deg, rgba(52,211,153,0.3) 0%, rgba(0,212,255,0.08) 100%) border-box",
-                        boxShadow: "0 0 16px rgba(52,211,153,0.04)",
-                      }}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-semibold text-primary">{token.symbol}</span>
-                        <span className="text-xs text-muted-foreground">{token.name}</span>
-                      </div>
-                      <div className="space-y-1 text-xs text-muted-foreground">
-                        <div className="flex justify-between">
-                          <span>Daily Reward</span>
-                          <span className="font-medium text-foreground">
-                            {(() => {
-                              const est = getEstDaily(token.tokenAddress);
-                              const freqH = token.frequencyHours ?? 24;
-                              const distsPerDay = freqH > 0 ? 24 / freqH : 1;
-                              const amt = token.tokenAmount > 0 ? token.tokenAmount * distsPerDay : est;
-                              const prefix = token.tokenAmount > 0 ? "" : est > 0 ? "~" : "";
-                              const fmt =
-                                amt >= 1_000_000 ? `${(amt / 1_000_000).toFixed(2)}M`
-                                : amt >= 1_000 ? `${(amt / 1_000).toFixed(0)}K`
-                                : amt >= 1 ? amt.toLocaleString(undefined, { maximumFractionDigits: 2 })
-                                : amt > 0 ? parseFloat(amt.toPrecision(4)).toString()
-                                : "0";
-                              const id = getLlamaId(network, token.tokenAddress);
-                              const usd = priceMap?.[id] ?? dexInfoMap?.[token.tokenAddress.toLowerCase()]?.price ?? 0;
-                              const dailyUSD = usd && amt > 0 ? amt * usd : 0;
-                              return (
-                                <>
-                                  {prefix}{fmt} {token.symbol}
-                                  {dailyUSD > 0 && (
-                                    <span className="text-emerald-400 ml-1">
-                                      ({formatUSD(dailyUSD)})
-                                    </span>
-                                  )}
-                                </>
-                              );
-                            })()}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Total Distributed</span>
-                          <span className="font-medium text-foreground">
-                            {(() => {
-                              const v = token.totalRewardsDeposited;
-                              const fmt =
-                                v >= 1_000_000 ? `${(v / 1_000_000).toFixed(2)}M`
-                                : v >= 1_000 ? `${(v / 1_000).toFixed(0)}K`
-                                : v >= 1 ? v.toLocaleString(undefined, { maximumFractionDigits: 2 })
-                                : v > 0 ? parseFloat(v.toPrecision(8)).toString()
-                                : "0";
-                              const usd = getRewardTokenPrice(token.tokenAddress);
-                              const totalUSD = usd && v > 0 ? v * usd : 0;
-                              return (
-                                <>
-                                  {fmt} {token.symbol}
-                                  {totalUSD > 0 && (
-                                    <span className="text-emerald-400 ml-1">
-                                      ({formatUSD(totalUSD)})
-                                    </span>
-                                  )}
-                                </>
-                              );
-                            })()}
-                          </span>
-                        </div>
-                        {token.lastProcessed && (
-                          <div className="flex justify-between">
-                            <span>Last Distributed</span>
-                            <span className="font-medium text-foreground">
-                              {timeAgo(new Date(token.lastProcessed).getTime())}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+              <div className="rounded-2xl border border-white/5 bg-card/40 backdrop-blur-xl p-8 relative overflow-hidden cyber-grid shadow-2xl flex flex-col gap-8 group/panel">
+                <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent opacity-50" />
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(0,212,255,0.05),transparent_50%)] pointer-events-none" />
+
+                <div className="flex items-center gap-3 relative z-10">
+                  <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 shadow-[0_0_15px_rgba(0,212,255,0.15)]">
+                    <Coins size={20} className="text-cyan-400 drop-shadow-[0_0_8px_rgba(0,212,255,0.8)]" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-white text-xl tracking-tight leading-none drop-shadow-sm">
+                      Reward Tokens
+                    </h3>
+                    <p className="text-xs font-mono text-muted-foreground uppercase tracking-widest mt-1">
+                      Active Yield Instruments
+                    </p>
+                  </div>
                 </div>
 
-                {/* Derived yield metrics */}
-                {enabledRewardTokens.length > 0 && (() => {
-                  const token = enabledRewardTokens[0];
-                  if (!token) return null;
-                  const estDaily = getEstDaily(token.tokenAddress);
-                  const freqH = token.frequencyHours ?? 24;
-                  const distsPerDay = freqH > 0 ? 24 / freqH : 1;
-                  const dailyAmt = token.tokenAmount > 0 ? token.tokenAmount * distsPerDay : estDaily;
-                  const isEstimated = token.tokenAmount === 0 && estDaily > 0;
-                  // Prefer the live reward-wallet balance (real funds remaining); fall back
-                  // to the on-contract counter (deposited - claimed) if no wallet balance.
-                  const livePool = getPoolBalance(token.tokenAddress);
-                  const remainingAmt = livePool > 0
-                    ? livePool
-                    : Math.max(0, token.totalRewardsDeposited - token.totalRewardsClaimed);
-                  const daysRemaining = dailyAmt > 0 && remainingAmt > 0
-                    ? Math.max(0, Math.round(remainingAmt / dailyAmt))
-                    : null;
-                  const fmtAmt = (n: number) =>
-                    n >= 1_000_000 ? `${(n / 1_000_000).toFixed(2)}M`
-                    : n >= 1_000 ? `${(n / 1_000).toFixed(0)}K`
-                    : n >= 1 ? n.toLocaleString(undefined, { maximumFractionDigits: 2 })
-                    : n > 0 ? parseFloat(n.toPrecision(4)).toString()
-                    : "0";
-                  return (
-                    <div
-                      className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-xl border border-transparent"
-                      style={{
-                        background: "linear-gradient(hsl(var(--card) / 0.5), hsl(var(--card) / 0.5)) padding-box, linear-gradient(135deg, rgba(52,211,153,0.5) 0%, rgba(52,211,153,0.1) 100%) border-box",
-                        boxShadow: "0 0 18px rgba(52,211,153,0.07)",
-                      }}
-                    >
-                      <div className="text-xs">
-                        <p className="text-muted-foreground">
-                          Daily Emission{isEstimated && " (est.)"}
-                        </p>
-                        <p className="font-bold text-emerald-400 mt-0.5 tabular-nums">
-                          {isEstimated ? "~" : ""}{fmtAmt(dailyAmt)} {token.symbol}/day
-                        </p>
-                      </div>
-                      <div className="text-xs">
-                        <p className="text-muted-foreground">Reward Duration</p>
-                        <p className="font-bold text-emerald-400 mt-0.5">
-                          {daysRemaining != null ? `~${daysRemaining} days left` : "Ongoing"}
-                        </p>
-                      </div>
-                      <div className="text-xs">
-                        <p className="text-muted-foreground">Total Pool</p>
-                        <p className="font-bold text-foreground mt-0.5 tabular-nums">
-                          {fmtAmt(getPoolBalance(token.tokenAddress) || token.totalRewardsDeposited)} {token.symbol}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })()}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 relative z-10">
+                  {enabledRewardTokens.map((token) => {
+                    const dexImg =
+                      dexInfoMap?.[token.tokenAddress.toLowerCase()]?.imageUrl ||
+                      getTokenLogoUrl(token.tokenAddress) ||
+                      undefined;
+                    return (
+                      <div
+                        key={token._id}
+                        className="group flex flex-col p-5 rounded-xl border border-white/10 bg-black/40 hover:bg-black/60 hover:border-cyan-500/40 transition-all duration-500 relative overflow-hidden"
+                        style={{ boxShadow: "0 4px 20px rgba(0,0,0,0.4)" }}
+                      >
+                        {/* Hover glows */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                        <div className="absolute -inset-1 bg-cyan-500/10 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 -z-10" />
 
-                {/* Additional moat meta */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
-                  {[
-                    { label: "Moat Version", value: `v${moatConfig.moatVersion}` },
-                    { label: "Auto Rewards", value: moatConfig.automatedRewards ? "Yes" : "No" },
-                    { label: "Time-Weighted", value: moatConfig.timeWeightedPointsEnabled ? `${moatConfig.timeWeightPercentage}%` : "Disabled" },
-                    {
-                      label: "NFT Boost",
-                      value: activeBoosts.length === 0
-                        ? "None"
-                        : activeBoosts.length === 1
-                          ? ((activeBoosts[0].tiers?.length ?? 0) > 0
-                              ? `Tiered · up to ${getMaxBoostValue(activeBoosts[0])}%`
-                              : `Active · ${activeBoosts[0].boostValue}%`)
-                          : `${activeBoosts.length} NFTs · up to ${activeBoosts.map((b: BoostConfig) => `${getMaxBoostValue(b)}%`).join(" / ")}`,
-                    },
-                    { label: "Created", value: new Date(moatConfig.createdAt).toLocaleDateString() },
-                  ].map((item) => (
-                    <div key={item.label} className="text-xs">
-                      <p className="text-muted-foreground">{item.label}</p>
-                      <p className="font-semibold text-foreground mt-0.5">{item.value}</p>
-                    </div>
-                  ))}
+                        {/* Top row: Logo & Identity */}
+                        <div className="flex items-center gap-4 mb-5 pb-5 border-b border-white/5 relative z-10">
+                          {/* Keyed by logo URL: onError mutates DOM styles directly, so a
+                              remount is needed when the source changes (e.g. DexScreener
+                              image arriving after a 404'd fallback). */}
+                          <div className="relative shrink-0" key={dexImg ?? "no-logo"}>
+                            {dexImg ? (
+                              <img
+                                src={dexImg}
+                                alt={token.symbol}
+                                className="w-12 h-12 rounded-full border-2 border-white/10 bg-black object-cover shadow-[0_0_15px_rgba(0,0,0,0.5)] group-hover:border-cyan-500/50 transition-colors"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = "none";
+                                  const next = e.currentTarget.nextElementSibling as HTMLElement;
+                                  if (next) next.style.display = "flex";
+                                }}
+                              />
+                            ) : null}
+                            <div
+                              className={`w-12 h-12 rounded-full border-2 border-white/10 bg-gradient-to-br from-cyan-500/20 to-primary/10 shadow-[inset_0_0_15px_rgba(0,212,255,0.2)] items-center justify-center text-cyan-400 font-black text-lg ${dexImg ? "hidden" : "flex"} group-hover:border-cyan-500/50 transition-colors`}
+                            >
+                              {token.symbol.slice(0, 2)}
+                            </div>
+                            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-black rounded-full shadow-[0_0_8px_rgba(52,211,153,0.8)]" title="Active Emission" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h4 className="font-bold text-white text-lg tracking-tight truncate drop-shadow-sm group-hover:text-cyan-300 transition-colors">
+                              {token.symbol}
+                            </h4>
+                            <p className="text-xs text-muted-foreground truncate">{token.name}</p>
+                          </div>
+                        </div>
+
+                        {/* Stats grid */}
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-5 relative z-10">
+                          <div className="flex flex-col">
+                            <span className="text-[10px] font-mono text-muted-foreground/60 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                              Daily Reward
+                            </span>
+                            <span className="font-medium text-white tabular-nums tracking-tight">
+                              {(() => {
+                                const est = getEstDaily(token.tokenAddress);
+                                const freqH = token.frequencyHours ?? 24;
+                                const distsPerDay = freqH > 0 ? 24 / freqH : 1;
+                                const amt = token.tokenAmount > 0 ? token.tokenAmount * distsPerDay : est;
+                                const prefix = token.tokenAmount > 0 ? "" : est > 0 ? "~" : "";
+                                const fmt =
+                                  amt >= 1_000_000 ? `${(amt / 1_000_000).toFixed(2)}M`
+                                  : amt >= 1_000 ? `${(amt / 1_000).toFixed(0)}K`
+                                  : amt >= 1 ? amt.toLocaleString(undefined, { maximumFractionDigits: 2 })
+                                  : amt > 0 ? parseFloat(amt.toPrecision(4)).toString()
+                                  : "0";
+                                const id = getLlamaId(network, token.tokenAddress);
+                                const usd = priceMap?.[id] ?? dexInfoMap?.[token.tokenAddress.toLowerCase()]?.price ?? 0;
+                                const dailyUSD = usd && amt > 0 ? amt * usd : 0;
+                                return (
+                                  <span className="flex flex-col">
+                                    <span className="text-sm font-bold text-emerald-400 drop-shadow-sm">{prefix}{fmt} {token.symbol}</span>
+                                    {dailyUSD > 0 && (
+                                      <span className="text-xs text-emerald-500/70 font-mono mt-0.5">
+                                        ≈ {formatUSD(dailyUSD)}
+                                      </span>
+                                    )}
+                                  </span>
+                                );
+                              })()}
+                            </span>
+                          </div>
+
+                          <div className="flex flex-col">
+                            <span className="text-[10px] font-mono text-muted-foreground/60 uppercase tracking-widest mb-1.5">
+                              Total Distributed
+                            </span>
+                            <span className="font-medium text-white tabular-nums tracking-tight">
+                              {(() => {
+                                const v = token.totalRewardsDeposited;
+                                const fmt =
+                                  v >= 1_000_000 ? `${(v / 1_000_000).toFixed(2)}M`
+                                  : v >= 1_000 ? `${(v / 1_000).toFixed(0)}K`
+                                  : v >= 1 ? v.toLocaleString(undefined, { maximumFractionDigits: 2 })
+                                  : v > 0 ? parseFloat(v.toPrecision(8)).toString()
+                                  : "0";
+                                const usd = getRewardTokenPrice(token.tokenAddress);
+                                const totalUSD = usd && v > 0 ? v * usd : 0;
+                                return (
+                                  <span className="flex flex-col">
+                                    <span className="text-sm">{fmt} {token.symbol}</span>
+                                    {totalUSD > 0 && (
+                                      <span className="text-xs text-muted-foreground font-mono mt-0.5">
+                                        ≈ {formatUSD(totalUSD)}
+                                      </span>
+                                    )}
+                                  </span>
+                                );
+                              })()}
+                            </span>
+                          </div>
+
+                          {token.lastProcessed && (
+                            <div className="flex flex-col col-span-2 border-t border-white/5 pt-3 mt-1">
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="font-mono text-muted-foreground/60 uppercase tracking-widest text-[10px]">Last Distributed</span>
+                                <span className="font-medium text-primary/80 flex items-center gap-1.5">
+                                  <Clock size={12} className="text-primary/50" />
+                                  {timeAgo(new Date(token.lastProcessed).getTime())}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="flex flex-col gap-4 relative z-10 border-t border-white/5 pt-6 mt-2">
+                  {/* Derived yield metrics */}
+                  {enabledRewardTokens.length > 0 && (() => {
+                    const token = enabledRewardTokens[0];
+                    if (!token) return null;
+                    const estDaily = getEstDaily(token.tokenAddress);
+                    const freqH = token.frequencyHours ?? 24;
+                    const distsPerDay = freqH > 0 ? 24 / freqH : 1;
+                    const dailyAmt = token.tokenAmount > 0 ? token.tokenAmount * distsPerDay : estDaily;
+                    const isEstimated = token.tokenAmount === 0 && estDaily > 0;
+                    // Prefer the live reward-wallet balance (real funds remaining); fall back
+                    // to the on-contract counter (deposited - claimed) if no wallet balance.
+                    const livePool = getPoolBalance(token.tokenAddress);
+                    const remainingAmt = livePool > 0
+                      ? livePool
+                      : Math.max(0, token.totalRewardsDeposited - token.totalRewardsClaimed);
+                    const daysRemaining = dailyAmt > 0 && remainingAmt > 0
+                      ? Math.max(0, Math.round(remainingAmt / dailyAmt))
+                      : null;
+                    const fmtAmt = (n: number) =>
+                      n >= 1_000_000 ? `${(n / 1_000_000).toFixed(2)}M`
+                      : n >= 1_000 ? `${(n / 1_000).toFixed(0)}K`
+                      : n >= 1 ? n.toLocaleString(undefined, { maximumFractionDigits: 2 })
+                      : n > 0 ? parseFloat(n.toPrecision(4)).toString()
+                      : "0";
+                    return (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-1 rounded-xl bg-black/60 border border-emerald-500/20 overflow-hidden shadow-[inset_0_0_30px_rgba(52,211,153,0.03)]">
+                        <div className="p-4 border-r border-white/5 flex flex-col justify-center">
+                          <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/60 mb-1.5 flex items-center gap-1.5">
+                            <Activity size={12} className="text-emerald-500" />
+                            Daily Emission{isEstimated && " (est.)"}
+                          </p>
+                          <p className="font-bold text-emerald-400 tabular-nums text-lg drop-shadow-sm">
+                            {isEstimated ? "~" : ""}{fmtAmt(dailyAmt)} <span className="text-sm">{token.symbol}/d</span>
+                          </p>
+                        </div>
+                        <div className="p-4 border-r border-white/5 flex flex-col justify-center">
+                          <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/60 mb-1.5 flex items-center gap-1.5">
+                            <Clock size={12} className="text-cyan-500" />
+                            Reward Duration
+                          </p>
+                          <p className="font-bold text-cyan-400 text-lg drop-shadow-sm">
+                            {daysRemaining != null ? `~${daysRemaining} days` : "Ongoing"}
+                          </p>
+                        </div>
+                        <div className="p-4 flex flex-col justify-center relative overflow-hidden group">
+                          <div className="absolute inset-0 bg-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/60 mb-1.5 flex items-center gap-1.5 relative z-10">
+                            <Droplets size={12} className="text-primary" />
+                            Total Pool
+                          </p>
+                          <p className="font-bold text-white tabular-nums text-lg relative z-10">
+                            {fmtAmt(getPoolBalance(token.tokenAddress) || token.totalRewardsDeposited)} <span className="text-sm text-muted-foreground">{token.symbol}</span>
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Additional moat meta */}
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {[
+                      { label: "Moat Version", value: `v${moatConfig.moatVersion}` },
+                      { label: "Auto Rewards", value: moatConfig.automatedRewards ? "Yes" : "No" },
+                      { label: "Time-Weighted", value: moatConfig.timeWeightedPointsEnabled ? `${moatConfig.timeWeightPercentage}%` : "Disabled" },
+                      {
+                        label: "NFT Boost",
+                        value: activeBoosts.length === 0
+                          ? "None"
+                          : activeBoosts.length === 1
+                            ? ((activeBoosts[0].tiers?.length ?? 0) > 0
+                                ? `Tiered · up to ${getMaxBoostValue(activeBoosts[0])}%`
+                                : `Active · ${activeBoosts[0].boostValue}%`)
+                            : `${activeBoosts.length} NFTs · up to ${activeBoosts.map((b: BoostConfig) => `${getMaxBoostValue(b)}%`).join(" / ")}`,
+                      },
+                      { label: "Created", value: new Date(moatConfig.createdAt).toLocaleDateString() },
+                    ].map((item) => (
+                      <div key={item.label} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
+                        <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/60">{item.label}</span>
+                        <span className="text-xs font-semibold text-white/90">{item.value}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
