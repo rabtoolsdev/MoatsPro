@@ -877,13 +877,6 @@ export default function Portfolio() {
                               <span className="text-xs font-bold text-white tabular-nums ml-1">{formatTokenAmount(pos.totalUserBurn, dec)}</span>
                             </div>
                           )}
-                          {mapsPoints > 0 && (
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-black/40 border border-violet-500/30 shadow-[inset_0_0_10px_rgba(167,139,250,0.1)]">
-                              <Award size={10} className="text-violet-400" />
-                              <span className="text-[10px] font-mono text-violet-400/80 uppercase tracking-widest">MAPS</span>
-                              <span className="text-xs font-bold text-violet-300 tabular-nums ml-1">{formatPoints(mapsPoints)}</span>
-                            </div>
-                          )}
                         </div>
                       </motion.div>
                     );
