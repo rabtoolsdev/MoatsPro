@@ -23,6 +23,7 @@ import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { ActivityFeed } from "@/components/activity-feed";
 import { MoatLogo } from "@/components/moat-card";
+import { TokenLogo } from "@/components/swap/token-logo";
 import { SimilarMoats } from "@/components/similar-moats";
 import { formatAddress, formatPoints, timeAgo, getMoatMeta, formatUSD, getTokenLogoUrl } from "@/lib/moat-metadata";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
@@ -1968,9 +1969,18 @@ export default function MoatDetail() {
                                 key={t.tokenAddress}
                                 className={`flex items-center justify-between px-5 py-4 ${idx < enabledTokens.length - 1 ? "border-b border-emerald-500/15" : ""}`}
                               >
-                                <div className="flex flex-col gap-1">
-                                  <span className="text-xs font-bold text-white tracking-wide">{t.symbol}</span>
-                                  <span className="text-[10px] font-mono text-emerald-500/70 uppercase tracking-widest">{t.name}</span>
+                                <div className="flex items-center gap-3">
+                                  <TokenLogo
+                                    address={t.tokenAddress}
+                                    symbol={t.symbol}
+                                    network={moatConfig?.network ?? "avalanche"}
+                                    size={32}
+                                    className="ring-1 ring-white/10"
+                                  />
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="text-xs font-bold text-white tracking-wide">{t.symbol}</span>
+                                    <span className="text-[10px] font-mono text-emerald-500/70 uppercase tracking-widest">{t.name}</span>
+                                  </div>
                                 </div>
                                 <div className="text-right">
                                   <p className="text-sm font-bold tabular-nums text-emerald-400 drop-shadow-sm">—</p>
@@ -2033,13 +2043,22 @@ export default function MoatDetail() {
                                 key={r.token}
                                 className={`flex items-center justify-between px-5 py-4 ${idx < claimRows.length - 1 ? "border-b border-emerald-500/15" : ""}`}
                               >
-                                <div className="flex flex-col gap-1">
-                                  <span className="text-xs font-bold text-white tracking-wide">
-                                    {r.cfg?.symbol ?? formatAddress(r.token)}
-                                  </span>
-                                  {r.cfg?.name && (
-                                    <span className="text-[10px] font-mono text-emerald-500/70 uppercase tracking-widest">{r.cfg.name}</span>
-                                  )}
+                                <div className="flex items-center gap-3">
+                                  <TokenLogo
+                                    address={r.token}
+                                    symbol={r.cfg?.symbol ?? formatAddress(r.token)}
+                                    network={moatConfig?.network ?? "avalanche"}
+                                    size={32}
+                                    className="ring-1 ring-white/10"
+                                  />
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="text-xs font-bold text-white tracking-wide">
+                                      {r.cfg?.symbol ?? formatAddress(r.token)}
+                                    </span>
+                                    {r.cfg?.name && (
+                                      <span className="text-[10px] font-mono text-emerald-500/70 uppercase tracking-widest">{r.cfg.name}</span>
+                                    )}
+                                  </div>
                                 </div>
                                 <div className="text-right">
                                   <p className="text-sm font-bold tabular-nums text-emerald-400 drop-shadow-sm">
