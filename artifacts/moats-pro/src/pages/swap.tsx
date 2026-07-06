@@ -518,26 +518,31 @@ export default function Swap() {
   })();
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground flex flex-col cyber-grid relative overflow-hidden">
       <Navbar />
-      <div className="pt-24 sm:pt-28 pb-24 px-4 sm:px-6 max-w-xl mx-auto">
-        <div className="mb-6 flex justify-center">
+      <div className="pt-24 sm:pt-28 pb-24 px-4 sm:px-6 max-w-xl mx-auto relative z-10">
+        <div className="mb-6 flex flex-col items-center justify-center gap-4">
           <img
             src={moatSwapLogo}
             alt="The Moats Swap"
             className="h-20 sm:h-24 w-auto select-none drop-shadow-[0_4px_24px_rgba(0,212,255,0.18)]"
             draggable={false}
           />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-[10px] font-mono uppercase tracking-widest text-primary/80">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary live-dot" />
+            SWAP TERMINAL
+          </span>
         </div>
 
         <div className="relative">
           <div className="swap-halo" aria-hidden />
           <div
-            className="relative z-10 rounded-2xl border border-border/60 bg-card/60 backdrop-blur-xl shadow-2xl shadow-black/30 p-4 sm:p-5 card-glow"
+            className="relative z-10 rounded-2xl border border-primary/20 hover:border-primary/35 bg-card/50 backdrop-blur-xl shadow-2xl shadow-black/30 p-4 sm:p-5 card-glow cyber-grid overflow-hidden"
             data-testid="swap-card"
           >
-          <div className="flex items-center justify-between mb-3 px-1">
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+          <div className="absolute h-px inset-x-0 top-0 bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+          <div className="flex items-center justify-between mb-3 px-1 relative z-10">
+            <div className="text-[10px] font-mono uppercase tracking-widest text-primary/70 font-semibold">
               You pay
             </div>
             <SlippageSettings slippage={slippage} onChange={setSlippage} />
@@ -554,16 +559,16 @@ export default function Swap() {
             isInsufficient={insufficient}
           />
 
-          <div className="flex justify-center my-2 relative">
-            <div className="h-px w-full bg-border/40 absolute top-1/2" />
+          <div className="flex justify-center my-2 relative z-10">
+            <div className="h-px w-full bg-gradient-to-r from-transparent via-primary/15 to-transparent absolute top-1/2" />
             <button
               onClick={flip}
               disabled={!canFlip}
               data-testid="btn-flip-tokens"
               title={canFlip ? "Flip tokens" : "Pick both tokens first"}
-              className={`relative z-10 w-9 h-9 rounded-full border border-border bg-card transition-all duration-200 flex items-center justify-center group ${
+              className={`relative z-10 w-10 h-10 rounded-full border border-border bg-card transition-all duration-200 flex items-center justify-center group ${
                 canFlip
-                  ? "hover:border-primary/60 hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_18px_rgba(0,212,255,0.35)] active:scale-90"
+                  ? "hover:border-primary/60 hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_20px_rgba(0,212,255,0.4)] active:scale-90"
                   : "opacity-40 cursor-not-allowed"
               }`}
               aria-label="Flip tokens"
@@ -576,7 +581,7 @@ export default function Swap() {
             </button>
           </div>
 
-          <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold px-1 mb-1">
+          <div className="text-[10px] font-mono uppercase tracking-widest text-primary/70 font-semibold px-1 mb-1 relative z-10">
             You receive
           </div>
 
@@ -593,7 +598,7 @@ export default function Swap() {
           {/* Quote details */}
           <div
             key={quote.best ? quote.best.toAmountRaw : "no-quote"}
-            className={`mt-4 px-1 space-y-1.5 ${quote.best ? "fade-rise" : ""}`}
+            className={`mt-4 px-1 space-y-1.5 relative z-10 ${quote.best ? "fade-rise" : ""}`}
           >
             {quote.best && rate && fromToken && toToken && (
               <Row
@@ -625,7 +630,7 @@ export default function Swap() {
               />
             )}
             {routeError && (
-              <div className="text-[11px] text-amber-400/90 mt-2 px-2 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+              <div className="text-[11px] text-amber-400/90 mt-2 px-2 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 border-l-2 border-l-amber-400/60">
                 {routeError}
               </div>
             )}
@@ -636,22 +641,22 @@ export default function Swap() {
             onClick={buttonState.action}
             disabled={buttonState.disabled}
             data-testid="btn-swap-action"
-            className={`w-full mt-5 py-3.5 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2 ${
+            className={`w-full mt-5 py-3.5 rounded-xl text-sm transition-all duration-200 flex items-center justify-center gap-2 relative z-10 ${
               buttonState.disabled
-                ? "bg-muted/40 text-muted-foreground cursor-not-allowed"
-                : "bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(0,212,255,0.35)] btn-shimmer"
+                ? "bg-muted/40 text-muted-foreground font-semibold cursor-not-allowed"
+                : "bg-primary text-primary-foreground font-bold uppercase tracking-widest hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(0,212,255,0.35)] btn-shimmer"
             }`}
           >
             {buttonState.loading && <Loader2 size={14} className="animate-spin" />}
             {buttonState.label}
           </button>
 
-          <div className="mt-3 text-[10px] text-muted-foreground/70 text-center flex items-center justify-center gap-1.5">
+          <div className="mt-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground/70 text-center flex items-center justify-center gap-1.5 relative z-10">
             <span className="w-1.5 h-1.5 rounded-full bg-primary/80 live-dot" aria-hidden />
             <span>Quotes auto-refresh every 20s </span>
           </div>
 
-          <div className="mt-3 pt-3 border-t border-border/30 flex items-center justify-center gap-2">
+          <div className="mt-3 pt-3 border-t border-border/30 flex items-center justify-center gap-2 relative z-10">
             <span className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/60 font-medium">
               Powered by
             </span>
@@ -719,17 +724,17 @@ function TokenInput({
 }) {
   return (
     <div
-      className={`swap-input-glow rounded-xl border p-3.5 transition-all duration-200 ${
+      className={`swap-input-glow rounded-xl border p-3.5 transition-all duration-200 relative z-10 ${
         isInsufficient
           ? "border-rose-500/40 bg-rose-500/5"
-          : "border-border/40 bg-muted/10 hover:border-border/60"
+          : "border-white/8 bg-black/30 hover:border-white/20"
       }`}
     >
       <div className="flex items-center gap-3">
         <button
           onClick={onPick}
           data-testid={`btn-pick-token-${readOnly ? "to" : "from"}`}
-          className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-card/80 border border-border hover:border-primary/60 hover:bg-card transition-all shrink-0"
+          className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-black/40 border border-white/10 hover:border-primary/40 hover:shadow-[0_0_12px_rgba(0,212,255,0.2)] transition-all shrink-0"
         >
           {token ? (
             <>
@@ -762,24 +767,24 @@ function TokenInput({
               }}
               readOnly={readOnly}
               data-testid={`input-amount-${readOnly ? "to" : "from"}`}
-              className="w-full bg-transparent text-right text-2xl font-semibold tracking-tight focus:outline-none placeholder:text-muted-foreground/40"
+              className="w-full bg-transparent text-right text-2xl font-mono font-semibold tracking-tight focus:outline-none placeholder:text-muted-foreground/40"
             />
           )}
         </div>
       </div>
-      <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground px-0.5">
+      <div className="mt-2 flex items-center justify-between text-[10px] font-mono text-muted-foreground/60 px-0.5">
         <div className="flex items-center gap-1">
           <Wallet size={11} />
           <span>
             {balance !== undefined ? formatNumber(parseFloat(balance)) : "—"}
-            {token && <span className="ml-1 text-muted-foreground/60">{token.symbol}</span>}
+            {token && <span className="ml-1 text-muted-foreground/40">{token.symbol}</span>}
           </span>
         </div>
         {showMax && balance && parseFloat(balance) > 0 && onMax && (
           <button
             onClick={onMax}
             data-testid="btn-max"
-            className="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide text-primary hover:bg-primary/10 transition-colors"
+            className="px-2 py-0.5 rounded uppercase font-bold tracking-widest text-primary hover:bg-primary/10 transition-colors"
           >
             Max
           </button>
@@ -791,9 +796,9 @@ function TokenInput({
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between text-xs">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="text-foreground/90 font-medium">{value}</span>
+    <div className="flex items-center justify-between">
+      <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/60">{label}</span>
+      <span className="font-mono text-xs text-foreground/90 font-medium">{value}</span>
     </div>
   );
 }
