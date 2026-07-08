@@ -23,7 +23,7 @@ import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { ActivityFeed } from "@/components/activity-feed";
 import { MoatLogo } from "@/components/moat-card";
-import { TokenLogo, SYMBOL_LOGOS } from "@/components/swap/token-logo";
+import { TokenLogo } from "@/components/swap/token-logo";
 import { SimilarMoats } from "@/components/similar-moats";
 import { formatAddress, formatPoints, timeAgo, getMoatMeta, formatUSD, getTokenLogoUrl } from "@/lib/moat-metadata";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
@@ -950,7 +950,6 @@ export default function MoatDetail() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 relative z-10">
                   {enabledRewardTokens.map((token) => {
                     const dexImg =
-                      SYMBOL_LOGOS[token.symbol.toUpperCase()] ||
                       dexInfoMap?.[token.tokenAddress.toLowerCase()]?.imageUrl ||
                       getTokenLogoUrl(token.tokenAddress) ||
                       undefined;
