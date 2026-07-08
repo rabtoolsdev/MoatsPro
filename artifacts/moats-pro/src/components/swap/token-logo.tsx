@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { getAddress } from "viem";
+import avaxLogo from "@assets/avalanche-avax-logo_1783553276329.png";
 
 interface TokenLogoProps {
   address: string;
@@ -89,9 +90,8 @@ export const SYMBOL_LOGOS: Record<string, string> = {
   TUSD: "https://assets.coingecko.com/coins/images/3449/large/tusd.png",
 
   // ── Native / Wrapped natives ──
-  AVAX: "https://assets.coingecko.com/coins/images/12559/large/Avalanche_Circle_RedWhite_Trans.png",
-  WAVAX:
-    "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/avalanchec/assets/0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7/logo.png",
+  AVAX: avaxLogo,
+  WAVAX: avaxLogo,
   ETH: "https://assets.coingecko.com/coins/images/279/large/ethereum.png",
   WETH: "https://assets.coingecko.com/coins/images/2518/large/weth.png",
   BNB: "https://assets.coingecko.com/coins/images/825/large/bnb-icon2_2x.png",

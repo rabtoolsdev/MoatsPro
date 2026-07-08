@@ -951,8 +951,8 @@ export default function MoatDetail() {
                   {enabledRewardTokens.map((token) => {
                     const dexImg =
                       SYMBOL_LOGOS[token.symbol.toUpperCase()] ||
-                      getTokenLogoUrl(token.tokenAddress) ||
                       dexInfoMap?.[token.tokenAddress.toLowerCase()]?.imageUrl ||
+                      getTokenLogoUrl(token.tokenAddress) ||
                       undefined;
                     return (
                       <div
