@@ -69,7 +69,7 @@ const NATIVE_COINGECKO: Record<string, string> = {
 // keyed by UPPERCASE symbol. Used as a high-priority source so popular tokens
 // always render even when TrustWallet doesn't have them indexed. URLs are
 // CoinGecko (stable, well-cached).
-const SYMBOL_LOGOS: Record<string, string> = {
+export const SYMBOL_LOGOS: Record<string, string> = {
   // ── Stablecoins ──
   USDC: "https://assets.coingecko.com/coins/images/6319/large/usdc.png",
   "USDC.E": "https://assets.coingecko.com/coins/images/6319/large/usdc.png",
