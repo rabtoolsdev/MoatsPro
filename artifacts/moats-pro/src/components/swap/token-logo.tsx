@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { getAddress } from "viem";
+import usdcLogo from "@assets/usdc_logo.png";
 
 interface TokenLogoProps {
   address: string;
@@ -71,9 +72,9 @@ const NATIVE_COINGECKO: Record<string, string> = {
 // CoinGecko (stable, well-cached).
 const SYMBOL_LOGOS: Record<string, string> = {
   // ── Stablecoins ──
-  USDC: "https://assets.coingecko.com/coins/images/6319/large/usdc.png",
-  "USDC.E": "https://assets.coingecko.com/coins/images/6319/large/usdc.png",
-  USDBC: "https://assets.coingecko.com/coins/images/6319/large/usdc.png",
+  USDC: usdcLogo,
+  "USDC.E": usdcLogo,
+  USDBC: usdcLogo,
   USDT: "https://assets.coingecko.com/coins/images/325/large/Tether.png",
   "USDT.E": "https://assets.coingecko.com/coins/images/325/large/Tether.png",
   DAI: "https://assets.coingecko.com/coins/images/9956/large/Badge_Dai.png",
@@ -144,7 +145,7 @@ const SYMBOL_LOGOS: Record<string, string> = {
   GGAVAX: "https://assets.coingecko.com/coins/images/27398/large/gogopool_icon_orange.png",
   SAVAX: "https://assets.coingecko.com/coins/images/22270/large/stakedAVAX.jpg",
   YYAVAX: "https://assets.coingecko.com/coins/images/27110/large/yyavax.png",
-  USDC_E: "https://assets.coingecko.com/coins/images/6319/large/usdc.png",
+  USDC_E: usdcLogo,
 };
 
 function safeChecksum(address: string): string | null {
