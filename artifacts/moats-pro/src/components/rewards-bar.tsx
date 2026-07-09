@@ -136,7 +136,7 @@ export function RewardsBar({ usdc, wavax, btcb, community }: RewardsBarProps) {
                       <img
                         src={card.bucket.logoUrl}
                         alt={card.bucket.symbol}
-                        className="w-3.5 h-3.5 rounded-full object-contain"
+                        className="w-5 h-5 rounded-full object-contain"
                         onError={(e) => {
                           (e.currentTarget as HTMLImageElement).style.display = "none";
                         }}
