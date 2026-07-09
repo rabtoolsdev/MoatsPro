@@ -6,9 +6,9 @@ import { formatUnits } from "viem";
 import { motion } from "framer-motion";
 import { Wallet, TrendingUp, Award, AlertCircle, ArrowDownRight, Lock, DollarSign, ArrowUpRight, Flame, Gift, Zap, Sparkles, ArrowUpDown, ArrowRight, Activity } from "lucide-react";
 import btcbLogo from "@assets/logobtc_1777735570322.png";
-import usdcLogo from "@assets/usdc_logo.png";
 
-const USDC_LOGO_URL = usdcLogo;
+const USDC_LOGO_URL =
+  "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/avalanchec/assets/0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E/logo.png";
 const WAVAX_LOGO_URL =
   "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/avalanchec/info/logo.png";
 

@@ -1,7 +1,6 @@
 import type { MoatConfig } from "./moats-api";
 import { MOAT_METADATA, getMoatMeta, getTokenLogoUrl } from "./moat-metadata";
 import btcbLogo from "@assets/logobtc_1777735570322.png";
-import usdcLogo from "@assets/usdc_logo.png";
 
 export interface MoatToken {
   address: `0x${string}`;
@@ -48,7 +47,7 @@ const BASE_TOKENS_AVALANCHE: MoatToken[] = [
     address: "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E",
     symbol: "USDC",
     name: "USD Coin",
-    logoUrl: usdcLogo,
+    logoUrl: TW_AVAX_LOGO("0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E"),
     decimals: 6,
     moatContractAddresses: [],
   },

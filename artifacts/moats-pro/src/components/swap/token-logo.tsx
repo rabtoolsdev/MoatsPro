@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { getAddress } from "viem";
-import usdcLogo from "@assets/usdc_logo.png";
+import avaxLogo from "@assets/avalanche-avax-logo_1783553276329.png";
 
 interface TokenLogoProps {
   address: string;
@@ -70,11 +70,11 @@ const NATIVE_COINGECKO: Record<string, string> = {
 // keyed by UPPERCASE symbol. Used as a high-priority source so popular tokens
 // always render even when TrustWallet doesn't have them indexed. URLs are
 // CoinGecko (stable, well-cached).
-const SYMBOL_LOGOS: Record<string, string> = {
+export const SYMBOL_LOGOS: Record<string, string> = {
   // ── Stablecoins ──
-  USDC: usdcLogo,
-  "USDC.E": usdcLogo,
-  USDBC: usdcLogo,
+  USDC: "https://assets.coingecko.com/coins/images/6319/large/usdc.png",
+  "USDC.E": "https://assets.coingecko.com/coins/images/6319/large/usdc.png",
+  USDBC: "https://assets.coingecko.com/coins/images/6319/large/usdc.png",
   USDT: "https://assets.coingecko.com/coins/images/325/large/Tether.png",
   "USDT.E": "https://assets.coingecko.com/coins/images/325/large/Tether.png",
   DAI: "https://assets.coingecko.com/coins/images/9956/large/Badge_Dai.png",
@@ -90,9 +90,8 @@ const SYMBOL_LOGOS: Record<string, string> = {
   TUSD: "https://assets.coingecko.com/coins/images/3449/large/tusd.png",
 
   // ── Native / Wrapped natives ──
-  AVAX: "https://assets.coingecko.com/coins/images/12559/large/Avalanche_Circle_RedWhite_Trans.png",
-  WAVAX:
-    "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/avalanchec/assets/0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7/logo.png",
+  AVAX: avaxLogo,
+  WAVAX: avaxLogo,
   ETH: "https://assets.coingecko.com/coins/images/279/large/ethereum.png",
   WETH: "https://assets.coingecko.com/coins/images/2518/large/weth.png",
   BNB: "https://assets.coingecko.com/coins/images/825/large/bnb-icon2_2x.png",
@@ -145,7 +144,7 @@ const SYMBOL_LOGOS: Record<string, string> = {
   GGAVAX: "https://assets.coingecko.com/coins/images/27398/large/gogopool_icon_orange.png",
   SAVAX: "https://assets.coingecko.com/coins/images/22270/large/stakedAVAX.jpg",
   YYAVAX: "https://assets.coingecko.com/coins/images/27110/large/yyavax.png",
-  USDC_E: usdcLogo,
+  USDC_E: "https://assets.coingecko.com/coins/images/6319/large/usdc.png",
 };
 
 function safeChecksum(address: string): string | null {
