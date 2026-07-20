@@ -23,6 +23,22 @@ export const grotto = defineChain({
   },
 });
 
+// Robinhood Chain
+export const robinhoodChain = defineChain({
+  id: 4663,
+  name: "Robinhood Chain",
+  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+  rpcUrls: {
+    default: { http: ["https://rpc.mainnet.chain.robinhood.com/"] },
+  },
+  blockExplorers: {
+    default: {
+      name: "Robinhood Explorer",
+      url: "https://explorer.robinhood.com",
+    },
+  },
+});
+
 // Avalanche L1 subnet — Blaze
 export const blaze = defineChain({
   id: 46975,
@@ -48,6 +64,7 @@ export const networks: [AppKitNetwork, ...AppKitNetwork[]] = [
   monad,
   grotto as unknown as AppKitNetwork,
   blaze as unknown as AppKitNetwork,
+  robinhoodChain as unknown as AppKitNetwork,
 ];
 
 export const wagmiAdapter = new WagmiAdapter({
@@ -62,6 +79,7 @@ export const wagmiAdapter = new WagmiAdapter({
     [monad.id]: http("https://rpc.monad.xyz"),
     [grotto.id]: http(grotto.rpcUrls.default.http[0]),
     [blaze.id]: http(blaze.rpcUrls.default.http[0]),
+    [robinhoodChain.id]: http(robinhoodChain.rpcUrls.default.http[0]),
   },
 });
 
@@ -107,6 +125,7 @@ export const CHAIN_DISPLAY: Record<
   [monad.id]: { label: "Monad", logo: "/chains/monad.png", network: "monad" },
   [grotto.id]: { label: "The Grotto", logo: "/chains/grotto.png", network: "thegrotto" },
   [blaze.id]: { label: "Blaze", logo: "/chains/blaze.png", network: "blaze" },
+  [robinhoodChain.id]: { label: "Robinhood", logo: "/chains/robinhood.png", network: "robinhood" },
 };
 
 // Maps the `network` string returned by the Moats API config docs to the
@@ -127,6 +146,8 @@ const NETWORK_TO_CHAIN_ID: Record<string, number> = {
   thegrotto: grotto.id,
   grotto: grotto.id,
   blaze: blaze.id,
+  robinhood: robinhoodChain.id,
+  robinhoodchain: robinhoodChain.id,
 };
 
 export function networkToChainId(network?: string): number | undefined {
