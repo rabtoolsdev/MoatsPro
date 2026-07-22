@@ -357,7 +357,8 @@ export default function Home() {
       if (!tokenAddr) return;
       const info = dexInfoMap[tokenAddr];
       if (info && info.liquidityUsd > 0) {
-        m[c.contractAddress.toLowerCase()] = {
+        const key = `${(c.network ?? "avalanche").toLowerCase()}:${c.contractAddress.toLowerCase()}`;
+        m[key] = {
           liquidityUsd: info.liquidityUsd,
           pairCount: info.pairCount,
         };
