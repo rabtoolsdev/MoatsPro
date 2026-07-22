@@ -87,12 +87,12 @@ export default function Home() {
     const m = new Map<string, { address: string; chainId?: number }>();
     stakingTokenAddrs.forEach((addr, i) => {
       if (!addr) return;
-      const key = addr.toLowerCase();
+      const chainId = NETWORK_TO_CHAIN_ID[(configs?.[i]?.network ?? "").toLowerCase()];
+      // Key by address:chainId so the same token address on different chains
+      // each get their own ERC-20 reads (e.g. GREG on thegrotto ≠ GOYB on robinhood).
+      const key = `${addr.toLowerCase()}:${chainId ?? ""}`;
       if (!m.has(key)) {
-        m.set(key, {
-          address: addr,
-          chainId: NETWORK_TO_CHAIN_ID[(configs?.[i]?.network ?? "").toLowerCase()],
-        });
+        m.set(key, { address: addr, chainId });
       }
     });
     return [...m.values()];
@@ -122,7 +122,8 @@ export default function Home() {
     const m: Record<string, number> = {};
     uniqueStakingTokens.forEach((t, i) => {
       const r = decimalsData?.[i];
-      m[t.address.toLowerCase()] = r?.status === "success" ? Number(r.result) : 18;
+      // Key by address:chainId to distinguish same-address tokens on different chains
+      m[`${t.address.toLowerCase()}:${t.chainId ?? ""}`] = r?.status === "success" ? Number(r.result) : 18;
     });
     return m;
   }, [uniqueStakingTokens, decimalsData]);
@@ -131,7 +132,8 @@ export default function Home() {
     const m: Record<string, bigint> = {};
     uniqueStakingTokens.forEach((t, i) => {
       const r = totalSupplyData?.[i];
-      if (r?.status === "success") m[t.address.toLowerCase()] = r.result as unknown as bigint;
+      if (r?.status === "success")
+        m[`${t.address.toLowerCase()}:${t.chainId ?? ""}`] = r.result as unknown as bigint;
     });
     return m;
   }, [uniqueStakingTokens, totalSupplyData]);
@@ -379,6 +381,8 @@ export default function Home() {
       const totalLocked = lockedResult?.status === "success" ? (lockedResult.result as bigint) : 0n;
       const totalBurned = burnedResult?.status === "success" ? (burnedResult.result as bigint) : 0n;
       const tokenAddr = (tokenResult.result as string).toLowerCase();
+      const moatChainId = NETWORK_TO_CHAIN_ID[(c.network ?? "").toLowerCase()];
+      const tokenChainKey = `${tokenAddr}:${moatChainId ?? ""}`;
       const dexInfo = dexInfoMap?.[tokenAddr];
       // LP staking tokens (e.g. Pharaoh hCASH/WAVAX): the moat holds a share
       // of the LP supply, not bare ERC-20 units, so DexScreener's per-pair
@@ -391,14 +395,14 @@ export default function Home() {
         // single pool. Falls back to aggregated liquidity if the per-pool
         // value is unavailable.
         const poolTvl = dexInfo.lpPoolLiquidityUsd ?? dexInfo.liquidityUsd;
-        const supply = totalSupplyMap[tokenAddr];
+        const supply = totalSupplyMap[tokenChainKey];
         if (poolTvl > 0 && supply && supply > 0n) {
           const moatShareBp = Number(((totalStaked + totalLocked + totalBurned) * 1_000_000n) / supply);
           m[moatKey] = (moatShareBp / 1_000_000) * poolTvl;
         }
         return;
       }
-      const dec = decimalsMap[tokenAddr] ?? 18;
+      const dec = decimalsMap[tokenChainKey] ?? 18;
       const price = getTokenPrice(c.network, tokenAddr);
       if (price > 0) {
         m[moatKey] =
@@ -408,7 +412,7 @@ export default function Home() {
       // Fallback: token has no price source but DOES have DEX liquidity.
       // Estimate moat's TVM as its share of total supply × aggregated DEX liquidity.
       const aggLiq = dexInfo?.liquidityUsd ?? 0;
-      const supply = totalSupplyMap[tokenAddr];
+      const supply = totalSupplyMap[tokenChainKey];
       if (aggLiq > 0 && supply && supply > 0n) {
         const moatShareBp = Number(((totalStaked + totalLocked + totalBurned) * 1_000_000n) / supply);
         m[moatKey] = (moatShareBp / 1_000_000) * aggLiq;
@@ -431,7 +435,8 @@ export default function Home() {
       const totalLocked = lockedResult?.status === "success" ? (lockedResult.result as bigint) : 0n;
       const totalBurned = burnedResult?.status === "success" ? (burnedResult.result as bigint) : 0n;
       const tokenAddr = (tokenResult.result as string).toLowerCase();
-      const supply = totalSupplyMap[tokenAddr];
+      const moatChainId = NETWORK_TO_CHAIN_ID[(c.network ?? "").toLowerCase()];
+      const supply = totalSupplyMap[`${tokenAddr}:${moatChainId ?? ""}`];
       if (supply && supply > 0n) {
         const pct = Number(((totalStaked + totalLocked + totalBurned) * 10000n) / supply) / 100;
         m[`${c.contractAddress.toLowerCase()}:${(c.network ?? "avalanche").toLowerCase()}`] = pct;
@@ -811,7 +816,7 @@ export default function Home() {
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
           >
             {filteredMoats.map((moat) => (
-              <motion.div key={moat.contractAddress} variants={itemVariants}>
+              <motion.div key={`${moat.contractAddress}:${moat.network ?? "avalanche"}`} variants={itemVariants}>
                 <MoatCard
                   moat={moat}
                   tvlUSD={tvmMap[`${moat.contractAddress.toLowerCase()}:${(moat.network ?? "avalanche").toLowerCase()}`]}
