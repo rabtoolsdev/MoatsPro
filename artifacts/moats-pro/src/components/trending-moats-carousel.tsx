@@ -48,7 +48,7 @@ function TrendingCard({ item, logoUrls }: { item: TrendingMoat; logoUrls?: Recor
   const meta = getMoatMeta(config.contractAddress, config.network);
   const accent = rankAccent(rank);
   const primaryTokenAddress = meta.tokenAddress || config.rewardTokens.find((t) => t.enabled)?.tokenAddress;
-  const onChainLogo = logoUrls?.[config.contractAddress.toLowerCase()];
+  const onChainLogo = logoUrls?.[`${config.contractAddress.toLowerCase()}:${(config.network ?? "avalanche").toLowerCase()}`];
 
   return (
     <Link href={`/moat/${config.network ?? "avalanche"}/${config.contractAddress}`}>

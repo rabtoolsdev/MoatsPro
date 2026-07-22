@@ -29,6 +29,7 @@ import { formatAddress, formatPoints, timeAgo, getMoatMeta, formatUSD, getTokenL
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
 import { useDexscreenerInfo } from "@/hooks/use-dexscreener";
 import { useResolveMoatMetas } from "@/hooks/use-resolve-moat-metas";
+import { networkToChainId } from "@/lib/wagmi-config";
 import { useDailyRewardEstimates } from "@/hooks/use-daily-reward-estimates";
 import { useRewardPoolBalances } from "@/hooks/use-reward-pool-balances";
 import { useContractRewardBalances } from "@/hooks/use-contract-reward-balances";
@@ -278,10 +279,11 @@ export default function MoatDetail() {
     address: contractAddress as `0x${string}` | undefined,
     abi: MOAT_LOGO_ABI,
     functionName: "getLogoURL",
+    chainId: networkToChainId(urlNetwork),
     query: { enabled: !!contractAddress, staleTime: 5 * 60 * 1000, gcTime: 30 * 60 * 1000 },
   });
-  const { data: pointsV2 } = useMoatPointsV2(contractAddress);
-  const { data: userMoatPoints } = useUserMoatPointsV2(userAddress, contractAddress);
+  const { data: pointsV2 } = useMoatPointsV2(contractAddress, urlNetwork);
+  const { data: userMoatPoints } = useUserMoatPointsV2(userAddress, contractAddress, urlNetwork);
   const { data: eventsData } = useEvents(contractAddress);
   const { data: rewardsDepositedData } = useRewardsDepositedEvents(contractAddress);
   // Per-token last distribution timestamp (ms), derived from on-chain

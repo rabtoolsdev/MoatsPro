@@ -73,18 +73,18 @@ export function useAllMoatPoints(contractAddress?: string) {
   });
 }
 
-export function useMoatPointsV2(contractAddress: string | undefined) {
+export function useMoatPointsV2(contractAddress: string | undefined, network?: string) {
   return useQuery({
-    queryKey: ["moats", "points", "v2", contractAddress],
+    queryKey: ["moats", "points", "v2", network, contractAddress],
     queryFn: () => moatsApi.getMoatPointsV2(contractAddress!),
     enabled: !!contractAddress,
     staleTime: 30_000,
   });
 }
 
-export function useUserMoatPointsV2(address: string | undefined, contractAddress: string | undefined) {
+export function useUserMoatPointsV2(address: string | undefined, contractAddress: string | undefined, network?: string) {
   return useQuery({
-    queryKey: ["moats", "points", "v2", "user", address, contractAddress],
+    queryKey: ["moats", "points", "v2", "user", address, network, contractAddress],
     queryFn: () => moatsApi.getUserMoatPointsV2(address!, contractAddress!),
     enabled: !!address && !!contractAddress,
     staleTime: 30_000,
