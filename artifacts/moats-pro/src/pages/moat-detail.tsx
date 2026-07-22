@@ -260,6 +260,13 @@ export default function MoatDetail() {
   const params = useParams<{ network: string; address: string }>();
   const urlNetwork = params.network;
   const contractAddress = params.address as MoatContractAddress | undefined;
+
+  // Fortifi's points backend ignores the `network` query param — it returns
+  // the same leaderboard for ANY contract address regardless of chain. Until
+  // the backend supports per-network filtering, only fetch/show points for the
+  // networks where the points system is actually active (The Grotto).
+  const POINTS_ENABLED_NETWORKS = new Set(["thegrotto"]);
+  const pointsEnabled = POINTS_ENABLED_NETWORKS.has((urlNetwork ?? "").toLowerCase());
   const { address: userAddress, isConnected } = useAccount();
 
   const { open } = useAppKit();
@@ -282,8 +289,8 @@ export default function MoatDetail() {
     chainId: networkToChainId(urlNetwork),
     query: { enabled: !!contractAddress, staleTime: 5 * 60 * 1000, gcTime: 30 * 60 * 1000 },
   });
-  const { data: pointsV2 } = useMoatPointsV2(contractAddress, urlNetwork);
-  const { data: userMoatPoints } = useUserMoatPointsV2(userAddress, contractAddress, urlNetwork);
+  const { data: pointsV2 } = useMoatPointsV2(pointsEnabled ? contractAddress : undefined, urlNetwork);
+  const { data: userMoatPoints } = useUserMoatPointsV2(userAddress, pointsEnabled ? contractAddress : undefined, urlNetwork);
   const { data: eventsData } = useEvents(contractAddress);
   const { data: rewardsDepositedData } = useRewardsDepositedEvents(contractAddress);
   // Per-token last distribution timestamp (ms), derived from on-chain
@@ -895,22 +902,24 @@ export default function MoatDetail() {
                   glow: "shadow-[0_0_15px_rgba(167,139,250,0.15)]",
                   testId: "stat-total-locked",
                 },
-                {
-                  label: "Total Points",
-                  value: formatPoints(totalPoints),
-                  icon: Zap,
-                  color: "text-cyan-400",
-                  glow: "shadow-[0_0_15px_rgba(34,211,238,0.15)]",
-                  testId: "stat-total-points",
-                },
-                {
-                  label: "Participants",
-                  value: participantCount.toLocaleString(),
-                  icon: Users,
-                  color: "text-emerald-400",
-                  glow: "shadow-[0_0_15px_rgba(52,211,153,0.15)]",
-                  testId: "stat-participants",
-                },
+                ...(pointsEnabled ? [
+                  {
+                    label: "Total Points",
+                    value: formatPoints(totalPoints),
+                    icon: Zap,
+                    color: "text-cyan-400",
+                    glow: "shadow-[0_0_15px_rgba(34,211,238,0.15)]",
+                    testId: "stat-total-points",
+                  },
+                  {
+                    label: "Participants",
+                    value: participantCount.toLocaleString(),
+                    icon: Users,
+                    color: "text-emerald-400",
+                    glow: "shadow-[0_0_15px_rgba(52,211,153,0.15)]",
+                    testId: "stat-participants",
+                  },
+                ] : []),
                 {
                   label: "Total Burned",
                   value: totalBurnedFormatted,
@@ -1219,7 +1228,7 @@ export default function MoatDetail() {
                         return parseFloat(formatUnits(userInfo.userInfo[1], decimals)) * stakingTokenPrice;
                       })(),
                     },
-                    {
+                    ...(pointsEnabled ? [{
                       label: "Moat Points",
                       value: formatPoints(userMoatPointsValue),
                       testId: "user-moat-points",
@@ -1227,7 +1236,7 @@ export default function MoatDetail() {
                       weightedPct: userLeaderboardWeight !== undefined
                         ? userLeaderboardWeight
                         : (totalPoints > 0 ? (userMoatPointsValue / totalPoints) * 100 : 0),
-                    },
+                    }] : []),
                   ].map((item) => {
                     const weightedPct = (item as { weightedPct?: number }).weightedPct ?? 0;
                     return (
