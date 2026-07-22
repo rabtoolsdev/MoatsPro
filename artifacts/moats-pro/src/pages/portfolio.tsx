@@ -816,7 +816,7 @@ export default function Portfolio() {
                             <div className="min-w-0 py-1">
                               <div className="flex items-center gap-2 mb-1">
                                 <Link
-                                  href={`/moat/${pos.config.contractAddress}`}
+                                  href={`/moat/${pos.config.network ?? "avalanche"}/${pos.config.contractAddress}`}
                                   className="font-black text-xl text-white hover:text-primary transition-colors tracking-tight drop-shadow-sm truncate"
                                 >
                                   {meta.name}
@@ -852,7 +852,7 @@ export default function Portfolio() {
                           <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 mt-2 sm:mt-0">
                             {hasRewards && (
                               <Link
-                                href={`/moat/${pos.config.contractAddress}`}
+                                href={`/moat/${pos.config.network ?? "avalanche"}/${pos.config.contractAddress}`}
                                 data-testid={`badge-rewards-pending-${pos.config.contractAddress}`}
                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 text-xs font-bold hover:bg-emerald-500/25 transition-all shadow-[0_0_15px_rgba(52,211,153,0.2)] animate-pulse hover:animate-none"
                                 title="You have unclaimed rewards"
@@ -862,7 +862,7 @@ export default function Portfolio() {
                               </Link>
                             )}
                             <Link
-                              href={`/moat/${pos.config.contractAddress}`}
+                              href={`/moat/${pos.config.network ?? "avalanche"}/${pos.config.contractAddress}`}
                               className="btn-shimmer relative overflow-hidden group inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-primary/20 border border-primary/50 text-primary font-bold hover:bg-primary/30 hover:border-primary transition-all shadow-[0_0_20px_rgba(0,212,255,0.15)]"
                             >
                               <span className="tracking-widest uppercase text-xs font-mono">Manage</span>

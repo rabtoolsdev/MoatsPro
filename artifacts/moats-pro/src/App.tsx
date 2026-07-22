@@ -60,7 +60,7 @@ function Router() {
         <Switch>
           <Route path="/" component={Home} />
           <Route path="/portfolio" component={Portfolio} />
-          <Route path="/moat/:address" component={MoatDetail} />
+          <Route path="/moat/:network/:address" component={MoatDetail} />
           <Route path="/leaderboard" component={Leaderboard} />
           <Route path="/analytics" component={Analytics} />
           <Route path="/swap" component={Swap} />

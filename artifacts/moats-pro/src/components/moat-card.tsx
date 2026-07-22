@@ -141,7 +141,7 @@ export function MoatCard({ moat, tvlUSD, supplyPct, logoUrl, dexLiquidityUSD, de
   const hasSubMetrics = !!poolToken || hasDexMetric;
 
   return (
-    <Link href={`/moat/${moat.contractAddress}`}>
+    <Link href={`/moat/${moat.network ?? "avalanche"}/${moat.contractAddress}`}>
       <motion.div
         data-testid={`card-moat-${moat.contractAddress}`}
         whileHover={{ y: -4, scale: 1.01 }}

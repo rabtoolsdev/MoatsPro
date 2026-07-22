@@ -1275,7 +1275,7 @@ export default function Analytics() {
                           <td className="py-3 pr-3 text-muted-foreground/50 tabular-nums font-mono text-xs">{i + 1}</td>
                           <td className="py-3 pr-3">
                             <Link
-                              href={`/moat/${r.address}`}
+                              href={`/moat/${r.cfg?.network ?? "avalanche"}/${r.address}`}
                               className="font-medium text-white group-hover:text-primary transition-colors flex items-center gap-2"
                             >
                               {meta.name}

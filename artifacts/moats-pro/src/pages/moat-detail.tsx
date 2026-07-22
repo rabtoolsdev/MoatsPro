@@ -12,7 +12,7 @@ import {
 import { Link } from "wouter";
 import { formatUnits, parseUnits } from "viem";
 import { useQueryClient } from "@tanstack/react-query";
-import { useMoatConfig, useMoatPointsV2, useUserMoatPointsV2, useEvents, useRewardsDepositedEvents } from "@/hooks/use-moats-api";
+import { useAllMoatConfigs, useMoatPointsV2, useUserMoatPointsV2, useEvents, useRewardsDepositedEvents } from "@/hooks/use-moats-api";
 import { getActiveBoosts, getBoostTier, getEffectiveBoostValue, getMaxBoostValue, type BoostConfig, type BoostTier } from "@/lib/moats-api";
 import {
   useMoatStats, useUserMoatInfo, useTokenBalance,
@@ -256,7 +256,8 @@ function formatTimeRemaining(endTimestamp: bigint): string {
 }
 
 export default function MoatDetail() {
-  const params = useParams<{ address: string }>();
+  const params = useParams<{ network: string; address: string }>();
+  const urlNetwork = params.network;
   const contractAddress = params.address as MoatContractAddress | undefined;
   const { address: userAddress, isConnected } = useAccount();
 
@@ -267,7 +268,12 @@ export default function MoatDetail() {
   const [lockAmount, setLockAmount] = useState("");
   const [lockDays, setLockDays] = useState(30);
 
-  const { data: moatConfig, isLoading: configLoading } = useMoatConfig(contractAddress);
+  const { data: allConfigs, isLoading: configLoading } = useAllMoatConfigs();
+  const moatConfig = allConfigs?.find(
+    (c) =>
+      c.contractAddress.toLowerCase() === (contractAddress ?? "").toLowerCase() &&
+      (!urlNetwork || c.network?.toLowerCase() === urlNetwork.toLowerCase()),
+  );
   const { data: onChainLogoUrl } = useReadContract({
     address: contractAddress as `0x${string}` | undefined,
     abi: MOAT_LOGO_ABI,

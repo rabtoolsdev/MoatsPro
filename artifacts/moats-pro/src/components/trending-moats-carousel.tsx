@@ -51,7 +51,7 @@ function TrendingCard({ item, logoUrls }: { item: TrendingMoat; logoUrls?: Recor
   const onChainLogo = logoUrls?.[config.contractAddress.toLowerCase()];
 
   return (
-    <Link href={`/moat/${config.contractAddress}`}>
+    <Link href={`/moat/${config.network ?? "avalanche"}/${config.contractAddress}`}>
       <motion.div
         whileHover={{ y: -4, scale: 1.015 }}
         transition={{ duration: 0.2, ease: "easeOut" }}
