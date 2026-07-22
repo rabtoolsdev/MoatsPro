@@ -9,6 +9,7 @@ const CHAIN_MAP: Record<string, string> = {
   polygon: "polygon",
   avax: "avax",
   bsc: "bsc",
+  robinhood: "robinhood",
 };
 
 export function getLlamaId(network: string | null | undefined, address: string): string {
