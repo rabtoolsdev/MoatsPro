@@ -105,7 +105,7 @@ export default function Admin() {
     if (!moatConfigs) return {};
     const m: Record<string, string> = {};
     moatConfigs.forEach((c, i) => {
-      const meta = getMoatMeta(c.contractAddress, c.network);
+      const meta = getMoatMeta(c.contractAddress);
       if (!meta.tokenAddress) return;
       const tokenKey = meta.tokenAddress.toLowerCase();
       if (m[tokenKey]) return;

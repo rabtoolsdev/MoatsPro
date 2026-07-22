@@ -8,7 +8,6 @@ import { useTrendingMoats } from "@/hooks/use-trending-moats";
 import { useDailyRewardEstimates } from "@/hooks/use-daily-reward-estimates";
 import { useRewardPoolBalances } from "@/hooks/use-reward-pool-balances";
 import { MOAT_LOGO_ABI } from "@/lib/moat-abi";
-import { networkToChainId } from "@/lib/wagmi-config";
 import type { MoatConfig } from "@/lib/moats-api";
 
 const MAX_RESULTS = 3;
@@ -137,7 +136,6 @@ export function SimilarMoats({ currentMoat }: { currentMoat: MoatConfig }) {
         address: c.contractAddress as `0x${string}`,
         abi: MOAT_LOGO_ABI,
         functionName: "getLogoURL" as const,
-        chainId: networkToChainId(c.network),
       })),
     [similar],
   );
@@ -155,8 +153,7 @@ export function SimilarMoats({ currentMoat }: { currentMoat: MoatConfig }) {
     similar.forEach((c, i) => {
       const r = logoData[i];
       if (r?.status === "success" && typeof r.result === "string" && r.result.length > 0) {
-        const key = `${(c.network ?? "avalanche").toLowerCase()}:${c.contractAddress.toLowerCase()}`;
-        m[key] = r.result;
+        m[c.contractAddress.toLowerCase()] = r.result;
       }
     });
     return m;
@@ -204,7 +201,7 @@ export function SimilarMoats({ currentMoat }: { currentMoat: MoatConfig }) {
           <MoatCard
             key={moat.contractAddress}
             moat={moat}
-            logoUrl={logoMap[`${(moat.network ?? "avalanche").toLowerCase()}:${moat.contractAddress.toLowerCase()}`]}
+            logoUrl={logoMap[moat.contractAddress.toLowerCase()]}
             dailyEstimates={dailyEstimates}
             poolBalances={poolBalances}
           />

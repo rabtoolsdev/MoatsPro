@@ -157,8 +157,7 @@ export default function Home() {
     configs.forEach((c, i) => {
       const r = logoData[i];
       if (r?.status === "success" && typeof r.result === "string" && r.result.length > 0) {
-        const key = `${(c.network ?? "avalanche").toLowerCase()}:${c.contractAddress.toLowerCase()}`;
-        m[key] = r.result;
+        m[c.contractAddress.toLowerCase()] = r.result;
       }
     });
     return m;
@@ -173,7 +172,7 @@ export default function Home() {
           ids.add(getLlamaId(c.network, t.tokenAddress));
         }
       }
-      const meta = getMoatMeta(c.contractAddress, c.network);
+      const meta = getMoatMeta(c.contractAddress);
       if (meta.tokenAddress && c.network) {
         ids.add(getLlamaId(c.network, meta.tokenAddress));
       }
@@ -190,7 +189,7 @@ export default function Home() {
     const addrs = new Set<string>();
     if (configs) {
       for (const c of configs) {
-        const meta = getMoatMeta(c.contractAddress, c.network);
+        const meta = getMoatMeta(c.contractAddress);
         if (meta.tokenAddress) addrs.add(meta.tokenAddress.toLowerCase());
         // Include reward token addresses so Dexscreener can price them when
         // DefiLlama is silent (community reward tokens often only have DEX data).
@@ -357,8 +356,7 @@ export default function Home() {
       if (!tokenAddr) return;
       const info = dexInfoMap[tokenAddr];
       if (info && info.liquidityUsd > 0) {
-        const key = `${(c.network ?? "avalanche").toLowerCase()}:${c.contractAddress.toLowerCase()}`;
-        m[key] = {
+        m[c.contractAddress.toLowerCase()] = {
           liquidityUsd: info.liquidityUsd,
           pairCount: info.pairCount,
         };
@@ -446,7 +444,7 @@ export default function Home() {
 
   const moatsWithMeta = (configs || []).map((config) => ({
     ...config,
-    meta: getMoatMeta(config.contractAddress, config.network),
+    meta: getMoatMeta(config.contractAddress),
   }));
 
   const networkFiltered = activeNetwork
@@ -816,7 +814,7 @@ export default function Home() {
                   moat={moat}
                   tvlUSD={tvmMap[moat.contractAddress.toLowerCase()]}
                   supplyPct={supplyPctMap[moat.contractAddress.toLowerCase()]}
-                  logoUrl={logoMap[`${(moat.network ?? "avalanche").toLowerCase()}:${moat.contractAddress.toLowerCase()}`]}
+                  logoUrl={logoMap[moat.contractAddress.toLowerCase()]}
                   dexLiquidityUSD={liquidityTvlMap[moat.contractAddress.toLowerCase()]?.liquidityUsd}
                   dexPairCount={liquidityTvlMap[moat.contractAddress.toLowerCase()]?.pairCount}
                   dailyEstimates={dailyEstimates}

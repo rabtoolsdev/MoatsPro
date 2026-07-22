@@ -138,30 +138,20 @@ export const MOAT_METADATA: Record<string, MoatMeta> = {
 // Populated by useResolveMoatMetas() based on the on-chain stakingToken's
 // symbol() and name(), so newly-deployed Moats get a proper name automatically
 // instead of falling back to "Moat 0xabcd…".
-//
-// Keyed by "network:contractAddress" so that the same contract address on
-// different chains (e.g. The Grotto's Greg Moat vs Robinhood Chain's Goybeam
-// Moat) can resolve to different names.
 const RESOLVED_OVERRIDES: Record<string, Partial<MoatMeta>> = {};
 
-function resolvedKey(contractAddress: string, network?: string): string {
-  return `${(network ?? "avalanche").toLowerCase()}:${contractAddress.toLowerCase()}`;
-}
-
 export function setResolvedMoatMeta(contractAddress: string, override: Partial<MoatMeta>) {
-  const key = resolvedKey(contractAddress, override.chain);
-  RESOLVED_OVERRIDES[key] = { ...RESOLVED_OVERRIDES[key], ...override };
+  RESOLVED_OVERRIDES[contractAddress.toLowerCase()] = {
+    ...RESOLVED_OVERRIDES[contractAddress.toLowerCase()],
+    ...override,
+  };
 }
 
-export function getMoatMeta(contractAddress: string, network?: string): MoatMeta {
+export function getMoatMeta(contractAddress: string): MoatMeta {
   const lower = contractAddress.toLowerCase();
   const hardcoded = MOAT_METADATA[lower];
   if (hardcoded) return hardcoded;
-  // Try network-scoped key first, then fall back to address-only for
-  // any entries stored before this change.
-  const resolved =
-    RESOLVED_OVERRIDES[resolvedKey(contractAddress, network)] ??
-    RESOLVED_OVERRIDES[lower];
+  const resolved = RESOLVED_OVERRIDES[lower];
   if (resolved && resolved.name) {
     return {
       name: resolved.name,
@@ -286,8 +276,6 @@ const EXPLORER_URLS: Record<string, string> = {
   monad: "https://monadvision.com",
   thegrotto: "https://subnets.avax.network/thegrotto",
   blaze: "https://subnets.avax.network/blaze",
-  robinhood: "https://explorer.robinhood.com",
-  robinhoodchain: "https://explorer.robinhood.com",
 };
 
 export function getExplorerUrl(network: string): string {

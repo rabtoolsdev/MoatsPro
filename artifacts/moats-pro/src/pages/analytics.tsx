@@ -466,7 +466,7 @@ export default function Analytics() {
       for (const t of c.rewardTokens) {
         if (t.enabled && t.tokenAddress) ids.add(getLlamaId(c.network, t.tokenAddress));
       }
-      const meta = getMoatMeta(c.contractAddress, c.network);
+      const meta = getMoatMeta(c.contractAddress);
       if (meta.tokenAddress) ids.add(getLlamaId(c.network, meta.tokenAddress));
     }
     Object.entries(stakingTokenByMoat).forEach(([moat, tokenAddr]) => {
@@ -864,7 +864,7 @@ export default function Analytics() {
       (configs ?? [])
         .map((c) => ({
           address: c.contractAddress,
-          name: getMoatMeta(c.contractAddress, c.network).name,
+          name: getMoatMeta(c.contractAddress).name,
         }))
         .sort((a, b) => a.name.localeCompare(b.name)),
     [configs],
