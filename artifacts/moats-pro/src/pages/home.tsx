@@ -172,7 +172,7 @@ export default function Home() {
           ids.add(getLlamaId(c.network, t.tokenAddress));
         }
       }
-      const meta = getMoatMeta(c.contractAddress);
+      const meta = getMoatMeta(c.contractAddress, c.network);
       if (meta.tokenAddress && c.network) {
         ids.add(getLlamaId(c.network, meta.tokenAddress));
       }
@@ -189,7 +189,7 @@ export default function Home() {
     const addrs = new Set<string>();
     if (configs) {
       for (const c of configs) {
-        const meta = getMoatMeta(c.contractAddress);
+        const meta = getMoatMeta(c.contractAddress, c.network);
         if (meta.tokenAddress) addrs.add(meta.tokenAddress.toLowerCase());
         // Include reward token addresses so Dexscreener can price them when
         // DefiLlama is silent (community reward tokens often only have DEX data).
@@ -444,7 +444,7 @@ export default function Home() {
 
   const moatsWithMeta = (configs || []).map((config) => ({
     ...config,
-    meta: getMoatMeta(config.contractAddress),
+    meta: getMoatMeta(config.contractAddress, config.network),
   }));
 
   const networkFiltered = activeNetwork
