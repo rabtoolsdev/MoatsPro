@@ -157,7 +157,8 @@ export default function Home() {
     configs.forEach((c, i) => {
       const r = logoData[i];
       if (r?.status === "success" && typeof r.result === "string" && r.result.length > 0) {
-        m[c.contractAddress.toLowerCase()] = r.result;
+        const key = `${(c.network ?? "avalanche").toLowerCase()}:${c.contractAddress.toLowerCase()}`;
+        m[key] = r.result;
       }
     });
     return m;
@@ -814,7 +815,7 @@ export default function Home() {
                   moat={moat}
                   tvlUSD={tvmMap[moat.contractAddress.toLowerCase()]}
                   supplyPct={supplyPctMap[moat.contractAddress.toLowerCase()]}
-                  logoUrl={logoMap[moat.contractAddress.toLowerCase()]}
+                  logoUrl={logoMap[`${(moat.network ?? "avalanche").toLowerCase()}:${moat.contractAddress.toLowerCase()}`]}
                   dexLiquidityUSD={liquidityTvlMap[moat.contractAddress.toLowerCase()]?.liquidityUsd}
                   dexPairCount={liquidityTvlMap[moat.contractAddress.toLowerCase()]?.pairCount}
                   dailyEstimates={dailyEstimates}
