@@ -353,11 +353,15 @@ export const moatsApi = {
     return apiFetch<MoatPoint[]>(`/moat-points/all${qs}`);
   },
 
-  getMoatPointsV2: (contractAddress: string) =>
-    apiFetch<MoatPointsV2Response>(`/moat-points/v2/all?contractAddress=${contractAddress}`),
+  getMoatPointsV2: (contractAddress: string, network?: string) => {
+    const qs = network ? `&network=${encodeURIComponent(network)}` : "";
+    return apiFetch<MoatPointsV2Response>(`/moat-points/v2/all?contractAddress=${contractAddress}${qs}`);
+  },
 
-  getUserMoatPointsV2: (address: string, contractAddress: string) =>
-    apiFetch<UserMoatPointsV2Response>(`/moat-points/v2/user/${address}?contractAddress=${contractAddress}`),
+  getUserMoatPointsV2: (address: string, contractAddress: string, network?: string) => {
+    const qs = network ? `&network=${encodeURIComponent(network)}` : "";
+    return apiFetch<UserMoatPointsV2Response>(`/moat-points/v2/user/${address}?contractAddress=${contractAddress}${qs}`);
+  },
 
   getMapsLeaderboard: () =>
     apiFetch<MapsLeaderboardResponse>("/maps/score/all"),

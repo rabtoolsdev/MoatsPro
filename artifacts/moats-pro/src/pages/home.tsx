@@ -349,7 +349,22 @@ export default function Home() {
     return dexInfoMap?.[tokenAddr.toLowerCase()]?.price ?? 0;
   };
 
-  // Sum of liquidity across all DexScreener pools per moat (keyed by moat addr:network)
+  // Sum of liquidity across all DexScreener pools per moat (keyed by moat addr:network).
+  // Maps our internal network slug → DexScreener chainId so we can filter out
+  // cross-chain address collisions (same token address deployed on two chains).
+  // Chains absent from this map are not indexed by DexScreener; their moats get no
+  // DEX TVL row rather than inheriting another chain's data.
+  const NETWORK_TO_DEX_CHAIN: Record<string, string> = {
+    avalanche: "avalanche",
+    avax: "avalanche",
+    thegrotto: "avalanche",
+    ethereum: "ethereum",
+    base: "base",
+    arbitrum: "arbitrum",
+    optimism: "optimism",
+    polygon: "polygon",
+    bsc: "bsc",
+  };
   const liquidityTvlMap = useMemo((): Record<string, { liquidityUsd: number; pairCount: number }> => {
     if (!configs || !dexInfoMap) return {};
     const m: Record<string, { liquidityUsd: number; pairCount: number }> = {};
@@ -357,13 +372,16 @@ export default function Home() {
       const tokenAddr = stakingTokenAddrs[i]?.toLowerCase();
       if (!tokenAddr) return;
       const info = dexInfoMap[tokenAddr];
-      if (info && info.liquidityUsd > 0) {
-        const key = `${c.contractAddress.toLowerCase()}:${(c.network ?? "avalanche").toLowerCase()}`;
-        m[key] = {
-          liquidityUsd: info.liquidityUsd,
-          pairCount: info.pairCount,
-        };
-      }
+      if (!info || info.liquidityUsd <= 0) return;
+      // Only include DEX TVL if this moat's network is indexed by DexScreener
+      // AND the token actually has pairs on that DexScreener chain. This prevents
+      // a token address on Robinhood Chain (not in DexScreener) from showing
+      // Avalanche DEX data that belongs to a different moat sharing the same address.
+      const expectedDexChain = NETWORK_TO_DEX_CHAIN[(c.network ?? "avalanche").toLowerCase()];
+      if (!expectedDexChain) return;
+      if (info.pairChains && info.pairChains.size > 0 && !info.pairChains.has(expectedDexChain)) return;
+      const key = `${c.contractAddress.toLowerCase()}:${(c.network ?? "avalanche").toLowerCase()}`;
+      m[key] = { liquidityUsd: info.liquidityUsd, pairCount: info.pairCount };
     });
     return m;
   }, [configs, stakingTokenAddrs, dexInfoMap]);

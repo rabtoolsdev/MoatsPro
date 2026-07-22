@@ -76,7 +76,7 @@ export function useAllMoatPoints(contractAddress?: string) {
 export function useMoatPointsV2(contractAddress: string | undefined, network?: string) {
   return useQuery({
     queryKey: ["moats", "points", "v2", network, contractAddress],
-    queryFn: () => moatsApi.getMoatPointsV2(contractAddress!),
+    queryFn: () => moatsApi.getMoatPointsV2(contractAddress!, network),
     enabled: !!contractAddress,
     staleTime: 30_000,
   });
@@ -85,7 +85,7 @@ export function useMoatPointsV2(contractAddress: string | undefined, network?: s
 export function useUserMoatPointsV2(address: string | undefined, contractAddress: string | undefined, network?: string) {
   return useQuery({
     queryKey: ["moats", "points", "v2", "user", address, network, contractAddress],
-    queryFn: () => moatsApi.getUserMoatPointsV2(address!, contractAddress!),
+    queryFn: () => moatsApi.getUserMoatPointsV2(address!, contractAddress!, network),
     enabled: !!address && !!contractAddress,
     staleTime: 30_000,
   });

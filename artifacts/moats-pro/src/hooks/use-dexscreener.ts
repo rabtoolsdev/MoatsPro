@@ -41,12 +41,19 @@ export interface DexTokenInfo {
    * this for per-LP-unit value math: `pricePerLp = lpPoolLiquidityUsd / lpTotalSupply`.
    */
   lpPoolLiquidityUsd?: number;
+  /**
+   * Set of DexScreener chainId strings (e.g. "avalanche", "base") where this
+   * token has at least one liquid pair. Used to prevent DEX data from one chain
+   * bleeding into a moat on a different chain with the same token address.
+   */
+  pairChains?: Set<string>;
 }
 
 async function fetchBatch(
   batch: string[],
   acc: Record<string, { price: number; liq: number }[]>,
   images?: Record<string, { liq: number; url: string }>,
+  chains?: Record<string, Set<string>>,
 ): Promise<Set<string>> {
   // Returns the set of queried addresses that were represented in the response.
   const seen = new Set<string>();
@@ -55,6 +62,7 @@ async function fetchBatch(
     if (!res.ok) return seen;
     const data = (await res.json()) as {
       pairs?: Array<{
+        chainId?: string;
         baseToken: { address: string; symbol: string };
         priceUsd?: string;
         liquidity?: { usd?: number };
@@ -68,6 +76,12 @@ async function fetchBatch(
       const liq = pair.liquidity?.usd ?? 0;
       if (price > 0 && liq > 0) {
         (acc[addr] ||= []).push({ price, liq });
+      }
+      // Track which DexScreener chains this token appears on so callers can
+      // filter out cross-chain address collisions (e.g. same address exists on
+      // Avalanche and Robinhood Chain as entirely different tokens).
+      if (chains && pair.chainId) {
+        (chains[addr] ||= new Set()).add(pair.chainId.toLowerCase());
       }
       // Track the imageUrl from the *deepest-liquidity* pair so we use the
       // canonical project profile (avoids picking a tiny test pool's logo).
@@ -88,6 +102,7 @@ async function fetchDexInfo(addresses: string[]): Promise<Record<string, DexToke
   if (addresses.length === 0) return {};
   const acc: Record<string, { price: number; liq: number }[]> = {};
   const images: Record<string, { liq: number; url: string }> = {};
+  const chains: Record<string, Set<string>> = {};
   const missing: string[] = [];
   // LP staking tokens (e.g. Pharaoh's hCASH/WAVAX pair) are pair contracts
   // themselves. Their per-LP-unit price comes from /pairs, but for the DEX TVL
@@ -97,7 +112,7 @@ async function fetchDexInfo(addresses: string[]): Promise<Record<string, DexToke
 
   for (let i = 0; i < addresses.length; i += BATCH_SIZE) {
     const batch = addresses.slice(i, i + BATCH_SIZE);
-    const seen = await fetchBatch(batch, acc, images);
+    const seen = await fetchBatch(batch, acc, images, chains);
     // Truncation safeguard: any queried token with NO pairs in the response
     // might either truly have no DEX listing OR have been dropped due to the
     // ~30-pair response cap. Re-query unseen tokens individually so we never
@@ -111,7 +126,7 @@ async function fetchDexInfo(addresses: string[]): Promise<Record<string, DexToke
   // ERC-20s with their own pair listing, so they only resolve via /pairs/{addr}.
   const lpBaseAddrs: string[] = [];
   for (const addr of missing) {
-    const seen = await fetchBatch([addr], acc, images);
+    const seen = await fetchBatch([addr], acc, images, chains);
     if (seen.has(addr)) continue;
     try {
       const res = await fetch(`${DEXSCREENER_PAIRS_API}/${DEFAULT_PAIR_CHAIN}/${addr}`);
@@ -175,6 +190,7 @@ async function fetchDexInfo(addresses: string[]): Promise<Record<string, DexToke
         imageUrl: images[lp.baseAddr]?.url,
         isLpToken: true,
         lpPoolLiquidityUsd: lp.lpPoolLiquidityUsd,
+        pairChains: chains[addr] ?? chains[lp.baseAddr],
       };
     } else {
       const pairs = acc[addr] ?? [];
@@ -188,6 +204,7 @@ async function fetchDexInfo(addresses: string[]): Promise<Record<string, DexToke
         liquidityUsd: totalLiq,
         pairCount: pairs.length,
         imageUrl: images[addr]?.url,
+        pairChains: chains[addr],
       };
     }
   }
