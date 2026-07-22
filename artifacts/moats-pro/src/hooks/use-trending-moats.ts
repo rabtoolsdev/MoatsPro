@@ -155,12 +155,13 @@ export function useTrendingMoats({
       // Exclude deprecated moats from the trending feed
       .filter((c) => c.status === "Verified" || c.status === "Community")
       .map((c) => {
-        const key = c.contractAddress.toLowerCase();
+        const addrKey = c.contractAddress.toLowerCase();
+        const moatKey = `${addrKey}:${(c.network ?? "avalanche").toLowerCase()}`;
         return {
           config: c,
-          tvmUsd: tvmMap?.[key] ?? 0,
-          rewards7dUsd: rewards7dByMoat[key] ?? 0,
-          activeWallets7d: wallets7dByMoat[key] ?? 0,
+          tvmUsd: tvmMap?.[moatKey] ?? 0,
+          rewards7dUsd: rewards7dByMoat[addrKey] ?? 0,
+          activeWallets7d: wallets7dByMoat[addrKey] ?? 0,
         };
       })
       // Must have at least one positive signal

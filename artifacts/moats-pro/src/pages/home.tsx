@@ -347,7 +347,7 @@ export default function Home() {
     return dexInfoMap?.[tokenAddr.toLowerCase()]?.price ?? 0;
   };
 
-  // Sum of liquidity across all DexScreener pools per moat (keyed by moat addr)
+  // Sum of liquidity across all DexScreener pools per moat (keyed by moat addr:network)
   const liquidityTvlMap = useMemo((): Record<string, { liquidityUsd: number; pairCount: number }> => {
     if (!configs || !dexInfoMap) return {};
     const m: Record<string, { liquidityUsd: number; pairCount: number }> = {};
@@ -356,7 +356,8 @@ export default function Home() {
       if (!tokenAddr) return;
       const info = dexInfoMap[tokenAddr];
       if (info && info.liquidityUsd > 0) {
-        m[c.contractAddress.toLowerCase()] = {
+        const key = `${c.contractAddress.toLowerCase()}:${(c.network ?? "avalanche").toLowerCase()}`;
+        m[key] = {
           liquidityUsd: info.liquidityUsd,
           pairCount: info.pairCount,
         };
@@ -383,6 +384,7 @@ export default function Home() {
       // of the LP supply, not bare ERC-20 units, so DexScreener's per-pair
       // priceUsd (which is the BASE token price, not per-LP-unit) gives the
       // wrong TVM. Compute moat's share × pool TVL instead.
+      const moatKey = `${c.contractAddress.toLowerCase()}:${(c.network ?? "avalanche").toLowerCase()}`;
       if (dexInfo?.isLpToken) {
         // Use the LP's OWN pool TVL (not the aggregated underlying-token
         // liquidity), since the LP token only represents a share of that
@@ -392,14 +394,14 @@ export default function Home() {
         const supply = totalSupplyMap[tokenAddr];
         if (poolTvl > 0 && supply && supply > 0n) {
           const moatShareBp = Number(((totalStaked + totalLocked + totalBurned) * 1_000_000n) / supply);
-          m[c.contractAddress.toLowerCase()] = (moatShareBp / 1_000_000) * poolTvl;
+          m[moatKey] = (moatShareBp / 1_000_000) * poolTvl;
         }
         return;
       }
       const dec = decimalsMap[tokenAddr] ?? 18;
       const price = getTokenPrice(c.network, tokenAddr);
       if (price > 0) {
-        m[c.contractAddress.toLowerCase()] =
+        m[moatKey] =
           parseFloat(formatUnits(totalStaked + totalLocked + totalBurned, dec)) * price;
         return;
       }
@@ -409,7 +411,7 @@ export default function Home() {
       const supply = totalSupplyMap[tokenAddr];
       if (aggLiq > 0 && supply && supply > 0n) {
         const moatShareBp = Number(((totalStaked + totalLocked + totalBurned) * 1_000_000n) / supply);
-        m[c.contractAddress.toLowerCase()] = (moatShareBp / 1_000_000) * aggLiq;
+        m[moatKey] = (moatShareBp / 1_000_000) * aggLiq;
       }
     });
     return m;
@@ -432,7 +434,7 @@ export default function Home() {
       const supply = totalSupplyMap[tokenAddr];
       if (supply && supply > 0n) {
         const pct = Number(((totalStaked + totalLocked + totalBurned) * 10000n) / supply) / 100;
-        m[c.contractAddress.toLowerCase()] = pct;
+        m[`${c.contractAddress.toLowerCase()}:${(c.network ?? "avalanche").toLowerCase()}`] = pct;
       }
     });
     return m;
@@ -497,12 +499,12 @@ export default function Home() {
     .sort((a, b) => {
       if (sortBy === "name") return a.meta.name.localeCompare(b.meta.name);
       if (sortBy === "supply") {
-        const sa = supplyPctMap[a.contractAddress.toLowerCase()] ?? 0;
-        const sb = supplyPctMap[b.contractAddress.toLowerCase()] ?? 0;
+        const sa = supplyPctMap[`${a.contractAddress.toLowerCase()}:${(a.network ?? "avalanche").toLowerCase()}`] ?? 0;
+        const sb = supplyPctMap[`${b.contractAddress.toLowerCase()}:${(b.network ?? "avalanche").toLowerCase()}`] ?? 0;
         return sb - sa;
       }
-      const tvmA = tvmMap[a.contractAddress.toLowerCase()] ?? 0;
-      const tvmB = tvmMap[b.contractAddress.toLowerCase()] ?? 0;
+      const tvmA = tvmMap[`${a.contractAddress.toLowerCase()}:${(a.network ?? "avalanche").toLowerCase()}`] ?? 0;
+      const tvmB = tvmMap[`${b.contractAddress.toLowerCase()}:${(b.network ?? "avalanche").toLowerCase()}`] ?? 0;
       return tvmB - tvmA;
     });
 
@@ -812,11 +814,11 @@ export default function Home() {
               <motion.div key={moat.contractAddress} variants={itemVariants}>
                 <MoatCard
                   moat={moat}
-                  tvlUSD={tvmMap[moat.contractAddress.toLowerCase()]}
-                  supplyPct={supplyPctMap[moat.contractAddress.toLowerCase()]}
+                  tvlUSD={tvmMap[`${moat.contractAddress.toLowerCase()}:${(moat.network ?? "avalanche").toLowerCase()}`]}
+                  supplyPct={supplyPctMap[`${moat.contractAddress.toLowerCase()}:${(moat.network ?? "avalanche").toLowerCase()}`]}
                   logoUrl={logoMap[`${moat.contractAddress.toLowerCase()}:${(moat.network ?? "avalanche").toLowerCase()}`]}
-                  dexLiquidityUSD={liquidityTvlMap[moat.contractAddress.toLowerCase()]?.liquidityUsd}
-                  dexPairCount={liquidityTvlMap[moat.contractAddress.toLowerCase()]?.pairCount}
+                  dexLiquidityUSD={liquidityTvlMap[`${moat.contractAddress.toLowerCase()}:${(moat.network ?? "avalanche").toLowerCase()}`]?.liquidityUsd}
+                  dexPairCount={liquidityTvlMap[`${moat.contractAddress.toLowerCase()}:${(moat.network ?? "avalanche").toLowerCase()}`]?.pairCount}
                   dailyEstimates={dailyEstimates}
                   poolBalances={poolBalances}
                 />
