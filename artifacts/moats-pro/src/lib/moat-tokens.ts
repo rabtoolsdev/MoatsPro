@@ -191,7 +191,7 @@ export function deriveMoatTokens(
   for (const cfg of configs) {
     if (cfg.network !== network) continue;
     if (cfg.status === "Deprecated") continue;
-    const meta = getMoatMeta(cfg.contractAddress);
+    const meta = getMoatMeta(cfg.contractAddress, cfg.network);
     if (!meta.tokenAddress) continue;
     if (meta.tokenSymbol.includes("/")) continue;
     const lower = meta.tokenAddress.toLowerCase();

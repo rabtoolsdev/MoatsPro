@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useReadContracts } from "wagmi";
 import { ERC20_ABI } from "@/lib/moat-abi";
-import { MOAT_METADATA, setResolvedMoatMeta } from "@/lib/moat-metadata";
+import { hasResolvedMoatMeta, setResolvedMoatMeta } from "@/lib/moat-metadata";
 import { networkToChainId } from "@/lib/wagmi-config";
 
 export interface MoatTokenLookup {
@@ -14,9 +14,7 @@ export function useResolveMoatMetas(lookups: MoatTokenLookup[]) {
   const unresolved = useMemo(
     () =>
       lookups.filter(
-        (l) =>
-          l.stakingToken &&
-          !MOAT_METADATA[l.contractAddress.toLowerCase()],
+        (l) => l.stakingToken && !hasResolvedMoatMeta(l.contractAddress, l.network),
       ),
     [lookups],
   );
@@ -59,7 +57,7 @@ export function useResolveMoatMetas(lookups: MoatTokenLookup[]) {
         nameRes?.status === "success" ? (nameRes.result as string) : undefined;
       if (!symbol && !tokenName) return;
       const display = tokenName || symbol || "Token";
-      setResolvedMoatMeta(l.contractAddress, {
+      setResolvedMoatMeta(l.contractAddress, l.network, {
         name: `${display} Moat`,
         protocol: tokenName || symbol || "Moats Protocol",
         tokenSymbol: symbol || "TOKEN",

@@ -140,18 +140,33 @@ export const MOAT_METADATA: Record<string, MoatMeta> = {
 // instead of falling back to "Moat 0xabcd…".
 const RESOLVED_OVERRIDES: Record<string, Partial<MoatMeta>> = {};
 
-export function setResolvedMoatMeta(contractAddress: string, override: Partial<MoatMeta>) {
-  RESOLVED_OVERRIDES[contractAddress.toLowerCase()] = {
-    ...RESOLVED_OVERRIDES[contractAddress.toLowerCase()],
-    ...override,
-  };
+// Composite cache key: "address:network" so two moats with the same contract
+// address but on different chains (e.g. Greg Moat on Grotto vs Goybeam on
+// Robinhood Chain) resolve independently and don't overwrite each other.
+function resolvedKey(address: string, network?: string): string {
+  const lower = address.toLowerCase();
+  return network && typeof network === "string" ? `${lower}:${network.toLowerCase()}` : lower;
 }
 
-export function getMoatMeta(contractAddress: string): MoatMeta {
+export function hasResolvedMoatMeta(contractAddress: string, network?: string): boolean {
+  const lower = contractAddress.toLowerCase();
+  if (MOAT_METADATA[lower]) return true;
+  const key = resolvedKey(contractAddress, network);
+  return !!(RESOLVED_OVERRIDES[key]?.name || RESOLVED_OVERRIDES[lower]?.name);
+}
+
+export function setResolvedMoatMeta(contractAddress: string, network: string | undefined, override: Partial<MoatMeta>) {
+  const key = resolvedKey(contractAddress, network);
+  RESOLVED_OVERRIDES[key] = { ...RESOLVED_OVERRIDES[key], ...override };
+}
+
+export function getMoatMeta(contractAddress: string, network?: string): MoatMeta {
   const lower = contractAddress.toLowerCase();
   const hardcoded = MOAT_METADATA[lower];
   if (hardcoded) return hardcoded;
-  const resolved = RESOLVED_OVERRIDES[lower];
+  // Try network-specific key first, then fall back to address-only key
+  const key = resolvedKey(contractAddress, network);
+  const resolved = RESOLVED_OVERRIDES[key] ?? RESOLVED_OVERRIDES[lower];
   if (resolved && resolved.name) {
     return {
       name: resolved.name,
@@ -276,6 +291,8 @@ const EXPLORER_URLS: Record<string, string> = {
   monad: "https://monadvision.com",
   thegrotto: "https://subnets.avax.network/thegrotto",
   blaze: "https://subnets.avax.network/blaze",
+  robinhood: "https://explorer.robinhood.com",
+  robinhoodchain: "https://explorer.robinhood.com",
 };
 
 export function getExplorerUrl(network: string): string {

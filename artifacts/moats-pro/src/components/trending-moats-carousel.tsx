@@ -45,7 +45,7 @@ function rankAccent(rank: number) {
 
 function TrendingCard({ item, logoUrls }: { item: TrendingMoat; logoUrls?: Record<string, string> }) {
   const { config, tvmUsd, rewards7dUsd, activeWallets7d, rank } = item;
-  const meta = getMoatMeta(config.contractAddress);
+  const meta = getMoatMeta(config.contractAddress, config.network);
   const accent = rankAccent(rank);
   const primaryTokenAddress = meta.tokenAddress || config.rewardTokens.find((t) => t.enabled)?.tokenAddress;
   const onChainLogo = logoUrls?.[config.contractAddress.toLowerCase()];

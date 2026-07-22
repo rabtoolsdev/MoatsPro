@@ -126,7 +126,7 @@ export { MoatLogo };
 export function MoatCard({ moat, tvlUSD, supplyPct, logoUrl, dexLiquidityUSD, dexPairCount, dailyEstimates, poolBalances }: MoatCardProps) {
   const statusStyle = statusColors[moat.status] || statusColors.Community;
   const activeRewardTokens = moat.rewardTokens.filter((t) => t.enabled);
-  const meta = getMoatMeta(moat.contractAddress);
+  const meta = getMoatMeta(moat.contractAddress, moat.network);
   const primaryTokenAddress = meta.tokenAddress || activeRewardTokens[0]?.tokenAddress;
 
   const moatLower = moat.contractAddress.toLowerCase();

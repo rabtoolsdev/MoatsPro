@@ -795,10 +795,10 @@ export default function MoatDetail() {
               <div className="flex items-start gap-5">
                 <div className="relative group">
                   <MoatLogo
-                    meta={getMoatMeta(contractAddress)}
+                    meta={getMoatMeta(contractAddress, moatConfig?.network)}
                     primaryTokenAddress={
                       moatConfig?.rewardTokens?.filter((t) => t.enabled)[0]?.tokenAddress ||
-                      getMoatMeta(contractAddress).tokenAddress
+                      getMoatMeta(contractAddress, moatConfig?.network).tokenAddress
                     }
                     onChainLogoUrl={onChainLogoUrl ?? undefined}
                     size="lg"
@@ -808,7 +808,7 @@ export default function MoatDetail() {
                 <div>
                   <div className="flex items-center gap-3 mb-1.5 flex-wrap">
                     <h1 className="text-3xl md:text-4xl font-black tracking-tight text-white drop-shadow-md">
-                      {getMoatMeta(contractAddress).name}
+                      {getMoatMeta(contractAddress, moatConfig?.network).name}
                     </h1>
                     {moatConfig?.status && (
                       <span
@@ -828,7 +828,7 @@ export default function MoatDetail() {
                     )}
                   </div>
                   <div className="flex items-center gap-2 mb-2">
-                    <p className="text-xs font-mono text-primary/80 uppercase tracking-widest">{getMoatMeta(contractAddress).protocol}</p>
+                    <p className="text-xs font-mono text-primary/80 uppercase tracking-widest">{getMoatMeta(contractAddress, moatConfig?.network).protocol}</p>
                     <span className="text-white/20">•</span>
                     <p className="font-mono text-xs text-muted-foreground/50">{contractAddress}</p>
                   </div>

@@ -762,8 +762,8 @@ export default function Portfolio() {
                         return getPositionValueUSD(activePositions[b], b) - getPositionValueUSD(activePositions[a], a);
                       }
                       if (sortBy === "name") {
-                        return getMoatMeta(activePositions[a].config.contractAddress).name
-                          .localeCompare(getMoatMeta(activePositions[b].config.contractAddress).name);
+                        return getMoatMeta(activePositions[a].config.contractAddress, activePositions[a].config.network).name
+                          .localeCompare(getMoatMeta(activePositions[b].config.contractAddress, activePositions[b].config.network).name);
                       }
                       const ptsA = moatPointsMap[activePositions[a].config.contractAddress.toLowerCase()] ?? 0;
                       const ptsB = moatPointsMap[activePositions[b].config.contractAddress.toLowerCase()] ?? 0;
@@ -771,7 +771,7 @@ export default function Portfolio() {
                     })
                     .map((i) => {
                     const pos = activePositions[i];
-                    const meta = getMoatMeta(pos.config.contractAddress);
+                    const meta = getMoatMeta(pos.config.contractAddress, pos.config.network);
                     const tokenAddr = positionStakingTokens[i];
                     const dec = decimalsMap[tokenAddr?.toLowerCase()] ?? 18;
                     const locked = lockedMap[pos.config.contractAddress.toLowerCase()] ?? 0n;
