@@ -265,7 +265,7 @@ export default function MoatDetail() {
   // the same leaderboard for ANY contract address regardless of chain. Until
   // the backend supports per-network filtering, only fetch/show points for the
   // networks where the points system is actually active (The Grotto).
-  const POINTS_ENABLED_NETWORKS = new Set(["thegrotto"]);
+  const POINTS_ENABLED_NETWORKS = new Set(["thegrotto", "robinhood"]);
   const pointsEnabled = POINTS_ENABLED_NETWORKS.has((urlNetwork ?? "").toLowerCase());
   const { address: userAddress, isConnected } = useAccount();
 
