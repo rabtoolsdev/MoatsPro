@@ -7,13 +7,14 @@ import { isNativeToken, type MoatToken } from "@/lib/moat-tokens";
 
 export type MoatContractAddress = `0x${string}`;
 
-export function useMoatStats(contractAddress: MoatContractAddress | undefined) {
+export function useMoatStats(contractAddress: MoatContractAddress | undefined, chainId?: number) {
   const enabled = !!contractAddress;
 
   const totalStaked = useReadContract({
     address: contractAddress,
     abi: MOAT_V3_ABI,
     functionName: "totalStaked",
+    chainId,
     query: { enabled },
   });
 
@@ -21,6 +22,7 @@ export function useMoatStats(contractAddress: MoatContractAddress | undefined) {
     address: contractAddress,
     abi: MOAT_V3_ABI,
     functionName: "totalLocked",
+    chainId,
     query: { enabled },
   });
 
@@ -28,6 +30,7 @@ export function useMoatStats(contractAddress: MoatContractAddress | undefined) {
     address: contractAddress,
     abi: MOAT_V3_ABI,
     functionName: "totalBurned",
+    chainId,
     query: { enabled },
   });
 
@@ -35,6 +38,7 @@ export function useMoatStats(contractAddress: MoatContractAddress | undefined) {
     address: contractAddress,
     abi: MOAT_V3_ABI,
     functionName: "totalPoints",
+    chainId,
     query: { enabled },
   });
 
@@ -42,6 +46,7 @@ export function useMoatStats(contractAddress: MoatContractAddress | undefined) {
     address: contractAddress,
     abi: MOAT_V3_ABI,
     functionName: "activeUserCount",
+    chainId,
     query: { enabled },
   });
 
@@ -49,6 +54,7 @@ export function useMoatStats(contractAddress: MoatContractAddress | undefined) {
     address: contractAddress,
     abi: MOAT_V3_ABI,
     functionName: "stakingEnabled",
+    chainId,
     query: { enabled },
   });
 
@@ -56,6 +62,7 @@ export function useMoatStats(contractAddress: MoatContractAddress | undefined) {
     address: contractAddress,
     abi: MOAT_V3_ABI,
     functionName: "stakingToken",
+    chainId,
     query: { enabled },
   });
 
@@ -63,6 +70,7 @@ export function useMoatStats(contractAddress: MoatContractAddress | undefined) {
     address: contractAddress,
     abi: MOAT_V3_ABI,
     functionName: "unstakeFee",
+    chainId,
     query: { enabled },
   });
 
@@ -90,7 +98,8 @@ export function useMoatStats(contractAddress: MoatContractAddress | undefined) {
 }
 
 export function useUserMoatInfo(
-  contractAddress: MoatContractAddress | undefined
+  contractAddress: MoatContractAddress | undefined,
+  chainId?: number,
 ) {
   const { address } = useAccount();
   const enabled = !!contractAddress && !!address;
@@ -100,6 +109,7 @@ export function useUserMoatInfo(
     abi: MOAT_V3_ABI,
     functionName: "userInfo",
     args: address ? [address] : undefined,
+    chainId,
     query: { enabled },
   });
 
@@ -108,6 +118,7 @@ export function useUserMoatInfo(
     abi: MOAT_V3_ABI,
     functionName: "getAllPendingRewards",
     args: address ? [address] : undefined,
+    chainId,
     query: { enabled },
   });
 
@@ -124,7 +135,8 @@ export function useUserMoatInfo(
 }
 
 export function useTokenBalance(
-  tokenAddress: MoatContractAddress | undefined
+  tokenAddress: MoatContractAddress | undefined,
+  chainId?: number,
 ) {
   const { address } = useAccount();
   const enabled = !!tokenAddress && !!address;
@@ -134,6 +146,7 @@ export function useTokenBalance(
     abi: ERC20_ABI,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
+    chainId,
     query: { enabled, refetchInterval: 15_000 },
   });
 
@@ -141,6 +154,7 @@ export function useTokenBalance(
     address: tokenAddress,
     abi: ERC20_ABI,
     functionName: "decimals",
+    chainId,
     query: { enabled },
   });
 
@@ -148,6 +162,7 @@ export function useTokenBalance(
     address: tokenAddress,
     abi: ERC20_ABI,
     functionName: "symbol",
+    chainId,
     query: { enabled },
   });
 
@@ -223,7 +238,8 @@ export function useSwapFromBalance(token: MoatToken | null) {
 
 export function useTokenAllowance(
   tokenAddress: MoatContractAddress | undefined,
-  spenderAddress: MoatContractAddress | undefined
+  spenderAddress: MoatContractAddress | undefined,
+  chainId?: number,
 ) {
   const { address } = useAccount();
   const enabled = !!tokenAddress && !!spenderAddress && !!address;
@@ -233,6 +249,7 @@ export function useTokenAllowance(
     abi: ERC20_ABI,
     functionName: "allowance",
     args: address && spenderAddress ? [address, spenderAddress] : undefined,
+    chainId,
     query: { enabled, refetchInterval: 15_000 },
   });
 }
@@ -428,7 +445,8 @@ export interface UserLock {
 export function useUserLocks(
   contractAddress: MoatContractAddress | undefined,
   userAddress: `0x${string}` | undefined,
-  activeLockCount: number
+  activeLockCount: number,
+  chainId?: number,
 ) {
   // The contract's userInfo.activeLockCount is the count of *currently active*
   // locks, but lock slots are stored sparsely: a user who has exited 2 locks
@@ -453,6 +471,7 @@ export function useUserLocks(
       abi: MOAT_V3_ABI,
       functionName: "getUserLock" as const,
       args: [userAddress, BigInt(i)] as const,
+      chainId,
     }));
   }, [contractAddress, userAddress, probeCount]);
 

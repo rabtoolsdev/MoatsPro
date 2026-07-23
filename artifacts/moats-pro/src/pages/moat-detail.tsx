@@ -302,12 +302,14 @@ export default function MoatDetail() {
     }
     return map;
   }, [rewardsDepositedData]);
-  const stats = useMoatStats(contractAddress as MoatContractAddress | undefined);
-  const userInfo = useUserMoatInfo(contractAddress as MoatContractAddress | undefined);
-  const tokenBalance = useTokenBalance(stats.stakingToken as MoatContractAddress | undefined);
+  const moatChainId = networkToChainId(urlNetwork);
+  const stats = useMoatStats(contractAddress as MoatContractAddress | undefined, moatChainId);
+  const userInfo = useUserMoatInfo(contractAddress as MoatContractAddress | undefined, moatChainId);
+  const tokenBalance = useTokenBalance(stats.stakingToken as MoatContractAddress | undefined, moatChainId);
   const allowance = useTokenAllowance(
     stats.stakingToken as MoatContractAddress | undefined,
-    contractAddress as MoatContractAddress | undefined
+    contractAddress as MoatContractAddress | undefined,
+    moatChainId,
   );
 
   const [withdrawAmount, setWithdrawAmount] = useState("");
@@ -355,7 +357,8 @@ export default function MoatDetail() {
   const { locks, isLoading: locksLoading, refetch: refetchLocks } = useUserLocks(
     contractAddress as MoatContractAddress | undefined,
     userAddress,
-    activeLockCount
+    activeLockCount,
+    moatChainId,
   );
 
   // Moat Points, the leaderboard and the activity feed come from the Moats
