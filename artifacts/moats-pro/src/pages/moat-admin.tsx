@@ -2,118 +2,98 @@ import { useState, useMemo } from "react";
 import { useAccount } from "wagmi";
 import { useReadContracts, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { formatUnits, parseUnits } from "viem";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
-  Shield, ChevronDown, ChevronUp, ToggleLeft, ToggleRight,
+  Shield, ToggleLeft, ToggleRight,
   Coins, Settings, AlertTriangle, Loader2, CheckCircle2,
-  UserPlus, UserMinus, Zap, Power, Lock, Flame, ArrowDownToLine,
-  BadgeCheck, ExternalLink,
+  UserPlus, UserMinus, Zap, Power, Lock,
+  ArrowDownToLine, BadgeCheck, ExternalLink, AlertCircle,
 } from "lucide-react";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
+import { MoatLogo } from "@/components/moat-card";
 import { useAllMoatConfigs } from "@/hooks/use-moats-api";
 import { getMoatMeta, formatAddress, getExplorerUrl } from "@/lib/moat-metadata";
 import { MOAT_V3_ABI, MOAT_V3_ADMIN_ABI, ERC20_ABI } from "@/lib/moat-abi";
 import { networkToChainId } from "@/lib/wagmi-config";
 import type { MoatConfig, RewardToken } from "@/lib/moats-api";
 
-// ── helpers ──────────────────────────────────────────────────────────────────
+// ── helpers ───────────────────────────────────────────────────────────────────
 
 function fmtFee(fee: bigint | undefined): string {
   if (fee === undefined) return "—";
   return `${(Number(fee) / 100).toFixed(2)}%`;
 }
 
-// ── Sub-component: Toggle Row ─────────────────────────────────────────────────
+const networkLabels: Record<string, string> = {
+  avalanche: "Avalanche", ethereum: "Ethereum", base: "Base", bsc: "BNB",
+  monad: "Monad", thegrotto: "The Grotto", blaze: "Blaze", robinhood: "Robinhood",
+};
+
+// ── Toggle row ────────────────────────────────────────────────────────────────
 
 function ToggleRow({
-  label,
-  enabled,
-  isLoading,
-  onEnable,
-  onDisable,
-  isPending,
-  description,
+  label, enabled, isLoading, onEnable, onDisable, isPending, description,
 }: {
-  label: string;
-  enabled: boolean | undefined;
-  isLoading: boolean;
-  onEnable: () => void;
-  onDisable: () => void;
-  isPending: boolean;
-  description?: string;
+  label: string; enabled: boolean | undefined; isLoading: boolean;
+  onEnable: () => void; onDisable: () => void; isPending: boolean; description?: string;
 }) {
+  const active = enabled === true;
   return (
-    <div className="flex items-center justify-between py-3 border-b border-white/5 last:border-0">
-      <div>
-        <p className="text-sm font-medium text-white">{label}</p>
-        {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
+    <div className="flex items-center justify-between py-3.5 border-b border-white/5 last:border-0">
+      <div className="min-w-0 pr-4">
+        <p className="text-sm font-semibold text-white">{label}</p>
+        {description && <p className="text-xs text-muted-foreground/70 mt-0.5 leading-snug">{description}</p>}
       </div>
       <button
-        onClick={() => (enabled ? onDisable() : onEnable())}
+        onClick={() => (active ? onDisable() : onEnable())}
         disabled={isLoading || isPending || enabled === undefined}
-        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
-          enabled
-            ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25"
-            : "bg-rose-500/15 text-rose-400 border border-rose-500/30 hover:bg-rose-500/25"
+        className={`shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed border ${
+          active
+            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/25 hover:bg-emerald-500/20 shadow-[0_0_12px_rgba(52,211,153,0.1)]"
+            : "bg-rose-500/10 text-rose-400 border-rose-500/25 hover:bg-rose-500/20"
         }`}
       >
-        {isPending || isLoading ? (
-          <Loader2 size={12} className="animate-spin" />
-        ) : enabled ? (
+        {isPending ? (
+          <Loader2 size={13} className="animate-spin" />
+        ) : active ? (
           <ToggleRight size={14} />
         ) : (
           <ToggleLeft size={14} />
         )}
-        {enabled ? "Enabled" : "Disabled"}
+        {active ? "Enabled" : "Disabled"}
       </button>
     </div>
   );
 }
 
-// ── Sub-component: Tx Status Banner ──────────────────────────────────────────
+// ── Tx status banner ──────────────────────────────────────────────────────────
 
-function TxStatus({
-  hash,
-  isPending,
-  isConfirming,
-  isSuccess,
-  error,
-}: {
-  hash?: `0x${string}`;
-  isPending: boolean;
-  isConfirming: boolean;
-  isSuccess: boolean;
-  error: Error | null;
+function TxStatus({ hash, isPending, isConfirming, isSuccess, error }: {
+  hash?: `0x${string}`; isPending: boolean; isConfirming: boolean;
+  isSuccess: boolean; error: Error | null;
 }) {
   if (!isPending && !isConfirming && !isSuccess && !error) return null;
   return (
-    <div
-      className={`mt-3 flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium ${
-        error
-          ? "bg-rose-500/10 text-rose-400 border border-rose-500/20"
-          : isSuccess
-          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-          : "bg-primary/10 text-primary border border-primary/20"
-      }`}
-    >
-      {(isPending || isConfirming) && <Loader2 size={12} className="animate-spin shrink-0" />}
-      {isSuccess && <CheckCircle2 size={12} className="shrink-0" />}
-      {error && <AlertTriangle size={12} className="shrink-0" />}
-      <span className="truncate">
-        {isPending
-          ? "Confirm in wallet…"
-          : isConfirming
-          ? "Confirming on-chain…"
-          : isSuccess
-          ? `Success! ${hash ? hash.slice(0, 10) + "…" : ""}`
-          : error?.message?.slice(0, 80) ?? "Transaction failed"}
+    <div className={`mt-3 flex items-start gap-2 rounded-xl px-3.5 py-2.5 text-xs font-medium border ${
+      error ? "bg-rose-500/8 text-rose-400 border-rose-500/20"
+        : isSuccess ? "bg-emerald-500/8 text-emerald-400 border-emerald-500/20"
+        : "bg-primary/8 text-primary border-primary/20"
+    }`}>
+      {(isPending || isConfirming) && <Loader2 size={12} className="animate-spin shrink-0 mt-0.5" />}
+      {isSuccess && <CheckCircle2 size={12} className="shrink-0 mt-0.5" />}
+      {error && <AlertCircle size={12} className="shrink-0 mt-0.5" />}
+      <span className="break-all leading-snug">
+        {isPending ? "Confirm in wallet…"
+          : isConfirming ? `Confirming on-chain… ${hash ? `(${hash.slice(0, 10)}…)` : ""}`
+          : isSuccess ? `Transaction confirmed! ${hash ? hash.slice(0, 10) + "…" : ""}`
+          : (error?.message ?? "Transaction failed").slice(0, 120)}
       </span>
     </div>
   );
 }
 
-// ── Sub-component: Admin Panel for a single Moat ─────────────────────────────
+// ── Per-moat admin panel ──────────────────────────────────────────────────────
 
 function MoatAdminPanel({ moat }: { moat: MoatConfig }) {
   const [activeTab, setActiveTab] = useState<"controls" | "rewards" | "settings">("controls");
@@ -121,9 +101,13 @@ function MoatAdminPanel({ moat }: { moat: MoatConfig }) {
   const chainId = networkToChainId(moat.network);
   const addr = moat.contractAddress as `0x${string}`;
   const explorerUrl = getExplorerUrl(moat.network);
+  const primaryTokenAddress = meta.tokenAddress || moat.rewardTokens[0]?.tokenAddress;
+  const statusStyle = moat.status === "Verified"
+    ? { border: "border-emerald-500/20", badge: "bg-emerald-500/8 text-emerald-400 border-emerald-500/25", dot: "bg-emerald-400" }
+    : { border: "border-primary/20", badge: "bg-primary/8 text-primary border-primary/25", dot: "bg-primary" };
 
   // ── State reads ─────────────────────────────────────────────────────────
-  const { data: adminState, refetch: refetchAdmin } = useReadContracts({
+  const { data: adminState } = useReadContracts({
     contracts: [
       { address: addr, abi: MOAT_V3_ADMIN_ABI, functionName: "paused", chainId },
       { address: addr, abi: MOAT_V3_ABI, functionName: "stakingEnabled", chainId },
@@ -149,101 +133,70 @@ function MoatAdminPanel({ moat }: { moat: MoatConfig }) {
   const rewardTokensData = adminState?.[8]?.status === "success"
     ? (adminState[8].result as [string[], bigint[], bigint[], bigint[]])
     : undefined;
-
   const rewardTokenAddresses = rewardTokensData?.[0] ?? [];
   const rewardTokenUnallocated = rewardTokensData?.[3] ?? [];
 
   // ── Write: controls ──────────────────────────────────────────────────────
   const { writeContract: writeToggle, data: toggleHash, isPending: togglePending, error: toggleError } = useWriteContract();
   const { isLoading: toggleConfirming, isSuccess: toggleSuccess } = useWaitForTransactionReceipt({ hash: toggleHash });
-
-  const toggle = (fn: "setStakingEnabled" | "setLockingEnabled" | "setBurningEnabled" | "setEarlyExitEnabled" | "togglePause", val: boolean) => {
+  const toggle = (fn: "setStakingEnabled" | "setLockingEnabled" | "setBurningEnabled" | "setEarlyExitEnabled" | "togglePause", val: boolean) =>
     writeToggle({ address: addr, abi: MOAT_V3_ADMIN_ABI, functionName: fn, args: [val], chainId });
-  };
+  const triggerEmergencyUnlock = () =>
+    writeToggle({ address: addr, abi: MOAT_V3_ADMIN_ABI, functionName: "enableEmergencyUnlock", chainId });
 
-  // ── Write: fee ───────────────────────────────────────────────────────────
+  // ── Write: fee / settings ────────────────────────────────────────────────
   const [newFee, setNewFee] = useState("");
   const [newFeeCollector, setNewFeeCollector] = useState("");
   const { writeContract: writeFee, data: feeHash, isPending: feePending, error: feeError } = useWriteContract();
   const { isLoading: feeConfirming, isSuccess: feeSuccess } = useWaitForTransactionReceipt({ hash: feeHash });
-
   const submitFee = () => {
     const bps = Math.round(parseFloat(newFee) * 100);
     if (isNaN(bps) || bps < 0 || bps > 10000) return;
     writeFee({ address: addr, abi: MOAT_V3_ADMIN_ABI, functionName: "setUnstakeFee", args: [BigInt(bps)], chainId });
   };
-
   const submitFeeCollector = () => {
-    if (!newFeeCollector.startsWith("0x")) return;
+    if (!/^0x[0-9a-fA-F]{40}$/.test(newFeeCollector)) return;
     writeFee({ address: addr, abi: MOAT_V3_ADMIN_ABI, functionName: "setFeeCollector", args: [newFeeCollector as `0x${string}`], chainId });
   };
 
   // ── Write: deposit rewards ───────────────────────────────────────────────
-  const [depositToken, setDepositToken] = useState<string>("");
+  const [depositToken, setDepositToken] = useState("");
   const [depositAmount, setDepositAmount] = useState("");
-  const [depositDecimals, setDepositDecimals] = useState(18);
-
-  const selectedTokenFromConfig = moat.rewardTokens.find(
+  const selectedToken = moat.rewardTokens.find(
     (t) => t.tokenAddress.toLowerCase() === depositToken.toLowerCase()
   );
+  const resolvedDecimals = selectedToken?.decimals ?? 18;
 
-  // Read decimals for selected token
-  const { data: tokenDecimalsData } = useReadContracts({
-    contracts: depositToken
-      ? [{ address: depositToken as `0x${string}`, abi: ERC20_ABI, functionName: "decimals", chainId }]
-      : [],
-    allowFailure: true,
-    query: { enabled: !!depositToken },
-  });
-  const resolvedDecimals = tokenDecimalsData?.[0]?.status === "success"
-    ? Number(tokenDecimalsData[0].result as number)
-    : selectedTokenFromConfig?.decimals ?? 18;
-
-  // Approve then deposit
   const { writeContract: writeApprove, data: approveHash, isPending: approvePending, error: approveError } = useWriteContract();
   const { isLoading: approveConfirming, isSuccess: approveSuccess } = useWaitForTransactionReceipt({ hash: approveHash });
-
   const { writeContract: writeDeposit, data: depositHash, isPending: depositPending, error: depositError } = useWriteContract();
   const { isLoading: depositConfirming, isSuccess: depositSuccess } = useWaitForTransactionReceipt({ hash: depositHash });
 
   const submitApprove = () => {
     if (!depositToken || !depositAmount) return;
-    writeApprove({
-      address: depositToken as `0x${string}`,
-      abi: ERC20_ABI,
-      functionName: "approve",
-      args: [addr, parseUnits(depositAmount, resolvedDecimals)],
-      chainId,
-    });
+    writeApprove({ address: depositToken as `0x${string}`, abi: ERC20_ABI, functionName: "approve",
+      args: [addr, parseUnits(depositAmount, resolvedDecimals)], chainId });
   };
-
   const submitDeposit = () => {
     if (!depositToken || !depositAmount) return;
-    writeDeposit({
-      address: addr,
-      abi: MOAT_V3_ADMIN_ABI,
-      functionName: "depositRewards",
-      args: [depositToken as `0x${string}`, parseUnits(depositAmount, resolvedDecimals)],
-      chainId,
-    });
+    writeDeposit({ address: addr, abi: MOAT_V3_ADMIN_ABI, functionName: "depositRewards",
+      args: [depositToken as `0x${string}`, parseUnits(depositAmount, resolvedDecimals)], chainId });
   };
 
-  // ── Write: add/remove admin ───────────────────────────────────────────────
+  // ── Write: admin access ───────────────────────────────────────────────────
   const [adminInput, setAdminInput] = useState("");
   const { writeContract: writeAdmin, data: adminHash, isPending: adminPending, error: adminError } = useWriteContract();
   const { isLoading: adminConfirming, isSuccess: adminSuccess } = useWaitForTransactionReceipt({ hash: adminHash });
-
   const submitAddAdmin = () => {
-    if (!adminInput.startsWith("0x")) return;
+    if (!/^0x[0-9a-fA-F]{40}$/.test(adminInput)) return;
     writeAdmin({ address: addr, abi: MOAT_V3_ADMIN_ABI, functionName: "addAdmin", args: [adminInput as `0x${string}`], chainId });
   };
-
   const submitRemoveAdmin = () => {
-    if (!adminInput.startsWith("0x")) return;
+    if (!/^0x[0-9a-fA-F]{40}$/.test(adminInput)) return;
     writeAdmin({ address: addr, abi: MOAT_V3_ADMIN_ABI, functionName: "removeAdmin", args: [adminInput as `0x${string}`], chainId });
   };
 
-  const isLoading = adminState === undefined;
+  const isDataLoading = adminState === undefined;
 
   const tabs = [
     { id: "controls" as const, label: "Controls", icon: Power },
@@ -252,191 +205,223 @@ function MoatAdminPanel({ moat }: { moat: MoatConfig }) {
   ];
 
   return (
-    <div className="rounded-2xl border border-white/8 bg-card/40 backdrop-blur-xl overflow-hidden shadow-lg">
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
+      className={`relative rounded-2xl border ${statusStyle.border} bg-card/60 backdrop-blur-xl overflow-hidden shadow-xl cyber-grid`}
+      style={{ boxShadow: "0 4px 32px rgba(0,0,0,0.4)" }}
+    >
+      {/* Top edge glow */}
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 p-5 border-b border-white/5">
-        <div className="flex items-center gap-3">
-          {meta.logoUrl ? (
-            <img src={meta.logoUrl} alt={meta.protocol} className="w-10 h-10 rounded-xl object-cover bg-white/5" />
-          ) : (
-            <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
-              <Shield size={18} className="text-primary" />
+      <div className="relative flex items-start justify-between gap-4 p-5 border-b border-white/5">
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="relative shrink-0">
+            <MoatLogo meta={meta} primaryTokenAddress={primaryTokenAddress} size="lg" />
+            {/* Admin badge overlay */}
+            <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center shadow-[0_0_8px_rgba(0,212,255,0.6)] border border-background">
+              <Shield size={10} className="text-background" />
             </div>
-          )}
-          <div>
-            <h3 className="font-bold text-white text-base leading-tight">{meta.name}</h3>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-xs text-muted-foreground capitalize">{moat.network}</span>
-              <span className="text-muted-foreground/40">·</span>
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-black text-white text-base leading-tight truncate">{meta.name}</h3>
+            <p className="text-xs font-mono text-muted-foreground/70 uppercase tracking-tight mt-0.5">{meta.protocol}</p>
+            <div className="flex items-center gap-2 mt-1.5">
+              <span className="text-[10px] font-mono text-muted-foreground/60 capitalize">
+                {networkLabels[moat.network?.toLowerCase()] ?? moat.network}
+              </span>
+              <span className="text-muted-foreground/30">·</span>
               <a
                 href={`${explorerUrl}/address/${moat.contractAddress}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-primary/70 hover:text-primary transition-colors font-mono flex items-center gap-1"
+                className="text-[10px] text-primary/60 hover:text-primary transition-colors font-mono flex items-center gap-1"
               >
                 {formatAddress(moat.contractAddress)}
-                <ExternalLink size={10} />
+                <ExternalLink size={9} />
               </a>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {paused !== undefined && (
-            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
-              paused
-                ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
-                : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-            }`}>
-              {paused ? "PAUSED" : "LIVE"}
+
+        {/* Status badges */}
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          <div className="flex items-center gap-1.5">
+            {paused !== undefined && (
+              <span className={`flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-lg border uppercase tracking-widest ${
+                paused
+                  ? "bg-amber-500/10 text-amber-400 border-amber-500/25"
+                  : "bg-emerald-500/10 text-emerald-400 border-emerald-500/25"
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${paused ? "bg-amber-400" : "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]"}`} />
+                {paused ? "Paused" : "Live"}
+              </span>
+            )}
+            <span className={`text-[10px] font-black px-2 py-1 rounded-lg border uppercase tracking-widest ${statusStyle.badge}`}>
+              {moat.status}
             </span>
-          )}
-          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-primary/10 text-primary border-primary/20">
-            ADMIN
-          </span>
+          </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-white/5">
+      <div className="flex border-b border-white/5 bg-black/20">
         {tabs.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setActiveTab(id)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-semibold transition-all ${
+            className={`relative flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-bold tracking-wide uppercase transition-all duration-200 ${
               activeTab === id
-                ? "text-primary border-b-2 border-primary bg-primary/5"
-                : "text-muted-foreground hover:text-foreground hover:bg-white/3"
+                ? "text-primary"
+                : "text-muted-foreground/60 hover:text-muted-foreground"
             }`}
           >
             <Icon size={13} />
             {label}
+            {activeTab === id && (
+              <motion.div
+                layoutId={`admin-tab-${moat.contractAddress}`}
+                className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-primary shadow-[0_0_8px_rgba(0,212,255,0.6)]"
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              />
+            )}
           </button>
         ))}
       </div>
 
       {/* Tab Content */}
       <div className="p-5">
-        {/* ── Controls Tab ── */}
+
+        {/* ── CONTROLS TAB ── */}
         {activeTab === "controls" && (
-          <div>
-            <div className="mb-4">
-              <ToggleRow
-                label="Staking"
-                enabled={stakingEnabled}
-                isLoading={isLoading}
-                isPending={togglePending || toggleConfirming}
-                onEnable={() => toggle("setStakingEnabled", true)}
-                onDisable={() => toggle("setStakingEnabled", false)}
-                description="Allow users to stake tokens into this moat"
-              />
-              <ToggleRow
-                label="Locking"
-                enabled={lockingEnabled}
-                isLoading={isLoading}
-                isPending={togglePending || toggleConfirming}
-                onEnable={() => toggle("setLockingEnabled", true)}
-                onDisable={() => toggle("setLockingEnabled", false)}
-                description="Allow users to time-lock staked tokens for multipliers"
-              />
-              <ToggleRow
-                label="Burning"
-                enabled={burningEnabled}
-                isLoading={isLoading}
-                isPending={togglePending || toggleConfirming}
-                onEnable={() => toggle("setBurningEnabled", true)}
-                onDisable={() => toggle("setBurningEnabled", false)}
-                description="Allow users to burn tokens for burn-points"
-              />
-              <ToggleRow
-                label="Early Exit"
-                enabled={earlyExitEnabled}
-                isLoading={isLoading}
-                isPending={togglePending || toggleConfirming}
-                onEnable={() => toggle("setEarlyExitEnabled", true)}
-                onDisable={() => toggle("setEarlyExitEnabled", false)}
-                description="Allow users to exit locks early with a penalty fee"
-              />
-            </div>
-
-            {/* Pause moat */}
-            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-amber-400 flex items-center gap-1.5">
-                    <AlertTriangle size={14} /> Emergency Pause
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Instantly halt all moat interactions. Use only in emergencies.
-                  </p>
-                </div>
-                <button
-                  onClick={() => toggle("togglePause", !paused)}
-                  disabled={togglePending || toggleConfirming || paused === undefined}
-                  className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50 ${
-                    paused
-                      ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25"
-                      : "bg-amber-500/15 text-amber-400 border border-amber-500/30 hover:bg-amber-500/25"
-                  }`}
-                >
-                  {togglePending || toggleConfirming ? <Loader2 size={12} className="animate-spin" /> : <Power size={12} />}
-                  {paused ? "Unpause" : "Pause Moat"}
-                </button>
+          <div className="space-y-1">
+            {isDataLoading ? (
+              <div className="space-y-3 py-2">
+                {[1,2,3,4].map(i => (
+                  <div key={i} className="h-14 rounded-xl bg-white/3 animate-pulse" />
+                ))}
               </div>
-            </div>
+            ) : (
+              <>
+                <div className="rounded-xl border border-white/5 bg-black/20 px-4 mb-4">
+                  <ToggleRow label="Staking" enabled={stakingEnabled} isLoading={isDataLoading}
+                    isPending={togglePending || toggleConfirming}
+                    onEnable={() => toggle("setStakingEnabled", true)}
+                    onDisable={() => toggle("setStakingEnabled", false)}
+                    description="Allow users to stake tokens into this moat" />
+                  <ToggleRow label="Locking" enabled={lockingEnabled} isLoading={isDataLoading}
+                    isPending={togglePending || toggleConfirming}
+                    onEnable={() => toggle("setLockingEnabled", true)}
+                    onDisable={() => toggle("setLockingEnabled", false)}
+                    description="Allow time-locking staked tokens for multipliers" />
+                  <ToggleRow label="Burning" enabled={burningEnabled} isLoading={isDataLoading}
+                    isPending={togglePending || toggleConfirming}
+                    onEnable={() => toggle("setBurningEnabled", true)}
+                    onDisable={() => toggle("setBurningEnabled", false)}
+                    description="Allow users to burn tokens for burn-points" />
+                  <ToggleRow label="Early Exit" enabled={earlyExitEnabled} isLoading={isDataLoading}
+                    isPending={togglePending || toggleConfirming}
+                    onEnable={() => toggle("setEarlyExitEnabled", true)}
+                    onDisable={() => toggle("setEarlyExitEnabled", false)}
+                    description="Allow early lock exit with a penalty fee" />
+                </div>
 
-            {/* Emergency Unlock */}
-            {emergencyUnlockEnabled === false && (
-              <div className="mt-3 rounded-xl border border-rose-500/20 bg-rose-500/5 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-rose-400 flex items-center gap-1.5">
-                      <Lock size={14} /> Emergency Unlock
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Allow all locked stakers to exit immediately. This action is irreversible.
+                <TxStatus hash={toggleHash} isPending={togglePending} isConfirming={toggleConfirming} isSuccess={toggleSuccess} error={toggleError} />
+
+                {/* Pause */}
+                <div className="rounded-xl border border-amber-500/20 bg-gradient-to-r from-amber-500/5 to-transparent p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-bold text-amber-400 flex items-center gap-1.5">
+                        <AlertTriangle size={14} /> Emergency Pause
+                      </p>
+                      <p className="text-xs text-muted-foreground/60 mt-0.5">
+                        Instantly halts all moat interactions.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => toggle("togglePause", !paused)}
+                      disabled={togglePending || toggleConfirming || paused === undefined}
+                      className={`shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-40 border ${
+                        paused
+                          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/25 hover:bg-emerald-500/20"
+                          : "bg-amber-500/10 text-amber-400 border-amber-500/25 hover:bg-amber-500/20"
+                      }`}
+                    >
+                      {togglePending || toggleConfirming
+                        ? <Loader2 size={12} className="animate-spin" />
+                        : <Power size={12} />}
+                      {paused ? "Unpause Moat" : "Pause Moat"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Emergency unlock */}
+                {emergencyUnlockEnabled === false && (
+                  <div className="rounded-xl border border-rose-500/20 bg-gradient-to-r from-rose-500/5 to-transparent p-4 mt-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-bold text-rose-400 flex items-center gap-1.5">
+                          <Lock size={14} /> Emergency Unlock
+                        </p>
+                        <p className="text-xs text-muted-foreground/60 mt-0.5">
+                          Allow all locked stakers to exit immediately. Irreversible.
+                        </p>
+                      </div>
+                      <button
+                        onClick={triggerEmergencyUnlock}
+                        disabled={togglePending || toggleConfirming}
+                        className="shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/25 hover:bg-rose-500/20 transition-all disabled:opacity-40"
+                      >
+                        {togglePending || toggleConfirming
+                          ? <Loader2 size={12} className="animate-spin" />
+                          : <Zap size={12} />}
+                        Enable
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {emergencyUnlockEnabled === true && (
+                  <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 mt-3">
+                    <p className="text-xs text-emerald-400 flex items-center gap-1.5 font-semibold">
+                      <CheckCircle2 size={13} /> Emergency unlock active — all locks are exitable
                     </p>
                   </div>
-                  <button
-                    onClick={() => writeToggle({ address: addr, abi: MOAT_V3_ADMIN_ABI, functionName: "enableEmergencyUnlock", chainId })}
-                    disabled={togglePending || toggleConfirming}
-                    className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-500/15 text-rose-400 border border-rose-500/30 hover:bg-rose-500/25 transition-all disabled:opacity-50"
-                  >
-                    {togglePending || toggleConfirming ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
-                    Enable
-                  </button>
-                </div>
-              </div>
+                )}
+              </>
             )}
-            {emergencyUnlockEnabled === true && (
-              <div className="mt-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
-                <p className="text-xs text-emerald-400 flex items-center gap-1.5">
-                  <CheckCircle2 size={12} /> Emergency unlock is active — all locks are exitable
-                </p>
-              </div>
-            )}
-
-            <TxStatus hash={toggleHash} isPending={togglePending} isConfirming={toggleConfirming} isSuccess={toggleSuccess} error={toggleError} />
           </div>
         )}
 
-        {/* ── Rewards Tab ── */}
+        {/* ── REWARDS TAB ── */}
         {activeTab === "rewards" && (
           <div className="space-y-5">
-            {/* Reward token balances */}
+            {/* Unallocated balances */}
             {rewardTokenAddresses.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Reward Token Balances</p>
-                <div className="space-y-2">
+                <p className="text-[10px] font-mono font-bold text-muted-foreground/60 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                  <Coins size={10} className="text-primary/60" /> Unallocated Reward Balances
+                </p>
+                <div className="rounded-xl border border-white/5 bg-black/20 divide-y divide-white/5 overflow-hidden">
                   {rewardTokenAddresses.map((tokenAddr, i) => {
-                    const cfg = moat.rewardTokens.find((t) => t.tokenAddress.toLowerCase() === tokenAddr.toLowerCase());
+                    const cfg = moat.rewardTokens.find(
+                      (t) => t.tokenAddress.toLowerCase() === tokenAddr.toLowerCase()
+                    );
                     const unallocated = rewardTokenUnallocated[i];
                     const dec = cfg?.decimals ?? 18;
-                    const symbol = cfg?.symbol ?? tokenAddr.slice(0, 6);
+                    const symbol = cfg?.symbol ?? tokenAddr.slice(0, 8) + "…";
+                    const amount = unallocated !== undefined
+                      ? parseFloat(formatUnits(unallocated, dec))
+                      : null;
                     return (
-                      <div key={tokenAddr} className="flex items-center justify-between rounded-lg bg-white/3 border border-white/5 px-3 py-2">
-                        <span className="text-xs font-medium text-white">{symbol}</span>
-                        <span className="text-xs text-muted-foreground font-mono">
-                          {unallocated !== undefined ? `${parseFloat(formatUnits(unallocated, dec)).toLocaleString("en-US", { maximumFractionDigits: 4 })} unallocated` : "—"}
+                      <div key={tokenAddr} className="flex items-center justify-between px-4 py-3">
+                        <span className="text-sm font-bold text-white">{symbol}</span>
+                        <span className={`text-sm font-mono tabular-nums ${amount !== null && amount > 0 ? "text-emerald-400" : "text-muted-foreground/50"}`}>
+                          {amount !== null
+                            ? amount.toLocaleString("en-US", { maximumFractionDigits: 4 })
+                            : "—"}
                         </span>
                       </div>
                     );
@@ -445,16 +430,18 @@ function MoatAdminPanel({ moat }: { moat: MoatConfig }) {
               </div>
             )}
 
-            {/* Deposit rewards */}
+            {/* Deposit form */}
             <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Deposit Rewards</p>
+              <p className="text-[10px] font-mono font-bold text-muted-foreground/60 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                <ArrowDownToLine size={10} className="text-primary/60" /> Deposit Rewards
+              </p>
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Reward Token</label>
+                  <label className="text-xs font-semibold text-muted-foreground/70 mb-1.5 block">Reward Token</label>
                   <select
                     value={depositToken}
                     onChange={(e) => setDepositToken(e.target.value)}
-                    className="w-full bg-card/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
+                    className="w-full bg-black/30 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-colors"
                   >
                     <option value="">Select a reward token…</option>
                     {moat.rewardTokens.map((t: RewardToken) => (
@@ -465,30 +452,34 @@ function MoatAdminPanel({ moat }: { moat: MoatConfig }) {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Amount</label>
+                  <label className="text-xs font-semibold text-muted-foreground/70 mb-1.5 block">Amount</label>
                   <input
                     type="number"
                     placeholder="0.00"
                     value={depositAmount}
                     onChange={(e) => setDepositAmount(e.target.value)}
-                    className="w-full bg-card/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
+                    className="w-full bg-black/30 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-colors"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2.5">
                   <button
                     onClick={submitApprove}
                     disabled={!depositToken || !depositAmount || approvePending || approveConfirming}
-                    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-semibold text-white transition-all disabled:opacity-50"
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-xs font-bold text-white transition-all disabled:opacity-40"
                   >
-                    {approvePending || approveConfirming ? <Loader2 size={12} className="animate-spin" /> : <BadgeCheck size={12} />}
+                    {approvePending || approveConfirming
+                      ? <Loader2 size={12} className="animate-spin" />
+                      : <BadgeCheck size={13} />}
                     1. Approve
                   </button>
                   <button
                     onClick={submitDeposit}
                     disabled={!depositToken || !depositAmount || !approveSuccess || depositPending || depositConfirming}
-                    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-primary/15 border border-primary/30 hover:bg-primary/25 text-xs font-semibold text-primary transition-all disabled:opacity-50"
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary/10 border border-primary/30 hover:bg-primary/20 text-xs font-bold text-primary transition-all disabled:opacity-40 shadow-[0_0_16px_rgba(0,212,255,0.1)]"
                   >
-                    {depositPending || depositConfirming ? <Loader2 size={12} className="animate-spin" /> : <ArrowDownToLine size={12} />}
+                    {depositPending || depositConfirming
+                      ? <Loader2 size={12} className="animate-spin" />
+                      : <ArrowDownToLine size={13} />}
                     2. Deposit
                   </button>
                 </div>
@@ -499,59 +490,56 @@ function MoatAdminPanel({ moat }: { moat: MoatConfig }) {
           </div>
         )}
 
-        {/* ── Settings Tab ── */}
+        {/* ── SETTINGS TAB ── */}
         {activeTab === "settings" && (
-          <div className="space-y-5">
+          <div className="space-y-6">
             {/* Unstake fee */}
             <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Unstake Fee</p>
-              <div className="rounded-lg bg-white/3 border border-white/5 px-3 py-2 mb-3">
-                <span className="text-xs text-muted-foreground">Current fee: </span>
-                <span className="text-xs font-semibold text-white">{fmtFee(unstakeFee)}</span>
+              <p className="text-[10px] font-mono font-bold text-muted-foreground/60 uppercase tracking-widest mb-3">Unstake Fee</p>
+              <div className="rounded-xl border border-white/5 bg-black/20 px-4 py-3 mb-3 flex items-center justify-between">
+                <span className="text-xs text-muted-foreground/60">Current fee</span>
+                <span className="text-sm font-black text-white tabular-nums">{fmtFee(unstakeFee)}</span>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2.5">
                 <input
                   type="number"
                   placeholder="New fee % (e.g. 0.50)"
                   value={newFee}
                   onChange={(e) => setNewFee(e.target.value)}
-                  step="0.01"
-                  min="0"
-                  max="100"
-                  className="flex-1 bg-card/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
+                  step="0.01" min="0" max="100"
+                  className="flex-1 bg-black/30 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-colors"
                 />
                 <button
                   onClick={submitFee}
                   disabled={!newFee || feePending || feeConfirming}
-                  className="px-4 py-2 rounded-lg bg-primary/15 border border-primary/30 hover:bg-primary/25 text-xs font-semibold text-primary transition-all disabled:opacity-50 flex items-center gap-1.5 whitespace-nowrap"
+                  className="px-4 py-2.5 rounded-xl bg-primary/10 border border-primary/30 hover:bg-primary/20 text-xs font-bold text-primary transition-all disabled:opacity-40 whitespace-nowrap"
                 >
-                  {feePending || feeConfirming ? <Loader2 size={12} className="animate-spin" /> : null}
-                  Set Fee
+                  {feePending || feeConfirming ? <Loader2 size={12} className="animate-spin inline" /> : null} Set Fee
                 </button>
               </div>
             </div>
 
             {/* Fee collector */}
             <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Fee Collector</p>
+              <p className="text-[10px] font-mono font-bold text-muted-foreground/60 uppercase tracking-widest mb-3">Fee Collector</p>
               {feeCollectorAddr && (
-                <div className="rounded-lg bg-white/3 border border-white/5 px-3 py-2 mb-3">
-                  <span className="text-xs text-muted-foreground">Current: </span>
-                  <span className="text-xs font-semibold text-white font-mono">{formatAddress(feeCollectorAddr)}</span>
+                <div className="rounded-xl border border-white/5 bg-black/20 px-4 py-3 mb-3 flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground/60">Current</span>
+                  <span className="text-xs font-mono text-white">{formatAddress(feeCollectorAddr)}</span>
                 </div>
               )}
-              <div className="flex gap-2">
+              <div className="flex gap-2.5">
                 <input
                   type="text"
-                  placeholder="0x… new fee collector address"
+                  placeholder="0x… new collector address"
                   value={newFeeCollector}
                   onChange={(e) => setNewFeeCollector(e.target.value)}
-                  className="flex-1 bg-card/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30 font-mono"
+                  className="flex-1 bg-black/30 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-colors font-mono"
                 />
                 <button
                   onClick={submitFeeCollector}
                   disabled={!newFeeCollector || feePending || feeConfirming}
-                  className="px-4 py-2 rounded-lg bg-primary/15 border border-primary/30 hover:bg-primary/25 text-xs font-semibold text-primary transition-all disabled:opacity-50 whitespace-nowrap"
+                  className="px-4 py-2.5 rounded-xl bg-primary/10 border border-primary/30 hover:bg-primary/20 text-xs font-bold text-primary transition-all disabled:opacity-40 whitespace-nowrap"
                 >
                   Update
                 </button>
@@ -561,29 +549,29 @@ function MoatAdminPanel({ moat }: { moat: MoatConfig }) {
 
             {/* Add / remove admin */}
             <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Admin Access</p>
+              <p className="text-[10px] font-mono font-bold text-muted-foreground/60 uppercase tracking-widest mb-3">Admin Access</p>
               <input
                 type="text"
                 placeholder="0x… wallet address"
                 value={adminInput}
                 onChange={(e) => setAdminInput(e.target.value)}
-                className="w-full bg-card/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30 font-mono mb-2"
+                className="w-full bg-black/30 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-colors font-mono mb-2.5"
               />
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2.5">
                 <button
                   onClick={submitAddAdmin}
                   disabled={!adminInput || adminPending || adminConfirming}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 text-xs font-semibold text-emerald-400 transition-all disabled:opacity-50"
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500/8 border border-emerald-500/20 hover:bg-emerald-500/15 text-xs font-bold text-emerald-400 transition-all disabled:opacity-40"
                 >
-                  {adminPending || adminConfirming ? <Loader2 size={12} className="animate-spin" /> : <UserPlus size={12} />}
+                  {adminPending || adminConfirming ? <Loader2 size={12} className="animate-spin" /> : <UserPlus size={13} />}
                   Add Admin
                 </button>
                 <button
                   onClick={submitRemoveAdmin}
                   disabled={!adminInput || adminPending || adminConfirming}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 text-xs font-semibold text-rose-400 transition-all disabled:opacity-50"
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-rose-500/8 border border-rose-500/20 hover:bg-rose-500/15 text-xs font-bold text-rose-400 transition-all disabled:opacity-40"
                 >
-                  {adminPending || adminConfirming ? <Loader2 size={12} className="animate-spin" /> : <UserMinus size={12} />}
+                  {adminPending || adminConfirming ? <Loader2 size={12} className="animate-spin" /> : <UserMinus size={13} />}
                   Remove Admin
                 </button>
               </div>
@@ -592,7 +580,7 @@ function MoatAdminPanel({ moat }: { moat: MoatConfig }) {
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -602,8 +590,7 @@ export default function MoatAdmin() {
   const { address: walletAddress, isConnected } = useAccount();
   const { data: allMoats, isLoading: moatsLoading } = useAllMoatConfigs();
 
-  // Batch-check admins(walletAddress) across all moats in one multicall.
-  // We use allowFailure so a single bad moat contract doesn't kill the batch.
+  // Batch-check admins(wallet) across all moats in one multicall
   const adminChecks = useMemo(() => {
     if (!walletAddress || !allMoats?.length) return [];
     return allMoats.map((m) => ({
@@ -621,8 +608,6 @@ export default function MoatAdmin() {
     query: { enabled: adminChecks.length > 0 },
   });
 
-  // Also check the API `owner` field as a fallback (some moats may not have
-  // the `admins` mapping if deployed on a different chain).
   const adminMoats = useMemo(() => {
     if (!allMoats || !walletAddress) return [];
     return allMoats.filter((m, i) => {
@@ -634,72 +619,109 @@ export default function MoatAdmin() {
     });
   }, [allMoats, adminResults, walletAddress]);
 
-  const isLoading = moatsLoading || adminLoading;
+  const isLoading = moatsLoading || (isConnected && adminLoading && adminChecks.length > 0);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
+
       <main className="flex-1 pt-20 pb-16">
-        <div className="max-w-4xl mx-auto px-4">
-          {/* Header */}
-          <div className="mb-8 pt-6">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 rounded-xl bg-primary/10 border border-primary/20">
-                <Shield size={22} className="text-primary" />
+        {/* Page hero */}
+        <div className="relative overflow-hidden border-b border-white/5 bg-gradient-to-b from-primary/3 to-transparent">
+          <div className="absolute top-0 left-1/4 right-1/4 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+          <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-96 h-48 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative max-w-4xl mx-auto px-4 py-10">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2.5 rounded-2xl bg-primary/10 border border-primary/25 shadow-[0_0_20px_rgba(0,212,255,0.1)]">
+                <Shield size={24} className="text-primary" />
               </div>
-              <h1 className="text-2xl font-black text-white tracking-tight">Moat Admin</h1>
+              <div>
+                <h1 className="text-3xl font-black text-white tracking-tight">Moat Admin</h1>
+                <p className="text-xs font-mono text-muted-foreground/60 uppercase tracking-widest mt-0.5">Protocol Management Terminal</p>
+              </div>
             </div>
-            <p className="text-muted-foreground text-sm max-w-lg">
-              Manage moats your wallet has admin rights to. Controls are gated on-chain — only your
-              connected wallet can execute these transactions.
+            <p className="text-muted-foreground text-sm max-w-lg leading-relaxed">
+              Manage moats your wallet has admin rights to. All controls execute directly
+              on-chain — only your connected wallet can authorize these transactions.
             </p>
           </div>
+        </div>
 
+        <div className="max-w-4xl mx-auto px-4 pt-8">
           {/* Not connected */}
           {!isConnected && (
-            <div className="rounded-2xl border border-white/8 bg-card/30 backdrop-blur-xl p-12 text-center">
-              <Shield size={40} className="text-muted-foreground mx-auto mb-4 opacity-40" />
-              <p className="text-white font-semibold text-lg mb-2">Connect your wallet</p>
-              <p className="text-muted-foreground text-sm">
-                Connect the wallet that has admin rights to your moat(s) to access controls.
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-2xl border border-white/8 bg-card/30 backdrop-blur-xl p-16 text-center cyber-grid"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-primary/8 border border-primary/15 flex items-center justify-center mx-auto mb-5">
+                <Shield size={32} className="text-primary/40" />
+              </div>
+              <p className="text-white font-black text-xl mb-2">Connect your wallet</p>
+              <p className="text-muted-foreground text-sm max-w-sm mx-auto">
+                Connect the wallet that has admin rights to your moat(s) to access the management controls.
               </p>
-            </div>
+            </motion.div>
           )}
 
-          {/* Loading */}
+          {/* Loading skeleton */}
           {isConnected && isLoading && (
             <div className="space-y-4">
               {[1, 2].map((i) => (
-                <div key={i} className="rounded-2xl border border-white/8 bg-card/30 h-36 animate-pulse" />
+                <div key={i} className="rounded-2xl border border-white/8 bg-card/30 overflow-hidden">
+                  <div className="h-24 bg-white/3 animate-pulse" />
+                  <div className="h-12 bg-black/20 animate-pulse" />
+                  <div className="p-5 space-y-3">
+                    <div className="h-14 rounded-xl bg-white/3 animate-pulse" />
+                    <div className="h-14 rounded-xl bg-white/3 animate-pulse" />
+                  </div>
+                </div>
               ))}
             </div>
           )}
 
           {/* No admin moats */}
           {isConnected && !isLoading && adminMoats.length === 0 && (
-            <div className="rounded-2xl border border-white/8 bg-card/30 backdrop-blur-xl p-12 text-center">
-              <Shield size={40} className="text-muted-foreground mx-auto mb-4 opacity-40" />
-              <p className="text-white font-semibold text-lg mb-2">No admin access found</p>
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-2xl border border-white/8 bg-card/30 backdrop-blur-xl p-16 text-center cyber-grid"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-white/3 border border-white/8 flex items-center justify-center mx-auto mb-5">
+                <Shield size={32} className="text-muted-foreground/30" />
+              </div>
+              <p className="text-white font-black text-xl mb-2">No admin access found</p>
               <p className="text-muted-foreground text-sm max-w-sm mx-auto">
-                The connected wallet ({walletAddress ? formatAddress(walletAddress) : "—"}) does not
-                have admin rights on any active moat contracts.
+                The connected wallet{" "}
+                <span className="font-mono text-primary/70">
+                  {walletAddress ? formatAddress(walletAddress) : "—"}
+                </span>{" "}
+                does not have admin rights on any active moat contracts.
               </p>
-            </div>
+            </motion.div>
           )}
 
-          {/* Admin moat panels */}
+          {/* Admin panels */}
           {isConnected && !isLoading && adminMoats.length > 0 && (
-            <div className="space-y-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold mb-1">
-                {adminMoats.length} moat{adminMoats.length !== 1 ? "s" : ""} with admin access
-              </p>
+            <div className="space-y-5">
+              <div className="flex items-center gap-2 mb-1">
+                <p className="text-[10px] font-mono font-bold text-muted-foreground/50 uppercase tracking-widest">
+                  {adminMoats.length} moat{adminMoats.length !== 1 ? "s" : ""} with admin access
+                </p>
+                <div className="flex-1 h-px bg-white/5" />
+              </div>
               {adminMoats.map((moat) => (
-                <MoatAdminPanel key={`${moat.network}-${moat.contractAddress}`} moat={moat} />
+                <MoatAdminPanel
+                  key={`${moat.network}-${moat.contractAddress}`}
+                  moat={moat}
+                />
               ))}
             </div>
           )}
         </div>
       </main>
+
       <Footer />
     </div>
   );
