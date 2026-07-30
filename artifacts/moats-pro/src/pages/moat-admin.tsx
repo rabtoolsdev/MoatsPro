@@ -14,6 +14,7 @@ import { Footer } from "@/components/footer";
 import { MoatLogo } from "@/components/moat-card";
 import { useAllMoatConfigs } from "@/hooks/use-moats-api";
 import { getMoatMeta, formatAddress, getExplorerUrl } from "@/lib/moat-metadata";
+import { TokenLogo } from "@/components/swap/token-logo";
 import { MOAT_V3_ABI, MOAT_V3_ADMIN_ABI, MOAT_LOGO_ABI, ERC20_ABI } from "@/lib/moat-abi";
 import { networkToChainId } from "@/lib/wagmi-config";
 import type { MoatConfig, RewardToken } from "@/lib/moats-api";
@@ -89,6 +90,103 @@ function TxStatus({ hash, isPending, isConfirming, isSuccess, error }: {
           : isSuccess ? `Transaction confirmed! ${hash ? hash.slice(0, 10) + "…" : ""}`
           : (error?.message ?? "Transaction failed").slice(0, 120)}
       </span>
+    </div>
+  );
+}
+
+// ── Per-token deposit row ─────────────────────────────────────────────────────
+
+function RewardTokenDepositRow({
+  tokenAddress, symbol, decimals, unallocated, network, chainId, moatAddress,
+}: {
+  tokenAddress: string; symbol: string; decimals: number;
+  unallocated: bigint | undefined; network: string;
+  chainId: number | undefined; moatAddress: `0x${string}`;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [amount, setAmount] = useState("");
+
+  const { writeContract: writeApprove, data: approveHash, isPending: approvePending, error: approveError } = useWriteContract();
+  const { isLoading: approveConfirming, isSuccess: approveSuccess } = useWaitForTransactionReceipt({ hash: approveHash });
+  const { writeContract: writeDeposit, data: depositHash, isPending: depositPending, error: depositError } = useWriteContract();
+  const { isLoading: depositConfirming, isSuccess: depositSuccess } = useWaitForTransactionReceipt({ hash: depositHash });
+
+  const parsedAmount = amount ? parseUnits(amount, decimals) : 0n;
+  const displayBalance = unallocated !== undefined
+    ? parseFloat(formatUnits(unallocated, decimals))
+    : null;
+
+  const submitApprove = () => {
+    if (!amount) return;
+    writeApprove({ address: tokenAddress as `0x${string}`, abi: ERC20_ABI, functionName: "approve",
+      args: [moatAddress, parsedAmount], chainId });
+  };
+  const submitDeposit = () => {
+    if (!amount) return;
+    writeDeposit({ address: moatAddress, abi: MOAT_V3_ADMIN_ABI, functionName: "depositRewards",
+      args: [tokenAddress as `0x${string}`, parsedAmount], chainId });
+  };
+
+  return (
+    <div className="border-b border-white/5 last:border-0">
+      {/* Row */}
+      <div className="flex items-center gap-3 px-4 py-3">
+        <TokenLogo address={tokenAddress} symbol={symbol} network={network} size={32} className="shrink-0 rounded-full" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-white leading-tight">{symbol}</p>
+          <p className={`text-xs font-mono tabular-nums ${displayBalance !== null && displayBalance > 0 ? "text-emerald-400" : "text-muted-foreground/50"}`}>
+            {displayBalance !== null
+              ? `${displayBalance.toLocaleString("en-US", { maximumFractionDigits: 4 })} unallocated`
+              : "loading…"}
+          </p>
+        </div>
+        <button
+          onClick={() => { setExpanded((v) => !v); setAmount(""); }}
+          className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+            expanded
+              ? "bg-white/5 border-white/10 text-muted-foreground"
+              : "bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 shadow-[0_0_10px_rgba(0,212,255,0.1)]"
+          }`}
+        >
+          <ArrowDownToLine size={12} />
+          {expanded ? "Cancel" : "Deposit"}
+        </button>
+      </div>
+
+      {/* Inline deposit form */}
+      {expanded && (
+        <div className="px-4 pb-4 space-y-3">
+          <div className="flex gap-2">
+            <input
+              type="number"
+              placeholder="0.00"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-colors"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={submitApprove}
+              disabled={!amount || approvePending || approveConfirming}
+              className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-xs font-bold text-white transition-all disabled:opacity-40"
+            >
+              {approvePending || approveConfirming ? <Loader2 size={11} className="animate-spin" /> : <BadgeCheck size={12} />}
+              1. Approve
+            </button>
+            <button
+              onClick={submitDeposit}
+              disabled={!amount || !approveSuccess || depositPending || depositConfirming}
+              className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-primary/10 border border-primary/30 hover:bg-primary/20 text-xs font-bold text-primary transition-all disabled:opacity-40 shadow-[0_0_12px_rgba(0,212,255,0.08)]"
+            >
+              {depositPending || depositConfirming ? <Loader2 size={11} className="animate-spin" /> : <ArrowDownToLine size={12} />}
+              2. Deposit
+            </button>
+          </div>
+          <TxStatus hash={approveHash} isPending={approvePending} isConfirming={approveConfirming} isSuccess={approveSuccess} error={approveError} />
+          <TxStatus hash={depositHash} isPending={depositPending} isConfirming={depositConfirming} isSuccess={depositSuccess} error={depositError} />
+        </div>
+      )}
     </div>
   );
 }
@@ -405,96 +503,39 @@ function MoatAdminPanel({ moat }: { moat: MoatConfig }) {
 
         {/* ── REWARDS TAB ── */}
         {activeTab === "rewards" && (
-          <div className="space-y-5">
-            {/* Unallocated balances */}
-            {rewardTokenAddresses.length > 0 && (
-              <div>
+          <div>
+            {moat.rewardTokens.length === 0 ? (
+              <p className="text-sm text-muted-foreground/50 text-center py-8">No reward tokens configured.</p>
+            ) : (
+              <>
                 <p className="text-[10px] font-mono font-bold text-muted-foreground/60 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                  <Coins size={10} className="text-primary/60" /> Unallocated Reward Balances
+                  <Coins size={10} className="text-primary/60" /> Reward Tokens
                 </p>
-                <div className="rounded-xl border border-white/5 bg-black/20 divide-y divide-white/5 overflow-hidden">
-                  {rewardTokenAddresses.map((tokenAddr, i) => {
-                    const cfg = moat.rewardTokens.find(
-                      (t) => t.tokenAddress.toLowerCase() === tokenAddr.toLowerCase()
+                <div className="rounded-xl border border-white/5 bg-black/20 overflow-hidden">
+                  {moat.rewardTokens.map((t: RewardToken, i: number) => {
+                    const onChainAddr = rewardTokenAddresses.find(
+                      (a) => a.toLowerCase() === t.tokenAddress.toLowerCase()
                     );
-                    const unallocated = rewardTokenUnallocated[i];
-                    const dec = cfg?.decimals ?? 18;
-                    const symbol = cfg?.symbol ?? tokenAddr.slice(0, 8) + "…";
-                    const amount = unallocated !== undefined
-                      ? parseFloat(formatUnits(unallocated, dec))
-                      : null;
+                    const onChainIdx = rewardTokenAddresses.findIndex(
+                      (a) => a.toLowerCase() === t.tokenAddress.toLowerCase()
+                    );
+                    const unallocated = onChainIdx >= 0 ? rewardTokenUnallocated[onChainIdx] : undefined;
                     return (
-                      <div key={tokenAddr} className="flex items-center justify-between px-4 py-3">
-                        <span className="text-sm font-bold text-white">{symbol}</span>
-                        <span className={`text-sm font-mono tabular-nums ${amount !== null && amount > 0 ? "text-emerald-400" : "text-muted-foreground/50"}`}>
-                          {amount !== null
-                            ? amount.toLocaleString("en-US", { maximumFractionDigits: 4 })
-                            : "—"}
-                        </span>
-                      </div>
+                      <RewardTokenDepositRow
+                        key={t.tokenAddress}
+                        tokenAddress={t.tokenAddress}
+                        symbol={t.symbol}
+                        decimals={t.decimals ?? 18}
+                        unallocated={unallocated}
+                        network={moat.network ?? "avalanche"}
+                        chainId={chainId}
+                        moatAddress={addr}
+                      />
                     );
                   })}
                 </div>
-              </div>
+              </>
             )}
-
-            {/* Deposit form */}
-            <div>
-              <p className="text-[10px] font-mono font-bold text-muted-foreground/60 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                <ArrowDownToLine size={10} className="text-primary/60" /> Deposit Rewards
-              </p>
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground/70 mb-1.5 block">Reward Token</label>
-                  <select
-                    value={depositToken}
-                    onChange={(e) => setDepositToken(e.target.value)}
-                    className="w-full bg-black/30 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-colors"
-                  >
-                    <option value="">Select a reward token…</option>
-                    {moat.rewardTokens.map((t: RewardToken) => (
-                      <option key={t.tokenAddress} value={t.tokenAddress}>
-                        {t.symbol} — {formatAddress(t.tokenAddress)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-muted-foreground/70 mb-1.5 block">Amount</label>
-                  <input
-                    type="number"
-                    placeholder="0.00"
-                    value={depositAmount}
-                    onChange={(e) => setDepositAmount(e.target.value)}
-                    className="w-full bg-black/30 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-colors"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-2.5">
-                  <button
-                    onClick={submitApprove}
-                    disabled={!depositToken || !depositAmount || approvePending || approveConfirming}
-                    className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-xs font-bold text-white transition-all disabled:opacity-40"
-                  >
-                    {approvePending || approveConfirming
-                      ? <Loader2 size={12} className="animate-spin" />
-                      : <BadgeCheck size={13} />}
-                    1. Approve
-                  </button>
-                  <button
-                    onClick={submitDeposit}
-                    disabled={!depositToken || !depositAmount || !approveSuccess || depositPending || depositConfirming}
-                    className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary/10 border border-primary/30 hover:bg-primary/20 text-xs font-bold text-primary transition-all disabled:opacity-40 shadow-[0_0_16px_rgba(0,212,255,0.1)]"
-                  >
-                    {depositPending || depositConfirming
-                      ? <Loader2 size={12} className="animate-spin" />
-                      : <ArrowDownToLine size={13} />}
-                    2. Deposit
-                  </button>
-                </div>
-                <TxStatus hash={approveHash} isPending={approvePending} isConfirming={approveConfirming} isSuccess={approveSuccess} error={approveError} />
-                <TxStatus hash={depositHash} isPending={depositPending} isConfirming={depositConfirming} isSuccess={depositSuccess} error={depositError} />
-              </div>
-            </div>
           </div>
         )}
 
