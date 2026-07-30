@@ -1,3 +1,185 @@
+// Admin-only ABI entries for the MoatV3 contract. Kept separate so they're
+// only used on the Moat Admin page and don't bloat the main user-facing ABI.
+export const MOAT_V3_ADMIN_ABI = [
+  // ── View / state readers ──────────────────────────────────────────────────
+  {
+    inputs: [{ internalType: "address", name: "", type: "address" }],
+    name: "admins",
+    outputs: [{ internalType: "bool", name: "", type: "bool" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "owner",
+    outputs: [{ internalType: "address", name: "", type: "address" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "paused",
+    outputs: [{ internalType: "bool", name: "", type: "bool" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "burningEnabled",
+    outputs: [{ internalType: "bool", name: "", type: "bool" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "earlyExitEnabled",
+    outputs: [{ internalType: "bool", name: "", type: "bool" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "emergencyUnlockEnabled",
+    outputs: [{ internalType: "bool", name: "", type: "bool" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "feeCollector",
+    outputs: [{ internalType: "address", name: "", type: "address" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "getRewardTokens",
+    outputs: [
+      { internalType: "address[]", name: "addresses", type: "address[]" },
+      { internalType: "uint256[]", name: "totalDeposited", type: "uint256[]" },
+      { internalType: "uint256[]", name: "totalClaimed", type: "uint256[]" },
+      { internalType: "uint256[]", name: "unallocated", type: "uint256[]" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  // ── State toggles ─────────────────────────────────────────────────────────
+  {
+    inputs: [{ internalType: "bool", name: "_state", type: "bool" }],
+    name: "setStakingEnabled",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "bool", name: "_state", type: "bool" }],
+    name: "setLockingEnabled",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "bool", name: "_state", type: "bool" }],
+    name: "setBurningEnabled",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "bool", name: "_state", type: "bool" }],
+    name: "setEarlyExitEnabled",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "bool", name: "_state", type: "bool" }],
+    name: "togglePause",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "enableEmergencyUnlock",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  // ── Fee management ────────────────────────────────────────────────────────
+  {
+    inputs: [{ internalType: "uint256", name: "_fee", type: "uint256" }],
+    name: "setUnstakeFee",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "address", name: "_feeCollector", type: "address" }],
+    name: "setFeeCollector",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  // ── Reward management ─────────────────────────────────────────────────────
+  {
+    inputs: [
+      { internalType: "address", name: "_rewardToken", type: "address" },
+      { internalType: "uint256", name: "_amount", type: "uint256" },
+    ],
+    name: "depositRewards",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "address", name: "_rewardToken", type: "address" }],
+    name: "addRewardToken",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "address", name: "_recipient", type: "address" }],
+    name: "emergencyWithdrawAllRewards",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "_rewardToken", type: "address" },
+      { internalType: "address", name: "_recipient", type: "address" },
+    ],
+    name: "emergencyWithdrawRewardToken",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  // ── Access management ─────────────────────────────────────────────────────
+  {
+    inputs: [{ internalType: "address", name: "_admin", type: "address" }],
+    name: "addAdmin",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "address", name: "_admin", type: "address" }],
+    name: "removeAdmin",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "address", name: "newOwner", type: "address" }],
+    name: "transferOwnership",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+] as const;
+
 export const MOAT_V3_ABI = [
   {
     inputs: [{ internalType: "uint256", name: "_amount", type: "uint256" }],

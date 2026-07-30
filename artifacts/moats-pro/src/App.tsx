@@ -15,6 +15,7 @@ import Analytics from "@/pages/analytics";
 import Swap from "@/pages/swap";
 import MoatCalculator from "@/pages/moat-calculator";
 import Admin from "@/pages/admin";
+import MoatAdmin from "@/pages/moat-admin";
 import { PasswordGate } from "@/components/password-gate";
 
 const queryClient = new QueryClient({
@@ -70,6 +71,7 @@ function Router() {
               <Admin />
             </PasswordGate>
           </Route>
+          <Route path="/moat-admin" component={MoatAdmin} />
           <Route component={NotFound} />
         </Switch>
       </motion.div>
