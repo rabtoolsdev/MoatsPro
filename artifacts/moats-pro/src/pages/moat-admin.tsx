@@ -547,91 +547,34 @@ function MoatAdminPanel({ moat }: { moat: MoatConfig }) {
 
         {/* ── SETTINGS TAB ── */}
         {activeTab === "settings" && (
-          <div className="space-y-6">
-            {/* Unstake fee */}
-            <div>
-              <p className="text-[10px] font-mono font-bold text-muted-foreground/60 uppercase tracking-widest mb-3">Unstake Fee</p>
-              <div className="rounded-xl border border-white/5 bg-black/20 px-4 py-3 mb-3 flex items-center justify-between">
-                <span className="text-xs text-muted-foreground/60">Current fee</span>
-                <span className="text-sm font-black text-white tabular-nums">{fmtFee(unstakeFee)}</span>
-              </div>
-              <div className="flex gap-2.5">
-                <input
-                  type="number"
-                  placeholder="New fee % (e.g. 0.50)"
-                  value={newFee}
-                  onChange={(e) => setNewFee(e.target.value)}
-                  step="0.01" min="0" max="100"
-                  className="flex-1 bg-black/30 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-colors"
-                />
-                <button
-                  onClick={submitFee}
-                  disabled={!newFee || feePending || feeConfirming}
-                  className="px-4 py-2.5 rounded-xl bg-primary/10 border border-primary/30 hover:bg-primary/20 text-xs font-bold text-primary transition-all disabled:opacity-40 whitespace-nowrap"
-                >
-                  {feePending || feeConfirming ? <Loader2 size={12} className="animate-spin inline" /> : null} Set Fee
-                </button>
-              </div>
+          <div>
+            <p className="text-[10px] font-mono font-bold text-muted-foreground/60 uppercase tracking-widest mb-3">Admin Access</p>
+            <input
+              type="text"
+              placeholder="0x… wallet address"
+              value={adminInput}
+              onChange={(e) => setAdminInput(e.target.value)}
+              className="w-full bg-black/30 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-colors font-mono mb-2.5"
+            />
+            <div className="grid grid-cols-2 gap-2.5">
+              <button
+                onClick={submitAddAdmin}
+                disabled={!adminInput || adminPending || adminConfirming}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500/8 border border-emerald-500/20 hover:bg-emerald-500/15 text-xs font-bold text-emerald-400 transition-all disabled:opacity-40"
+              >
+                {adminPending || adminConfirming ? <Loader2 size={12} className="animate-spin" /> : <UserPlus size={13} />}
+                Add Admin
+              </button>
+              <button
+                onClick={submitRemoveAdmin}
+                disabled={!adminInput || adminPending || adminConfirming}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-rose-500/8 border border-rose-500/20 hover:bg-rose-500/15 text-xs font-bold text-rose-400 transition-all disabled:opacity-40"
+              >
+                {adminPending || adminConfirming ? <Loader2 size={12} className="animate-spin" /> : <UserMinus size={13} />}
+                Remove Admin
+              </button>
             </div>
-
-            {/* Fee collector */}
-            <div>
-              <p className="text-[10px] font-mono font-bold text-muted-foreground/60 uppercase tracking-widest mb-3">Fee Collector</p>
-              {feeCollectorAddr && (
-                <div className="rounded-xl border border-white/5 bg-black/20 px-4 py-3 mb-3 flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground/60">Current</span>
-                  <span className="text-xs font-mono text-white">{formatAddress(feeCollectorAddr)}</span>
-                </div>
-              )}
-              <div className="flex gap-2.5">
-                <input
-                  type="text"
-                  placeholder="0x… new collector address"
-                  value={newFeeCollector}
-                  onChange={(e) => setNewFeeCollector(e.target.value)}
-                  className="flex-1 bg-black/30 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-colors font-mono"
-                />
-                <button
-                  onClick={submitFeeCollector}
-                  disabled={!newFeeCollector || feePending || feeConfirming}
-                  className="px-4 py-2.5 rounded-xl bg-primary/10 border border-primary/30 hover:bg-primary/20 text-xs font-bold text-primary transition-all disabled:opacity-40 whitespace-nowrap"
-                >
-                  Update
-                </button>
-              </div>
-              <TxStatus hash={feeHash} isPending={feePending} isConfirming={feeConfirming} isSuccess={feeSuccess} error={feeError} />
-            </div>
-
-            {/* Add / remove admin */}
-            <div>
-              <p className="text-[10px] font-mono font-bold text-muted-foreground/60 uppercase tracking-widest mb-3">Admin Access</p>
-              <input
-                type="text"
-                placeholder="0x… wallet address"
-                value={adminInput}
-                onChange={(e) => setAdminInput(e.target.value)}
-                className="w-full bg-black/30 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-colors font-mono mb-2.5"
-              />
-              <div className="grid grid-cols-2 gap-2.5">
-                <button
-                  onClick={submitAddAdmin}
-                  disabled={!adminInput || adminPending || adminConfirming}
-                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500/8 border border-emerald-500/20 hover:bg-emerald-500/15 text-xs font-bold text-emerald-400 transition-all disabled:opacity-40"
-                >
-                  {adminPending || adminConfirming ? <Loader2 size={12} className="animate-spin" /> : <UserPlus size={13} />}
-                  Add Admin
-                </button>
-                <button
-                  onClick={submitRemoveAdmin}
-                  disabled={!adminInput || adminPending || adminConfirming}
-                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-rose-500/8 border border-rose-500/20 hover:bg-rose-500/15 text-xs font-bold text-rose-400 transition-all disabled:opacity-40"
-                >
-                  {adminPending || adminConfirming ? <Loader2 size={12} className="animate-spin" /> : <UserMinus size={13} />}
-                  Remove Admin
-                </button>
-              </div>
-              <TxStatus hash={adminHash} isPending={adminPending} isConfirming={adminConfirming} isSuccess={adminSuccess} error={adminError} />
-            </div>
+            <TxStatus hash={adminHash} isPending={adminPending} isConfirming={adminConfirming} isSuccess={adminSuccess} error={adminError} />
           </div>
         )}
       </div>
