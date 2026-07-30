@@ -97,11 +97,11 @@ function TxStatus({ hash, isPending, isConfirming, isSuccess, error }: {
 // ── Per-token deposit row ─────────────────────────────────────────────────────
 
 function RewardTokenDepositRow({
-  tokenAddress, symbol, decimals, unallocated, network, chainId, moatAddress,
+  tokenAddress, symbol, decimals, unallocated, network, chainId, moatAddress, logoHint,
 }: {
   tokenAddress: string; symbol: string; decimals: number;
   unallocated: bigint | undefined; network: string;
-  chainId: number | undefined; moatAddress: `0x${string}`;
+  chainId: number | undefined; moatAddress: `0x${string}`; logoHint?: string;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [amount, setAmount] = useState("");
@@ -131,7 +131,7 @@ function RewardTokenDepositRow({
     <div className="border-b border-white/5 last:border-0">
       {/* Row */}
       <div className="flex items-center gap-3 px-4 py-3">
-        <TokenLogo address={tokenAddress} symbol={symbol} network={network} size={32} className="shrink-0 rounded-full" />
+        <TokenLogo address={tokenAddress} symbol={symbol} network={network} size={32} className="shrink-0 rounded-full" hint={logoHint} />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-white leading-tight">{symbol}</p>
           <p className={`text-xs font-mono tabular-nums ${displayBalance !== null && displayBalance > 0 ? "text-emerald-400" : "text-muted-foreground/50"}`}>
@@ -530,6 +530,12 @@ function MoatAdminPanel({ moat }: { moat: MoatConfig }) {
                         network={moat.network ?? "avalanche"}
                         chainId={chainId}
                         moatAddress={addr}
+                        logoHint={
+                          meta.tokenAddress &&
+                          t.tokenAddress.toLowerCase() === meta.tokenAddress.toLowerCase()
+                            ? (onChainLogoUrl ?? undefined)
+                            : undefined
+                        }
                       />
                     );
                   })}
