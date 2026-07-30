@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useAccount } from "wagmi";
-import { useReadContracts, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useReadContracts, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { formatUnits, parseUnits } from "viem";
 import { motion } from "framer-motion";
 import {
@@ -14,7 +14,7 @@ import { Footer } from "@/components/footer";
 import { MoatLogo } from "@/components/moat-card";
 import { useAllMoatConfigs } from "@/hooks/use-moats-api";
 import { getMoatMeta, formatAddress, getExplorerUrl } from "@/lib/moat-metadata";
-import { MOAT_V3_ABI, MOAT_V3_ADMIN_ABI, ERC20_ABI } from "@/lib/moat-abi";
+import { MOAT_V3_ABI, MOAT_V3_ADMIN_ABI, MOAT_LOGO_ABI, ERC20_ABI } from "@/lib/moat-abi";
 import { networkToChainId } from "@/lib/wagmi-config";
 import type { MoatConfig, RewardToken } from "@/lib/moats-api";
 
@@ -105,6 +105,14 @@ function MoatAdminPanel({ moat }: { moat: MoatConfig }) {
   const statusStyle = moat.status === "Verified"
     ? { border: "border-emerald-500/20", badge: "bg-emerald-500/8 text-emerald-400 border-emerald-500/25", dot: "bg-emerald-400" }
     : { border: "border-primary/20", badge: "bg-primary/8 text-primary border-primary/25", dot: "bg-primary" };
+
+  // ── On-chain logo ────────────────────────────────────────────────────────
+  const { data: onChainLogoUrl } = useReadContract({
+    address: addr,
+    abi: MOAT_LOGO_ABI,
+    functionName: "getLogoURL",
+    chainId,
+  });
 
   // ── State reads ─────────────────────────────────────────────────────────
   const { data: adminState } = useReadContracts({
@@ -219,7 +227,7 @@ function MoatAdminPanel({ moat }: { moat: MoatConfig }) {
       <div className="relative flex items-start justify-between gap-4 p-5 border-b border-white/5">
         <div className="flex items-center gap-4 min-w-0">
           <div className="relative shrink-0">
-            <MoatLogo meta={meta} primaryTokenAddress={primaryTokenAddress} size="lg" />
+            <MoatLogo meta={meta} primaryTokenAddress={primaryTokenAddress} onChainLogoUrl={onChainLogoUrl ?? undefined} size="lg" />
             {/* Admin badge overlay */}
             <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center shadow-[0_0_8px_rgba(0,212,255,0.6)] border border-background">
               <Shield size={10} className="text-background" />
