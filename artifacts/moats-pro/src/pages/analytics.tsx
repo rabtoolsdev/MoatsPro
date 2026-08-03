@@ -1266,7 +1266,7 @@ export default function Analytics() {
                   </thead>
                   <tbody>
                     {topMoats.map((r, i) => {
-                      const meta = getMoatMeta(r.address);
+                      const meta = getMoatMeta(r.address, r.cfg?.network);
                       return (
                         <tr
                           key={r.address}
