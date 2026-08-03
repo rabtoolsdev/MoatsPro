@@ -326,6 +326,7 @@ export default function MoatDetail() {
   const parseAmt = (display: string): string =>
     display.replace(/,/g, "").replace(/[^0-9.]/g, "");
   const [earlyExitConfirm, setEarlyExitConfirm] = useState<number | null>(null);
+  const [stakerPage, setStakerPage] = useState(0);
 
   const fmtTokenAmt = (n: number): string => {
     if (n === 0) return "0";
@@ -1455,54 +1456,82 @@ export default function MoatDetail() {
             )}
 
             {/* Top Stakers (from points v2 leaderboard) */}
-            {leaderboard.length > 0 && (
-              <div className="rounded-2xl border border-white/5 bg-card/40 backdrop-blur-xl overflow-hidden relative shadow-lg">
-                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
-                <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between bg-black/20">
-                  <h3 className="font-bold flex items-center gap-2 text-white tracking-tight">
-                    <Trophy size={16} className="text-yellow-400" />
-                    Top Stakers
-                  </h3>
-                  <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
-                    {participantCount} participants
-                  </span>
-                </div>
-                <div className="divide-y divide-white/5">
-                  {[...leaderboard]
-                    .sort((a, b) => b.points - a.points)
-                    .slice(0, 10)
-                    .map((entry, i) => (
-                      <div
-                        key={entry.address}
-                        data-testid={`row-staker-${i}`}
-                        className="px-6 py-3.5 flex items-center justify-between group hover:bg-white/[0.02] transition-colors"
-                      >
-                        <div className="flex items-center gap-4">
-                          <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-mono font-bold ${
-                            i === 0 ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 shadow-[0_0_10px_rgba(234,179,8,0.2)]" :
-                            i === 1 ? "bg-slate-300/20 text-slate-300 border border-slate-300/30" :
-                            i === 2 ? "bg-amber-700/20 text-amber-600 border border-amber-700/30" :
-                            "bg-white/5 text-muted-foreground"
-                          }`}>
-                            {i + 1}
-                          </span>
-                          <span className="font-mono text-sm text-white group-hover:text-primary transition-colors">{formatAddress(entry.address)}</span>
-                        </div>
-                        <div className="flex flex-col items-end">
-                          <span className="font-bold text-primary text-sm tabular-nums drop-shadow-sm">
-                            {formatPoints(entry.points)} pts
-                          </span>
-                          {entry.boosted && (
-                            <span className="text-[10px] font-mono text-cyan-400/80 uppercase tracking-widest mt-0.5">
-                              {entry.boostMultiplier}x boost
+            {leaderboard.length > 0 && (() => {
+              const sorted = [...leaderboard].sort((a, b) => b.points - a.points);
+              const PAGE_SIZE = 10;
+              const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
+              const pageStart = stakerPage * PAGE_SIZE;
+              const pageEntries = sorted.slice(pageStart, pageStart + PAGE_SIZE);
+              return (
+                <div className="rounded-2xl border border-white/5 bg-card/40 backdrop-blur-xl overflow-hidden relative shadow-lg">
+                  <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+                  <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between bg-black/20">
+                    <h3 className="font-bold flex items-center gap-2 text-white tracking-tight">
+                      <Trophy size={16} className="text-yellow-400" />
+                      Top Stakers
+                    </h3>
+                    <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
+                      {participantCount} participants
+                    </span>
+                  </div>
+                  <div className="divide-y divide-white/5">
+                    {pageEntries.map((entry, i) => {
+                      const rank = pageStart + i;
+                      return (
+                        <div
+                          key={entry.address}
+                          data-testid={`row-staker-${rank}`}
+                          className="px-6 py-3.5 flex items-center justify-between group hover:bg-white/[0.02] transition-colors"
+                        >
+                          <div className="flex items-center gap-4">
+                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-mono font-bold ${
+                              rank === 0 ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 shadow-[0_0_10px_rgba(234,179,8,0.2)]" :
+                              rank === 1 ? "bg-slate-300/20 text-slate-300 border border-slate-300/30" :
+                              rank === 2 ? "bg-amber-700/20 text-amber-600 border border-amber-700/30" :
+                              "bg-white/5 text-muted-foreground"
+                            }`}>
+                              {rank + 1}
                             </span>
-                          )}
+                            <span className="font-mono text-sm text-white group-hover:text-primary transition-colors">{formatAddress(entry.address)}</span>
+                          </div>
+                          <div className="flex flex-col items-end">
+                            <span className="font-bold text-primary text-sm tabular-nums drop-shadow-sm">
+                              {formatPoints(entry.points)} pts
+                            </span>
+                            {entry.boosted && (
+                              <span className="text-[10px] font-mono text-cyan-400/80 uppercase tracking-widest mt-0.5">
+                                {entry.boostMultiplier}x boost
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
+                  </div>
+                  {totalPages > 1 && (
+                    <div className="px-6 py-3.5 border-t border-white/5 bg-black/20 flex items-center justify-between">
+                      <button
+                        onClick={() => setStakerPage((p) => Math.max(0, p - 1))}
+                        disabled={stakerPage === 0}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-muted-foreground hover:text-white hover:bg-white/5 transition-all disabled:opacity-30 disabled:cursor-not-allowed border border-white/5 hover:border-white/10"
+                      >
+                        ← Prev
+                      </button>
+                      <span className="text-[10px] font-mono text-muted-foreground/60 uppercase tracking-widest">
+                        Page {stakerPage + 1} of {totalPages}
+                      </span>
+                      <button
+                        onClick={() => setStakerPage((p) => Math.min(totalPages - 1, p + 1))}
+                        disabled={stakerPage === totalPages - 1}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-muted-foreground hover:text-white hover:bg-white/5 transition-all disabled:opacity-30 disabled:cursor-not-allowed border border-white/5 hover:border-white/10"
+                      >
+                        Next →
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Recent Events for this contract */}
             {eventsData && eventsData.results.length > 0 && (
