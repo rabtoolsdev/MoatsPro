@@ -689,17 +689,35 @@ export default function MoatDetail() {
   const userLockedAmount = locks.filter((l) => l.active).reduce((sum, l) => sum + l.amount, 0n);
   const userLockedFormatted = fmtUserAmt(parseFloat(formatUnits(userLockedAmount, decimals)));
   const userMoatPointsValue = userMoatPoints?.points ?? 0;
-  // "Your Moat Weight" = the user's share of the pool. The v2 leaderboard
-  // exposes a per-wallet `weight` that already sums to 100 across the moat
-  // (the linear staked/locked/burned share), which is what moats.app shows.
-  // Points are sqrt-derived, so a points/totalPoints ratio is NOT the weight.
+
+  // "Your Moat Weight" = the wallet's actual share of pool rewards.
+  //
+  // The API leaderboard `weight` field uses a sqrt-points model which
+  // significantly under-reports large stakers/burners (e.g. 11.77% when the
+  // true reward share is ~22%). We compute from on-chain data instead:
+  //
+  //   share = (stakingPoints + burnPoints) / totalPoints × 100
+  //
+  // stakingPoints (userInfo[2]) covers direct staking AND lock contributions
+  // (locked amount × lockMultiplier is embedded here by the contract).
+  // burnPoints (userInfo[3]) covers burned tokens at the 10× multiplier.
+  // totalPoints is the pool-wide sum of all users' positions.
+  // This matches the contract's own reward-distribution logic exactly.
   const userLeaderboardEntry = useMemo(() => {
     if (!userAddress) return undefined;
     return leaderboard.find(
       (e) => e.address.toLowerCase() === userAddress.toLowerCase()
     );
   }, [leaderboard, userAddress]);
-  const userLeaderboardWeight = userLeaderboardEntry?.weight;
+
+  const userOnChainPoolShare = useMemo((): number | null => {
+    const totalPts = stats.totalPoints;
+    const ui = userInfo.userInfo;
+    if (!totalPts || totalPts === 0n || !ui) return null;
+    const userPts = (ui[2] ?? 0n) + (ui[3] ?? 0n);
+    if (userPts === 0n) return null;
+    return (Number(userPts) / Number(totalPts)) * 100;
+  }, [stats.totalPoints, userInfo.userInfo]);
 
   // Moat Points simulation: calibrate the points model from the leaderboard so
   // we can estimate the points a stake/lock/burn would yield before the tx.
@@ -1283,9 +1301,9 @@ export default function MoatDetail() {
                       value: formatPoints(userMoatPointsValue),
                       testId: "user-moat-points",
                       usd: 0,
-                      weightedPct: userLeaderboardWeight !== undefined
-                        ? userLeaderboardWeight
-                        : (totalPoints > 0 ? (userMoatPointsValue / totalPoints) * 100 : 0),
+                      weightedPct: userOnChainPoolShare !== null
+                        ? userOnChainPoolShare
+                        : (userLeaderboardEntry?.weight ?? 0),
                     },
                   ].map((item) => {
                     const weightedPct = (item as { weightedPct?: number }).weightedPct ?? 0;
