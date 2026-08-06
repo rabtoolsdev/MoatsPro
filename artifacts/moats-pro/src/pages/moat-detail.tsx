@@ -12,7 +12,7 @@ import {
 import { Link } from "wouter";
 import { formatUnits, parseUnits } from "viem";
 import { useQueryClient } from "@tanstack/react-query";
-import { useAllMoatConfigs, useMoatPointsV2, useUserMoatPointsV2, useEvents, useRewardsDepositedEvents } from "@/hooks/use-moats-api";
+import { useAllMoatConfigs, useMoatPointsV2, useUserMoatPointsV2, useEvents, useRewardsDepositedEvents, useOnChainRewardsDeposited } from "@/hooks/use-moats-api";
 import { getActiveBoosts, getBoostTier, getEffectiveBoostValue, getMaxBoostValue, type BoostConfig, type BoostTier } from "@/lib/moats-api";
 import {
   useMoatStats, useUserMoatInfo, useTokenBalance,
@@ -287,21 +287,45 @@ export default function MoatDetail() {
   const { data: userMoatPoints } = useUserMoatPointsV2(userAddress, contractAddress, urlNetwork);
   const { data: eventsData } = useEvents(contractAddress);
   const { data: rewardsDepositedData } = useRewardsDepositedEvents(contractAddress);
-  // Per-token last distribution timestamp (ms), derived from on-chain
-  // RewardsDeposited events. Replaces token.lastProcessed which is set when
-  // the *config record* is updated — not when rewards actually go out — and
-  // can be severely stale (e.g. stuck 59 days ago when the real last deposit
-  // was 4 days ago).
+  // On-chain fallback: fetch RewardsDeposited logs directly via getLogs so
+  // deposits made by automated reward contracts (which the moat-api indexer
+  // may miss) still appear in the activity feed and lastDepositedMap.
+  const { data: onChainRewards } = useOnChainRewardsDeposited(
+    contractAddress,
+    networkToChainId(urlNetwork),
+    urlNetwork,
+  );
+  // Per-token last distribution timestamp (ms) — union of API events and
+  // on-chain getLogs results so automated deposits are never missed.
   const lastDepositedMap = useMemo((): Record<string, number> => {
     const map: Record<string, number> = {};
-    for (const ev of rewardsDepositedData?.results ?? []) {
+    const allDeposits = [
+      ...(rewardsDepositedData?.results ?? []),
+      ...(onChainRewards ?? []),
+    ];
+    for (const ev of allDeposits) {
       const tokenAddr = (ev.args.token as string | undefined)?.toLowerCase();
       if (!tokenAddr) continue;
       const ts = new Date(ev.timestamp).getTime();
       if (!map[tokenAddr] || ts > map[tokenAddr]) map[tokenAddr] = ts;
     }
     return map;
-  }, [rewardsDepositedData]);
+  }, [rewardsDepositedData, onChainRewards]);
+
+  // Merge API events with on-chain RewardsDeposited, deduplicating by
+  // transactionHash+logIndex. On-chain events go first so the sort puts the
+  // most-recent at the top regardless of which source produced them.
+  const mergedEvents = useMemo(() => {
+    const apiEvents = eventsData?.results ?? [];
+    const apiKeys = new Set(apiEvents.map((e) => `${e.transactionHash}-${e.logIndex}`));
+    const supplemental = (onChainRewards ?? []).filter(
+      (e) => !apiKeys.has(`${e.transactionHash}-${e.logIndex}`),
+    );
+    if (!supplemental.length) return apiEvents;
+    return [...supplemental, ...apiEvents].sort(
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+    );
+  }, [eventsData, onChainRewards]);
   const moatChainId = networkToChainId(urlNetwork);
   const stats = useMoatStats(contractAddress as MoatContractAddress | undefined, moatChainId);
   const userInfo = useUserMoatInfo(contractAddress as MoatContractAddress | undefined, moatChainId);
@@ -1534,7 +1558,7 @@ export default function MoatDetail() {
             })()}
 
             {/* Recent Events for this contract */}
-            {eventsData && eventsData.results.length > 0 && (
+            {mergedEvents.length > 0 && (
               <div className="relative">
                 <div className="absolute -inset-x-6 top-10 bottom-0 bg-black/20 -z-10 rounded-3xl" />
                 <h3 className="font-bold mb-6 flex items-center justify-between text-white text-lg tracking-tight">
@@ -1543,10 +1567,10 @@ export default function MoatDetail() {
                     Live Activity
                   </span>
                   <span className="text-[10px] font-mono text-primary/70 uppercase tracking-widest px-3 py-1 rounded-[4px] bg-primary/10 border border-primary/20 shadow-[0_0_10px_rgba(0,212,255,0.1)]">
-                    {eventsData.total.toLocaleString()} total events
+                    {(eventsData?.total ?? mergedEvents.length).toLocaleString()} total events
                   </span>
                 </h3>
-                <ActivityFeed events={eventsData.results.slice(0, 8)} moatConfigs={moatConfig ? [moatConfig] : undefined} />
+                <ActivityFeed events={mergedEvents.slice(0, 8)} moatConfigs={moatConfig ? [moatConfig] : undefined} />
               </div>
             )}
 

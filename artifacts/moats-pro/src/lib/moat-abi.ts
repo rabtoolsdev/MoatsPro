@@ -413,6 +413,20 @@ export const ERC20_ABI = [
   },
 ] as const;
 
+// Event ABI for RewardsDeposited — used by the on-chain getLogs fallback so
+// the activity feed catches deposits made by automated reward contracts that
+// the moat-api.fortifi.network indexer may not pick up.
+export const REWARDS_DEPOSITED_EVENT_ABI = [
+  {
+    type: "event",
+    name: "RewardsDeposited",
+    inputs: [
+      { indexed: true, name: "token", type: "address" },
+      { indexed: false, name: "amount", type: "uint256" },
+    ],
+  },
+] as const;
+
 export const MOAT_LOGO_ABI = [
   {
     inputs: [],

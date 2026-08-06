@@ -1,5 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
+import { usePublicClient } from "wagmi";
 import { moatsApi } from "@/lib/moats-api";
+import type { MoatEvent } from "@/lib/moats-api";
+import { REWARDS_DEPOSITED_EVENT_ABI } from "@/lib/moat-abi";
 
 export function useEvents(contractAddress?: string) {
   return useQuery({
@@ -156,5 +159,85 @@ export function useUserEvents(address: string | undefined) {
     queryFn: () => moatsApi.getEventsByUser(address!, 100000),
     enabled: !!address,
     staleTime: 60_000,
+  });
+}
+
+/**
+ * Fetch RewardsDeposited events directly from the chain via getLogs.
+ *
+ * This supplements the moat-api.fortifi.network indexer which can miss deposits
+ * made by automated reward contracts (the tx sender is the automation contract,
+ * not the moat admin, so the backend indexer may not pick it up).
+ *
+ * Returns results mapped to MoatEvent shape so they can be merged with API
+ * results without any changes to downstream components.
+ */
+export function useOnChainRewardsDeposited(
+  contractAddress: string | undefined,
+  chainId: number | undefined,
+  network: string | undefined,
+) {
+  const publicClient = usePublicClient({ chainId });
+
+  return useQuery({
+    queryKey: ["moats", "events", "onchain-rewards", chainId, contractAddress],
+    enabled: !!contractAddress && !!publicClient && !!chainId,
+    staleTime: 60_000,
+    refetchInterval: 120_000,
+    queryFn: async (): Promise<MoatEvent[]> => {
+      if (!publicClient || !contractAddress) return [];
+
+      const currentBlock = await publicClient.getBlockNumber();
+
+      // Try to fetch last ~50,000 blocks (≈1 day on Avalanche @2s/block).
+      // Many public RPCs cap eth_getLogs at 2,048 blocks; fall back to that
+      // window if the wide query is rejected.
+      const WIDE = 50_000n;
+      const NARROW = 2_048n;
+
+      let logs: Awaited<ReturnType<typeof publicClient.getLogs>>;
+      try {
+        logs = await publicClient.getLogs({
+          address: contractAddress as `0x${string}`,
+          event: REWARDS_DEPOSITED_EVENT_ABI[0],
+          fromBlock: currentBlock > WIDE ? currentBlock - WIDE : 0n,
+          toBlock: currentBlock,
+        });
+      } catch {
+        logs = await publicClient.getLogs({
+          address: contractAddress as `0x${string}`,
+          event: REWARDS_DEPOSITED_EVENT_ABI[0],
+          fromBlock: currentBlock > NARROW ? currentBlock - NARROW : 0n,
+          toBlock: currentBlock,
+        });
+      }
+
+      if (!logs.length) return [];
+
+      // Resolve timestamps — one getBlock call per unique block number.
+      const uniqueBlocks = [...new Set(logs.map((l) => l.blockNumber!))];
+      const blocks = await Promise.all(
+        uniqueBlocks.map((bn) => publicClient.getBlock({ blockNumber: bn })),
+      );
+      const blockTs = new Map(blocks.map((b) => [b.number, Number(b.timestamp) * 1000]));
+
+      return logs.map((log, i): MoatEvent => {
+        const args = log.args as { token?: string; amount?: bigint };
+        return {
+          _id: `onchain-${log.transactionHash}-${log.logIndex ?? i}`,
+          network: network ?? "avalanche",
+          contractAddress: contractAddress.toLowerCase(),
+          eventType: "RewardsDeposited",
+          blockNumber: Number(log.blockNumber ?? 0n),
+          transactionHash: log.transactionHash ?? "",
+          logIndex: log.logIndex ?? i,
+          timestamp: new Date(blockTs.get(log.blockNumber!) ?? Date.now()).toISOString(),
+          args: {
+            token: args.token ?? "",
+            amount: String(args.amount ?? "0"),
+          },
+        };
+      });
+    },
   });
 }
