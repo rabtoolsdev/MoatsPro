@@ -274,6 +274,41 @@ export default function Home() {
       }
     }
 
+    // ---- On-chain supplement: getRewardTokens().totalDeposited ----
+    // This storage variable is updated on every depositRewards call so it reflects
+    // all deposits regardless of API-indexer lag or getLogs lookback-window limits.
+    // For each moat+token, replace the config counter with the on-chain total when
+    // the contract reports a higher value (handles missed deposits for USDC, BTC.b,
+    // WAVAX, and any community token).
+    if (moatRewardTokensData) {
+      configs.forEach((cfg, i) => {
+        const result = moatRewardTokensData[i];
+        if (result?.status !== "success") return;
+        const [addresses, totalDeposited] = result.result as unknown as [string[], bigint[], bigint[], bigint[]];
+        if (!addresses?.length) return;
+        for (let j = 0; j < addresses.length; j++) {
+          const tokenAddr = addresses[j].toLowerCase();
+          const rt = cfg.rewardTokens?.find((t) => t.tokenAddress.toLowerCase() === tokenAddr);
+          if (!rt) continue;
+          const decimals = rt.decimals ?? 18;
+          const onChainTotal = parseFloat(formatUnits(totalDeposited[j] ?? 0n, decimals));
+          if (onChainTotal <= 0) continue;
+          const key = `${(cfg.network || "avax").toLowerCase()}|${tokenAddr}`;
+          const cur = perToken.get(key);
+          if (cur) {
+            if (onChainTotal > cur.amount) cur.amount = onChainTotal;
+          } else {
+            perToken.set(key, {
+              symbol: rt.symbol,
+              network: cfg.network || "avax",
+              address: tokenAddr,
+              amount: onChainTotal,
+            });
+          }
+        }
+      });
+    }
+
     const normSym = (s: string) => s.toLowerCase().replace(/\./g, "");
     const isUsdc = (s: string) => normSym(s) === "usdc";
     const isWavax = (s: string) => normSym(s) === "wavax";
@@ -327,15 +362,33 @@ export default function Home() {
         // skip malformed amount
       }
     }
-    if (wavaxWei > 0n) {
-      const wavaxAmount = Number(wavaxWei) / 10 ** WAVAX_DECIMALS;
+    // Sum on-chain WAVAX totalDeposited across all moats — this covers deposits
+    // that fall outside the getLogs window or weren't indexed by the API.
+    let onChainWavaxTotal = 0;
+    if (moatRewardTokensData) {
+      configs.forEach((cfg, i) => {
+        const result = moatRewardTokensData[i];
+        if (result?.status !== "success") return;
+        const [addresses, totalDeposited] = result.result as unknown as [string[], bigint[], bigint[], bigint[]];
+        if (!addresses?.length) return;
+        for (let j = 0; j < addresses.length; j++) {
+          if (addresses[j].toLowerCase() !== WAVAX_ADDR) continue;
+          onChainWavaxTotal += parseFloat(formatUnits(totalDeposited[j] ?? 0n, WAVAX_DECIMALS));
+        }
+      });
+    }
+
+    // Use whichever WAVAX source reports the higher total.
+    const eventWavaxAmount = wavaxWei > 0n ? Number(wavaxWei) / 10 ** WAVAX_DECIMALS : 0;
+    const finalWavaxAmount = Math.max(eventWavaxAmount, onChainWavaxTotal);
+    if (finalWavaxAmount > 0) {
       const wavaxPrice =
         (priceMap?.[getLlamaId("avax", WAVAX_ADDR).toLowerCase()] ?? 0) ||
         dexInfoMap?.[WAVAX_ADDR]?.price ||
         0;
-      out.wavax.amount = wavaxAmount;
+      out.wavax.amount = finalWavaxAmount;
       out.wavax.price = wavaxPrice;
-      out.wavax.usd = wavaxAmount * wavaxPrice;
+      out.wavax.usd = finalWavaxAmount * wavaxPrice;
     }
 
     // USDC is ~$1 even if oracle is silent; fall back so the card never looks broken
@@ -345,7 +398,7 @@ export default function Home() {
     }
 
     return out;
-  }, [configs, rewardsDepositedEvents, priceMap, dexInfoMap]);
+  }, [configs, rewardsDepositedEvents, priceMap, dexInfoMap, moatRewardTokensData]);
 
   useResolveMoatMetas(
     (configs ?? []).map((c, i) => ({
