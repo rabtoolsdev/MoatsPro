@@ -326,6 +326,35 @@ export default function MoatDetail() {
       (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
     );
   }, [eventsData, onChainRewards]);
+
+  // Extra per-token distributed amounts from on-chain events the backend indexer
+  // missed (e.g. deposits via automated reward contracts). Keyed by lowercase
+  // token address → extra amount in human-readable units. Added to
+  // token.totalRewardsDeposited at render time so "Total Distributed" stays
+  // accurate even when the API lags behind.
+  const supplementalByToken = useMemo((): Record<string, number> => {
+    if (!onChainRewards?.length) return {};
+    const apiTxHashes = new Set(
+      (rewardsDepositedData?.results ?? []).map((e) => e.transactionHash.toLowerCase()),
+    );
+    const extras: Record<string, number> = {};
+    for (const ev of onChainRewards) {
+      if (apiTxHashes.has(ev.transactionHash.toLowerCase())) continue;
+      const tokenAddr = (ev.args.token as string | undefined)?.toLowerCase();
+      if (!tokenAddr) continue;
+      const rtConfig = moatConfig?.rewardTokens.find(
+        (t) => t.tokenAddress.toLowerCase() === tokenAddr,
+      );
+      const decimals = rtConfig?.decimals ?? 18;
+      try {
+        const human = parseFloat(formatUnits(BigInt(ev.args.amount as string ?? "0"), decimals));
+        extras[tokenAddr] = (extras[tokenAddr] ?? 0) + human;
+      } catch {
+        // malformed amount — skip
+      }
+    }
+    return extras;
+  }, [onChainRewards, rewardsDepositedData, moatConfig]);
   const moatChainId = networkToChainId(urlNetwork);
   const stats = useMoatStats(contractAddress as MoatContractAddress | undefined, moatChainId);
   const userInfo = useUserMoatInfo(contractAddress as MoatContractAddress | undefined, moatChainId);
@@ -1076,7 +1105,8 @@ export default function MoatDetail() {
                             </span>
                             <span className="font-medium text-white tabular-nums tracking-tight">
                               {(() => {
-                                const v = token.totalRewardsDeposited;
+                                const extra = supplementalByToken[token.tokenAddress.toLowerCase()] ?? 0;
+                                const v = token.totalRewardsDeposited + extra;
                                 const fmt =
                                   v >= 1_000_000 ? `${(v / 1_000_000).toFixed(2)}M`
                                   : v >= 1_000 ? `${(v / 1_000).toFixed(0)}K`
@@ -1091,6 +1121,11 @@ export default function MoatDetail() {
                                     {totalUSD > 0 && (
                                       <span className="text-xs text-emerald-500/70 font-mono mt-0.5">
                                         ≈ {formatUSD(totalUSD)}
+                                      </span>
+                                    )}
+                                    {extra > 0 && (
+                                      <span className="text-[10px] text-primary/50 font-mono mt-0.5">
+                                        +{extra >= 1_000 ? `${(extra / 1_000).toFixed(1)}K` : parseFloat(extra.toPrecision(4)).toString()} on-chain
                                       </span>
                                     )}
                                   </span>
