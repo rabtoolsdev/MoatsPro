@@ -427,6 +427,82 @@ export const REWARDS_DEPOSITED_EVENT_ABI = [
   },
 ] as const;
 
+// All MoatV3 user-facing events — used for on-chain getLogs when the API
+// indexer falls behind. parseEventLogs decodes any log that matches one of
+// these; unknown logs are silently skipped (strict: false).
+export const MOAT_ALL_EVENTS_ABI = [
+  {
+    type: "event",
+    name: "Staked",
+    inputs: [
+      { indexed: true, name: "user", type: "address" },
+      { indexed: false, name: "amount", type: "uint256" },
+    ],
+  },
+  {
+    type: "event",
+    name: "Withdrawn",
+    inputs: [
+      { indexed: true, name: "user", type: "address" },
+      { indexed: false, name: "amount", type: "uint256" },
+    ],
+  },
+  {
+    type: "event",
+    name: "Locked",
+    inputs: [
+      { indexed: true, name: "user", type: "address" },
+      { indexed: false, name: "amount", type: "uint256" },
+      { indexed: false, name: "duration", type: "uint256" },
+      { indexed: false, name: "lockIndex", type: "uint256" },
+    ],
+  },
+  {
+    type: "event",
+    name: "Burned",
+    inputs: [
+      { indexed: true, name: "user", type: "address" },
+      { indexed: false, name: "amount", type: "uint256" },
+    ],
+  },
+  {
+    type: "event",
+    name: "RewardClaimed",
+    inputs: [
+      { indexed: true, name: "user", type: "address" },
+      { indexed: true, name: "token", type: "address" },
+      { indexed: false, name: "amount", type: "uint256" },
+    ],
+  },
+  {
+    type: "event",
+    name: "LockExited",
+    inputs: [
+      { indexed: true, name: "user", type: "address" },
+      { indexed: false, name: "lockIndex", type: "uint256" },
+      { indexed: false, name: "amount", type: "uint256" },
+    ],
+  },
+  {
+    type: "event",
+    name: "EarlyExit",
+    inputs: [
+      { indexed: true, name: "user", type: "address" },
+      { indexed: false, name: "amount", type: "uint256" },
+      { indexed: false, name: "fee", type: "uint256" },
+      { indexed: false, name: "lockIndex", type: "uint256" },
+    ],
+  },
+  {
+    type: "event",
+    name: "RewardsDeposited",
+    inputs: [
+      { indexed: true, name: "token", type: "address" },
+      { indexed: false, name: "amount", type: "uint256" },
+    ],
+  },
+] as const;
+
 export const MOAT_LOGO_ABI = [
   {
     inputs: [],

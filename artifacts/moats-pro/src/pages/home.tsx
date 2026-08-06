@@ -6,7 +6,7 @@ import { useAppKit, useAppKitNetwork } from "@reown/appkit/react";
 import { CHAIN_DISPLAY } from "@/lib/wagmi-config";
 import { Wallet, ArrowRight, Search, ArrowUpDown, X } from "lucide-react";
 import { formatUnits } from "viem";
-import { useAllMoatConfigs, useMapsLeaderboard, useEvents, useAllRewardsDeposited, useAllOnChainRewardsDeposited } from "@/hooks/use-moats-api";
+import { useAllMoatConfigs, useMapsLeaderboard, useEvents, useAllRewardsDeposited, useAllOnChainRewardsDeposited, useAllOnChainRecentEvents } from "@/hooks/use-moats-api";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
 import { useDexscreenerInfo } from "@/hooks/use-dexscreener";
 import { MOAT_V3_ABI, ERC20_ABI, MOAT_LOGO_ABI } from "@/lib/moat-abi";
@@ -337,21 +337,25 @@ export default function Home() {
   const dailyEstimates = useDailyRewardEstimates(configs);
   const poolBalances = useRewardPoolBalances(configs);
   const { data: allOnChainRewards } = useAllOnChainRewardsDeposited(configs);
+  const { data: allOnChainRecentEvents } = useAllOnChainRecentEvents(configs);
 
-  // Merge on-chain RewardsDeposited events the API indexer missed into the
-  // activity feed. Diff by txHash so already-indexed events aren't duplicated.
+  // Merge all on-chain events the API indexer missed into the activity feed.
+  // Diff by txHash+logIndex so already-indexed events aren't duplicated.
   const mergedActivityEvents = useMemo(() => {
     const apiEvents = eventsData?.results ?? [];
-    if (!allOnChainRewards?.length) return apiEvents;
-    const apiTxHashes = new Set(apiEvents.map((e) => e.transactionHash.toLowerCase()));
-    const missed = allOnChainRewards.filter(
-      (e) => !apiTxHashes.has(e.transactionHash.toLowerCase()),
+    if (!allOnChainRecentEvents?.length) return apiEvents;
+    // Key: `${txHash.toLowerCase()}:${logIndex}` — unique per log
+    const apiKeys = new Set(
+      apiEvents.map((e) => `${e.transactionHash.toLowerCase()}:${e.logIndex}`),
+    );
+    const missed = allOnChainRecentEvents.filter(
+      (e) => !apiKeys.has(`${e.transactionHash.toLowerCase()}:${e.logIndex}`),
     );
     if (!missed.length) return apiEvents;
     return [...missed, ...apiEvents].sort(
       (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
     );
-  }, [eventsData, allOnChainRewards]);
+  }, [eventsData, allOnChainRecentEvents]);
 
   // Extra per-token amounts (human-readable) from on-chain events the API indexer
   // missed. Keyed by `${moatLower}_${tokenLower}` — same key format used by
