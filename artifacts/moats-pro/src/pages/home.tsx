@@ -338,6 +338,21 @@ export default function Home() {
   const poolBalances = useRewardPoolBalances(configs);
   const { data: allOnChainRewards } = useAllOnChainRewardsDeposited(configs);
 
+  // Merge on-chain RewardsDeposited events the API indexer missed into the
+  // activity feed. Diff by txHash so already-indexed events aren't duplicated.
+  const mergedActivityEvents = useMemo(() => {
+    const apiEvents = eventsData?.results ?? [];
+    if (!allOnChainRewards?.length) return apiEvents;
+    const apiTxHashes = new Set(apiEvents.map((e) => e.transactionHash.toLowerCase()));
+    const missed = allOnChainRewards.filter(
+      (e) => !apiTxHashes.has(e.transactionHash.toLowerCase()),
+    );
+    if (!missed.length) return apiEvents;
+    return [...missed, ...apiEvents].sort(
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+    );
+  }, [eventsData, allOnChainRewards]);
+
   // Extra per-token amounts (human-readable) from on-chain events the API indexer
   // missed. Keyed by `${moatLower}_${tokenLower}` — same key format used by
   // dailyEstimates and poolBalances — so MoatCard can apply it directly.
@@ -879,18 +894,20 @@ export default function Home() {
         )}
       </section>
       {/* Activity Feed */}
-      {eventsData && eventsData.results.length > 0 && (
+      {mergedActivityEvents.length > 0 && (
         <section className="px-4 sm:px-6 lg:px-8 py-12 max-w-7xl mx-auto w-full relative z-10">
           <div className="bg-card/30 backdrop-blur-xl border border-white/5 rounded-2xl p-6 relative overflow-hidden cyber-grid">
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
             <div className="flex items-center justify-between mb-6">
               <div />
-              <span className="text-[10px] font-mono text-muted-foreground/60 uppercase tracking-widest">
-                {eventsData.total.toLocaleString()} total events
-              </span>
+              {eventsData && (
+                <span className="text-[10px] font-mono text-muted-foreground/60 uppercase tracking-widest">
+                  {eventsData.total.toLocaleString()} total events
+                </span>
+              )}
             </div>
             <ActivityFeed
-              events={eventsData.results.slice(0, 12)}
+              events={mergedActivityEvents.slice(0, 12)}
               moatConfigs={configs}
               showLiveBadge
             />
