@@ -1123,11 +1123,6 @@ export default function MoatDetail() {
                                         ≈ {formatUSD(totalUSD)}
                                       </span>
                                     )}
-                                    {extra > 0 && (
-                                      <span className="text-[10px] text-primary/50 font-mono mt-0.5">
-                                        +{extra >= 1_000 ? `${(extra / 1_000).toFixed(1)}K` : parseFloat(extra.toPrecision(4)).toString()} on-chain
-                                      </span>
-                                    )}
                                   </span>
                                 );
                               })()}
