@@ -9,7 +9,7 @@ import { formatUnits } from "viem";
 import { useAllMoatConfigs, useMapsLeaderboard, useEvents, useAllRewardsDeposited, useAllOnChainRewardsDeposited, useAllOnChainRecentEvents } from "@/hooks/use-moats-api";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
 import { useDexscreenerInfo } from "@/hooks/use-dexscreener";
-import { MOAT_V3_ABI, ERC20_ABI, MOAT_LOGO_ABI } from "@/lib/moat-abi";
+import { MOAT_V3_ABI, MOAT_V3_ADMIN_ABI, ERC20_ABI, MOAT_LOGO_ABI } from "@/lib/moat-abi";
 import { getMoatMeta } from "@/lib/moat-metadata";
 import { useResolveMoatMetas } from "@/hooks/use-resolve-moat-metas";
 import { useDailyRewardEstimates } from "@/hooks/use-daily-reward-estimates";
@@ -71,6 +71,27 @@ export default function Home() {
   const { data: moatOnchainData } = useReadContracts({
     contracts: moatOnchainContracts,
     query: { enabled: moatOnchainContracts.length > 0 },
+  });
+
+  // Batch-read getRewardTokens() for every moat so cards can show the on-chain
+  // totalDeposited storage variable rather than relying solely on the API counter
+  // + event-log supplement (which can miss deposits outside the getLogs window).
+  const moatRewardTokensContracts = useMemo(() => {
+    if (!configs) return [];
+    return configs.map((c) => {
+      const chainId = NETWORK_TO_CHAIN_ID[(c.network ?? "").toLowerCase()];
+      return {
+        address: c.contractAddress as `0x${string}`,
+        abi: MOAT_V3_ADMIN_ABI,
+        functionName: "getRewardTokens" as const,
+        chainId,
+      };
+    });
+  }, [configs]);
+
+  const { data: moatRewardTokensData } = useReadContracts({
+    contracts: moatRewardTokensContracts,
+    query: { enabled: moatRewardTokensContracts.length > 0, staleTime: 120_000 },
   });
 
   const stakingTokenAddrs = useMemo(() => {
@@ -357,31 +378,69 @@ export default function Home() {
     );
   }, [eventsData, allOnChainRecentEvents]);
 
-  // Extra per-token amounts (human-readable) from on-chain events the API indexer
-  // missed. Keyed by `${moatLower}_${tokenLower}` — same key format used by
-  // dailyEstimates and poolBalances — so MoatCard can apply it directly.
+  // Extra per-token amounts (human-readable) from two sources merged together:
+  //
+  // 1. On-chain getLogs supplement — events the API indexer missed within the
+  //    recent getLogs lookback window.
+  // 2. Contract-state supplement — getRewardTokens().totalDeposited is a storage
+  //    variable updated on every depositRewards call, so it reflects ALL deposits
+  //    regardless of event-indexer lag or getLogs window limits. For each token we
+  //    compute max(onChainTotal, apiTotal + eventSupplement) and store the delta
+  //    as the supplement so MoatCard always shows the correct lifetime total.
+  //
+  // Keyed by `${moatLower}_${tokenLower}` — same format used by dailyEstimates/poolBalances.
   const supplementalDistributed = useMemo((): Record<string, number> => {
-    if (!allOnChainRewards?.length) return {};
-    const apiTxHashes = new Set(
-      (rewardsDepositedEvents?.results ?? []).map((e) => e.transactionHash.toLowerCase()),
-    );
     const extras: Record<string, number> = {};
-    for (const ev of allOnChainRewards) {
-      if (apiTxHashes.has(ev.transactionHash.toLowerCase())) continue;
-      const moatAddr = ev.contractAddress.toLowerCase();
-      const tokenAddr = (ev.args.token as string | undefined)?.toLowerCase();
-      if (!tokenAddr) continue;
-      const cfg = configs?.find((c) => c.contractAddress.toLowerCase() === moatAddr);
-      const rt = cfg?.rewardTokens.find((t) => t.tokenAddress.toLowerCase() === tokenAddr);
-      const decimals = rt?.decimals ?? 18;
-      try {
-        const human = parseFloat(formatUnits(BigInt(ev.args.amount as string ?? "0"), decimals));
-        const key = `${moatAddr}_${tokenAddr}`;
-        extras[key] = (extras[key] ?? 0) + human;
-      } catch { /* skip malformed */ }
+
+    // Source 1: event-based supplement (on-chain logs the API indexer missed)
+    if (allOnChainRewards?.length) {
+      const apiTxHashes = new Set(
+        (rewardsDepositedEvents?.results ?? []).map((e) => e.transactionHash.toLowerCase()),
+      );
+      for (const ev of allOnChainRewards) {
+        if (apiTxHashes.has(ev.transactionHash.toLowerCase())) continue;
+        const moatAddr = ev.contractAddress.toLowerCase();
+        const tokenAddr = (ev.args.token as string | undefined)?.toLowerCase();
+        if (!tokenAddr) continue;
+        const cfg = configs?.find((c) => c.contractAddress.toLowerCase() === moatAddr);
+        const rt = cfg?.rewardTokens.find((t) => t.tokenAddress.toLowerCase() === tokenAddr);
+        const decimals = rt?.decimals ?? 18;
+        try {
+          const human = parseFloat(formatUnits(BigInt(ev.args.amount as string ?? "0"), decimals));
+          const key = `${moatAddr}_${tokenAddr}`;
+          extras[key] = (extras[key] ?? 0) + human;
+        } catch { /* skip malformed */ }
+      }
     }
+
+    // Source 2: contract-state supplement — use getRewardTokens().totalDeposited
+    // as the authoritative on-chain cumulative total; take the delta over the API
+    // counter when it exceeds the event-based supplement.
+    if (moatRewardTokensData && configs) {
+      configs.forEach((cfg, i) => {
+        const result = moatRewardTokensData[i];
+        if (result?.status !== "success") return;
+        const [addresses, totalDeposited] = result.result as unknown as [string[], bigint[], bigint[], bigint[]];
+        if (!addresses?.length) return;
+        const moatAddr = cfg.contractAddress.toLowerCase();
+        for (let j = 0; j < addresses.length; j++) {
+          const tokenAddr = addresses[j].toLowerCase();
+          const rt = cfg.rewardTokens.find((t) => t.tokenAddress.toLowerCase() === tokenAddr);
+          const decimals = rt?.decimals ?? 18;
+          const onChainTotal = parseFloat(formatUnits(totalDeposited[j] ?? 0n, decimals));
+          const apiTotal = rt?.totalRewardsDeposited ?? 0;
+          const key = `${moatAddr}_${tokenAddr}`;
+          const onChainExtra = onChainTotal - apiTotal;
+          // Only override when the contract reports more than what API+events show
+          if (onChainExtra > (extras[key] ?? 0)) {
+            extras[key] = onChainExtra;
+          }
+        }
+      });
+    }
+
     return extras;
-  }, [allOnChainRewards, rewardsDepositedEvents, configs]);
+  }, [allOnChainRewards, rewardsDepositedEvents, configs, moatRewardTokensData]);
 
   const getTokenPrice = (network: string, tokenAddr: string): number => {
     // Prefer DefiLlama's canonical price (this is what moats.app shows). It

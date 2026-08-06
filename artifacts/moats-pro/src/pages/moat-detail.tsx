@@ -34,7 +34,7 @@ import { useDailyRewardEstimates } from "@/hooks/use-daily-reward-estimates";
 import { useRewardPoolBalances } from "@/hooks/use-reward-pool-balances";
 import { useContractRewardBalances } from "@/hooks/use-contract-reward-balances";
 import { useMoatPointsSim, estimateMoatPoints, estimatePoolShare } from "@/hooks/use-moat-points-sim";
-import { ERC20_ABI, MOAT_LOGO_ABI } from "@/lib/moat-abi";
+import { ERC20_ABI, MOAT_LOGO_ABI, MOAT_V3_ADMIN_ABI } from "@/lib/moat-abi";
 
 type ActionTab = "stake" | "lock" | "claim" | "withdraw" | "burn";
 
@@ -283,6 +283,17 @@ export default function MoatDetail() {
     chainId: networkToChainId(urlNetwork),
     query: { enabled: !!contractAddress, staleTime: 5 * 60 * 1000, gcTime: 30 * 60 * 1000 },
   });
+
+  // On-chain source of truth for Total Distributed: getRewardTokens().totalDeposited
+  // is a storage variable updated on every depositRewards call, so it reflects all
+  // deposits regardless of event-indexer lag or getLogs lookback-window limits.
+  const { data: onChainRewardTokensRaw } = useReadContract({
+    address: contractAddress as `0x${string}` | undefined,
+    abi: MOAT_V3_ADMIN_ABI,
+    functionName: "getRewardTokens",
+    chainId: networkToChainId(urlNetwork),
+    query: { enabled: !!contractAddress, staleTime: 2 * 60 * 1000, gcTime: 10 * 60 * 1000 },
+  });
   const { data: pointsV2 } = useMoatPointsV2(contractAddress, urlNetwork);
   const { data: userMoatPoints } = useUserMoatPointsV2(userAddress, contractAddress, urlNetwork);
   const { data: eventsData } = useEvents(contractAddress);
@@ -355,6 +366,27 @@ export default function MoatDetail() {
     }
     return extras;
   }, [onChainRewards, rewardsDepositedData, moatConfig]);
+
+  // On-chain totalDeposited per token address (lowercase) → human-readable amount.
+  // getRewardTokens() reads a storage variable updated on every depositRewards call
+  // so it's accurate regardless of event-indexer gaps or getLogs lookback windows.
+  // When loaded, this takes priority over the API counter + event supplement.
+  const onChainTotalDepositedByToken = useMemo((): Record<string, number> => {
+    if (!onChainRewardTokensRaw || !moatConfig) return {};
+    const [addresses, totalDeposited] = onChainRewardTokensRaw as unknown as [string[], bigint[], bigint[], bigint[]];
+    if (!addresses?.length) return {};
+    const result: Record<string, number> = {};
+    for (let i = 0; i < addresses.length; i++) {
+      const tokenAddr = addresses[i].toLowerCase();
+      const rtConfig = moatConfig.rewardTokens.find(
+        (t) => t.tokenAddress.toLowerCase() === tokenAddr,
+      );
+      const decimals = rtConfig?.decimals ?? 18;
+      result[tokenAddr] = parseFloat(formatUnits(totalDeposited[i] ?? 0n, decimals));
+    }
+    return result;
+  }, [onChainRewardTokensRaw, moatConfig]);
+
   const moatChainId = networkToChainId(urlNetwork);
   const stats = useMoatStats(contractAddress as MoatContractAddress | undefined, moatChainId);
   const userInfo = useUserMoatInfo(contractAddress as MoatContractAddress | undefined, moatChainId);
@@ -1124,7 +1156,11 @@ export default function MoatDetail() {
                             <span className="font-medium text-white tabular-nums tracking-tight">
                               {(() => {
                                 const extra = supplementalByToken[token.tokenAddress.toLowerCase()] ?? 0;
-                                const v = token.totalRewardsDeposited + extra;
+                                const apiPlusExtra = token.totalRewardsDeposited + extra;
+                                // Prefer on-chain totalDeposited (storage var, always current)
+                                // over API counter + event supplement (may lag or have window gaps).
+                                const onChainTotal = onChainTotalDepositedByToken[token.tokenAddress.toLowerCase()];
+                                const v = onChainTotal !== undefined ? Math.max(onChainTotal, apiPlusExtra) : apiPlusExtra;
                                 const fmt =
                                   v >= 1_000_000 ? `${(v / 1_000_000).toFixed(2)}M`
                                   : v >= 1_000 ? `${(v / 1_000).toFixed(0)}K`
