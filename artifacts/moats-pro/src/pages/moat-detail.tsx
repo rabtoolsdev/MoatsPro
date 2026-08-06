@@ -776,10 +776,30 @@ export default function MoatDetail() {
       }, 0),
     [leaderboard],
   );
+  // Estimate pool share after a stake/lock/burn using the same linear on-chain
+  // formula as userOnChainPoolShare. The contract tracks two linear counters per
+  // wallet — stakingPoints (index 2) and burnPoints (index 3) — and totalPoints()
+  // is their pool-wide sum. A stake adds amount×1, a lock adds amount×lockMult,
+  // and a burn adds amount×10 to both the user's counter and the total.
+  // Falls back to the leaderboard sqrt model only if on-chain data hasn't loaded.
   const getEstimatedPoolShare = (rawAmount: string, actionWeight: number): number | null => {
-    if (!pointsSim.ready || pointsSim.k == null) return null;
     const amt = parseFloat(rawAmount);
     if (!amt || amt <= 0) return null;
+
+    // Prefer on-chain: (userPts + delta) / (totalPts + delta)
+    const totalPts = stats.totalPoints;
+    const ui = userInfo.userInfo;
+    if (totalPts && totalPts > 0n && ui !== undefined) {
+      const userCurrentPts = Number((ui[2] ?? 0n) + (ui[3] ?? 0n));
+      const delta = amt * actionWeight;
+      const newUserPts = userCurrentPts + delta;
+      const newTotalPts = Number(totalPts) + delta;
+      if (newTotalPts <= 0) return null;
+      return (newUserPts / newTotalPts) * 100;
+    }
+
+    // Fallback: leaderboard-calibrated sqrt model (used before on-chain data loads)
+    if (!pointsSim.ready || pointsSim.k == null) return null;
     const userBase = userLeaderboardEntry?.basePoints ?? userLeaderboardEntry?.points ?? 0;
     const userMult =
       userLeaderboardEntry?.boostMultiplier && userLeaderboardEntry.boostMultiplier > 0
