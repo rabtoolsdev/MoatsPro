@@ -6,7 +6,7 @@ import { useAppKit, useAppKitNetwork } from "@reown/appkit/react";
 import { CHAIN_DISPLAY } from "@/lib/wagmi-config";
 import { Wallet, ArrowRight, Search, ArrowUpDown, X } from "lucide-react";
 import { formatUnits } from "viem";
-import { useAllMoatConfigs, useMapsLeaderboard, useEvents, useAllRewardsDeposited } from "@/hooks/use-moats-api";
+import { useAllMoatConfigs, useMapsLeaderboard, useEvents, useAllRewardsDeposited, useAllOnChainRewardsDeposited } from "@/hooks/use-moats-api";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
 import { useDexscreenerInfo } from "@/hooks/use-dexscreener";
 import { MOAT_V3_ABI, ERC20_ABI, MOAT_LOGO_ABI } from "@/lib/moat-abi";
@@ -336,6 +336,33 @@ export default function Home() {
 
   const dailyEstimates = useDailyRewardEstimates(configs);
   const poolBalances = useRewardPoolBalances(configs);
+  const { data: allOnChainRewards } = useAllOnChainRewardsDeposited(configs);
+
+  // Extra per-token amounts (human-readable) from on-chain events the API indexer
+  // missed. Keyed by `${moatLower}_${tokenLower}` — same key format used by
+  // dailyEstimates and poolBalances — so MoatCard can apply it directly.
+  const supplementalDistributed = useMemo((): Record<string, number> => {
+    if (!allOnChainRewards?.length) return {};
+    const apiTxHashes = new Set(
+      (rewardsDepositedEvents?.results ?? []).map((e) => e.transactionHash.toLowerCase()),
+    );
+    const extras: Record<string, number> = {};
+    for (const ev of allOnChainRewards) {
+      if (apiTxHashes.has(ev.transactionHash.toLowerCase())) continue;
+      const moatAddr = ev.contractAddress.toLowerCase();
+      const tokenAddr = (ev.args.token as string | undefined)?.toLowerCase();
+      if (!tokenAddr) continue;
+      const cfg = configs?.find((c) => c.contractAddress.toLowerCase() === moatAddr);
+      const rt = cfg?.rewardTokens.find((t) => t.tokenAddress.toLowerCase() === tokenAddr);
+      const decimals = rt?.decimals ?? 18;
+      try {
+        const human = parseFloat(formatUnits(BigInt(ev.args.amount as string ?? "0"), decimals));
+        const key = `${moatAddr}_${tokenAddr}`;
+        extras[key] = (extras[key] ?? 0) + human;
+      } catch { /* skip malformed */ }
+    }
+    return extras;
+  }, [allOnChainRewards, rewardsDepositedEvents, configs]);
 
   const getTokenPrice = (network: string, tokenAddr: string): number => {
     // Prefer DefiLlama's canonical price (this is what moats.app shows). It
@@ -844,6 +871,7 @@ export default function Home() {
                   dexPairCount={liquidityTvlMap[`${moat.contractAddress.toLowerCase()}:${(moat.network ?? "avalanche").toLowerCase()}`]?.pairCount}
                   dailyEstimates={dailyEstimates}
                   poolBalances={poolBalances}
+                  supplementalDistributed={supplementalDistributed}
                 />
               </motion.div>
             ))}

@@ -19,6 +19,8 @@ interface MoatCardProps {
   dailyEstimates?: Record<string, number>;
   /** Live `balanceOf(publicAddress)` per `${moatLower}_${tokenLower}` for the off-chain reward wallet */
   poolBalances?: Record<string, number>;
+  /** Extra amount (human-readable) per `${moatLower}_${tokenLower}` from on-chain events the API indexer missed */
+  supplementalDistributed?: Record<string, number>;
 }
 
 const statusColors: Record<string, { border: string; badge: string; text: string; hoverGlow: string; icon: string; bgHighlight: string }> = {
@@ -123,7 +125,7 @@ function MoatLogo({
 
 export { MoatLogo };
 
-export function MoatCard({ moat, tvlUSD, supplyPct, logoUrl, dexLiquidityUSD, dexPairCount, dailyEstimates, poolBalances }: MoatCardProps) {
+export function MoatCard({ moat, tvlUSD, supplyPct, logoUrl, dexLiquidityUSD, dexPairCount, dailyEstimates, poolBalances, supplementalDistributed }: MoatCardProps) {
   const statusStyle = statusColors[moat.status] || statusColors.Community;
   const activeRewardTokens = moat.rewardTokens.filter((t) => t.enabled);
   const meta = getMoatMeta(moat.contractAddress, moat.network);
@@ -252,10 +254,12 @@ export function MoatCard({ moat, tvlUSD, supplyPct, logoUrl, dexLiquidityUSD, de
                         const est = dailyEstimates?.[`${moatLower}_${token.tokenAddress.toLowerCase()}`] ?? 0;
                         const freqH = token.frequencyHours ?? 24;
                         const distsPerDay = freqH > 0 ? 24 / freqH : 1;
+                        const tokenLower = token.tokenAddress.toLowerCase();
+                        const extraDistributed = supplementalDistributed?.[`${moatLower}_${tokenLower}`] ?? 0;
                         let label: string;
                         if (token.tokenAmount > 0) label = `${fmtAmt(token.tokenAmount * distsPerDay)}/day`;
                         else if (est > 0) label = `~${fmtAmt(est)}/day`;
-                        else label = fmtAmt(token.totalRewardsDeposited);
+                        else label = fmtAmt(token.totalRewardsDeposited + extraDistributed);
                         return (
                           <span
                             key={token._id}

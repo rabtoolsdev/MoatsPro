@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { usePublicClient } from "wagmi";
 import { moatsApi } from "@/lib/moats-api";
-import type { MoatEvent } from "@/lib/moats-api";
+import type { MoatEvent, MoatConfig } from "@/lib/moats-api";
 import { REWARDS_DEPOSITED_EVENT_ABI } from "@/lib/moat-abi";
+import { networkToChainId } from "@/lib/wagmi-config";
 
 export function useEvents(contractAddress?: string) {
   return useQuery({
@@ -159,6 +160,115 @@ export function useUserEvents(address: string | undefined) {
     queryFn: () => moatsApi.getEventsByUser(address!, 100000),
     enabled: !!address,
     staleTime: 60_000,
+  });
+}
+
+/**
+ * Fetch RewardsDeposited logs for ALL moats across ALL chains in one getLogs
+ * call per chain. Used by the home/explore page to supplement totalRewardsDeposited
+ * on every moat card without making one RPC call per card.
+ *
+ * usePublicClient is called for every supported chain at hook top-level (valid
+ * React hook usage — fixed number of chains, no loops) and captured via closure
+ * into the queryFn, avoiding any @wagmi/core import.
+ */
+export function useAllOnChainRewardsDeposited(configs: MoatConfig[] | undefined) {
+  // Pre-call usePublicClient for each supported chain — hooks at top level, stable order.
+  const c43114 = usePublicClient({ chainId: 43114 });  // avalanche
+  const c1     = usePublicClient({ chainId: 1 });      // mainnet
+  const c8453  = usePublicClient({ chainId: 8453 });   // base
+  const c56    = usePublicClient({ chainId: 56 });     // bsc
+  const c10143 = usePublicClient({ chainId: 10143 });  // monad
+  const c36463 = usePublicClient({ chainId: 36463 });  // grotto
+  const c46975 = usePublicClient({ chainId: 46975 });  // blaze
+  const c4663  = usePublicClient({ chainId: 4663 });   // robinhood
+
+  return useQuery({
+    queryKey: [
+      "moats", "events", "onchain-rewards", "all",
+      configs?.map((c) => `${c.contractAddress}:${c.network}`).sort().join(","),
+    ],
+    enabled: !!configs?.length,
+    staleTime: 120_000,
+    refetchInterval: 300_000,
+    queryFn: async (): Promise<MoatEvent[]> => {
+      if (!configs?.length) return [];
+
+      const clientByChainId: Record<number, typeof c43114> = {
+        43114: c43114, 1: c1, 8453: c8453, 56: c56,
+        10143: c10143, 36463: c36463, 46975: c46975, 4663: c4663,
+      };
+
+      // Group configs by chainId
+      const byChain = new Map<number, MoatConfig[]>();
+      for (const cfg of configs) {
+        const cid = networkToChainId(cfg.network);
+        if (!cid) continue;
+        if (!byChain.has(cid)) byChain.set(cid, []);
+        byChain.get(cid)!.push(cfg);
+      }
+
+      const allEvents: MoatEvent[] = [];
+
+      for (const [chainId, chainConfigs] of byChain) {
+        const client = clientByChainId[chainId];
+        if (!client) continue;
+
+        const addresses = chainConfigs.map((c) => c.contractAddress as `0x${string}`);
+        const network = chainConfigs[0].network ?? "avalanche";
+        const WIDE = 50_000n;
+        const NARROW = 2_048n;
+        let currentBlock: bigint;
+        try { currentBlock = await client.getBlockNumber(); } catch { continue; }
+
+        let logs: Awaited<ReturnType<typeof client.getLogs>>;
+        try {
+          logs = await client.getLogs({
+            address: addresses,
+            event: REWARDS_DEPOSITED_EVENT_ABI[0],
+            fromBlock: currentBlock > WIDE ? currentBlock - WIDE : 0n,
+            toBlock: currentBlock,
+          });
+        } catch {
+          try {
+            logs = await client.getLogs({
+              address: addresses,
+              event: REWARDS_DEPOSITED_EVENT_ABI[0],
+              fromBlock: currentBlock > NARROW ? currentBlock - NARROW : 0n,
+              toBlock: currentBlock,
+            });
+          } catch { continue; }
+        }
+
+        if (!logs.length) continue;
+
+        const uniqueBlocks = [...new Set(logs.map((l) => l.blockNumber!))];
+        const blocks = await Promise.all(
+          uniqueBlocks.map((bn) => client.getBlock({ blockNumber: bn })),
+        );
+        const blockTs = new Map(blocks.map((b) => [b.number, Number(b.timestamp) * 1000]));
+
+        for (const [i, log] of logs.entries()) {
+          const args = log.args as { token?: string; amount?: bigint };
+          allEvents.push({
+            _id: `onchain-${log.transactionHash}-${log.logIndex ?? i}`,
+            network,
+            contractAddress: (log.address ?? "").toLowerCase(),
+            eventType: "RewardsDeposited",
+            blockNumber: Number(log.blockNumber ?? 0n),
+            transactionHash: log.transactionHash ?? "",
+            logIndex: log.logIndex ?? i,
+            timestamp: new Date(blockTs.get(log.blockNumber!) ?? Date.now()).toISOString(),
+            args: {
+              token: args.token ?? "",
+              amount: String(args.amount ?? "0"),
+            },
+          });
+        }
+      }
+
+      return allEvents;
+    },
   });
 }
 
