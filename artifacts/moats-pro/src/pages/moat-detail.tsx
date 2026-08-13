@@ -241,7 +241,9 @@ function formatTimeRemaining(endTimestamp: bigint): string {
   if (remainingMs <= 0) return "Ready to exit";
   const secs = Math.floor(remainingMs / 1000);
   if (secs >= 365 * 24 * 3600) {
-    const y = Math.floor(secs / (365 * 24 * 3600));
+    // Use Math.round so a 2-year lock with ~729 days left shows "2 Years"
+    // rather than "1 Year" (730 days = 2 years, but timestamps land 1 day short).
+    const y = Math.round(secs / (365 * 24 * 3600));
     return `${y} year${y > 1 ? "s" : ""} left`;
   }
   if (secs >= 30 * 24 * 3600) {
