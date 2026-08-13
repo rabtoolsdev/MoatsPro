@@ -34,6 +34,7 @@ import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
 import { useDexscreenerInfo } from "@/hooks/use-dexscreener";
 import { useDailyRewardEstimates } from "@/hooks/use-daily-reward-estimates";
 import { MOAT_V3_ABI, ERC20_ABI, MOAT_LOGO_ABI } from "@/lib/moat-abi";
+import { networkToChainId } from "@/lib/wagmi-config";
 import { moatsApi } from "@/lib/moats-api";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
@@ -68,6 +69,7 @@ export default function Portfolio() {
       abi: MOAT_V3_ABI,
       functionName: "userInfo" as const,
       args: [address as `0x${string}`],
+      chainId: networkToChainId(c.network ?? "avalanche"),
     }));
   }, [configs, address]);
 
@@ -83,6 +85,7 @@ export default function Portfolio() {
       address: c.contractAddress as `0x${string}`,
       abi: MOAT_LOGO_ABI,
       functionName: "getLogoURL" as const,
+      chainId: networkToChainId(c.network ?? "avalanche"),
     }));
   }, [configs]);
 
@@ -157,15 +160,18 @@ export default function Portfolio() {
       abi: typeof MOAT_V3_ABI;
       functionName: "getUserLock";
       args: [`0x${string}`, bigint];
+      chainId: number | undefined;
     }> = [];
     activePositions.forEach((pos, posIdx) => {
       const probe = lockProbePerPos[posIdx] ?? 0;
+      const chainId = networkToChainId(pos.config.network ?? "avalanche");
       for (let i = 0; i < probe; i++) {
         calls.push({
           address: pos.config.contractAddress as `0x${string}`,
           abi: MOAT_V3_ABI,
           functionName: "getUserLock" as const,
           args: [address as `0x${string}`, BigInt(i)],
+          chainId,
         });
       }
     });
@@ -203,6 +209,7 @@ export default function Portfolio() {
       address: pos.config.contractAddress as `0x${string}`,
       abi: MOAT_V3_ABI,
       functionName: "stakingToken" as const,
+      chainId: networkToChainId(pos.config.network ?? "avalanche"),
     }));
   }, [activePositions]);
 
@@ -223,11 +230,26 @@ export default function Portfolio() {
     [positionStakingTokens]
   );
 
+  // Map each staking token address → chainId so decimals are read from the
+  // correct chain (a token address on The Grotto differs from the same address
+  // on Robinhood — querying the wrong chain returns wrong or zero data).
+  const stakingTokenChainMap = useMemo((): Record<string, number> => {
+    const m: Record<string, number> = {};
+    activePositions.forEach((pos, i) => {
+      const addr = positionStakingTokens[i]?.toLowerCase();
+      if (!addr) return;
+      const cid = networkToChainId(pos.config.network ?? "avalanche");
+      if (cid && !m[addr]) m[addr] = cid;
+    });
+    return m;
+  }, [activePositions, positionStakingTokens]);
+
   const { data: decimalsData } = useReadContracts({
     contracts: uniqueStakingTokens.map((addr) => ({
       address: addr as `0x${string}`,
       abi: ERC20_ABI,
       functionName: "decimals" as const,
+      chainId: stakingTokenChainMap[addr.toLowerCase()],
     })),
     query: { enabled: uniqueStakingTokens.length > 0 },
   });
