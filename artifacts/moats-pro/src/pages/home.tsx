@@ -277,9 +277,12 @@ export default function Home() {
     // ---- On-chain supplement: getRewardTokens().totalDeposited ----
     // This storage variable is updated on every depositRewards call so it reflects
     // all deposits regardless of API-indexer lag or getLogs lookback-window limits.
-    // For each moat+token, replace the config counter with the on-chain total when
-    // the contract reports a higher value (handles missed deposits for USDC, BTC.b,
-    // WAVAX, and any community token).
+    //
+    // Key insight: perToken aggregates across ALL moats (one entry per network+token),
+    // so we must compute a PER-MOAT delta — (onChainTotal - thisConfigTotal) — and
+    // ADD that delta to the aggregate. Comparing onChainTotal > cur.amount would
+    // compare one moat's on-chain total against the combined multi-moat sum and
+    // almost never fire.
     if (moatRewardTokensData) {
       configs.forEach((cfg, i) => {
         const result = moatRewardTokensData[i];
@@ -293,16 +296,21 @@ export default function Home() {
           const decimals = rt.decimals ?? 18;
           const onChainTotal = parseFloat(formatUnits(totalDeposited[j] ?? 0n, decimals));
           if (onChainTotal <= 0) continue;
+          // Delta = how much this moat's on-chain total exceeds the API config counter
+          const configTotal = Number(rt.totalRewardsDeposited) || 0;
+          const delta = onChainTotal - configTotal;
+          if (delta <= 0) continue;
           const key = `${(cfg.network || "avax").toLowerCase()}|${tokenAddr}`;
           const cur = perToken.get(key);
           if (cur) {
-            if (onChainTotal > cur.amount) cur.amount = onChainTotal;
+            cur.amount += delta;
           } else {
+            // Token exists on-chain but not in API config at all
             perToken.set(key, {
               symbol: rt.symbol,
               network: cfg.network || "avax",
               address: tokenAddr,
-              amount: onChainTotal,
+              amount: delta,
             });
           }
         }
