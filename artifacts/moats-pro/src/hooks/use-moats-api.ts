@@ -10,8 +10,8 @@ export function useEvents(contractAddress?: string) {
   return useQuery({
     queryKey: ["moats", "events", contractAddress],
     queryFn: () => moatsApi.getEvents({ contractAddress }),
-    staleTime: 30_000,
-    refetchInterval: 60_000,
+    staleTime: 10_000,
+    refetchInterval: 30_000,
   });
 }
 
@@ -160,7 +160,8 @@ export function useUserEvents(address: string | undefined) {
     // (e.g. "total USDC claimed") appear to DECREASE after a new claim.
     queryFn: () => moatsApi.getEventsByUser(address!, 100000),
     enabled: !!address,
-    staleTime: 60_000,
+    staleTime: 10_000,
+    refetchInterval: 30_000,
   });
 }
 
@@ -298,8 +299,8 @@ export function useAllOnChainRecentEvents(configs: MoatConfig[] | undefined) {
       configs?.map((c) => `${c.contractAddress}:${c.network}`).sort().join(","),
     ],
     enabled: !!configs?.length,
-    staleTime: 60_000,
-    refetchInterval: 120_000,
+    staleTime: 10_000,
+    refetchInterval: 30_000,
     queryFn: async (): Promise<MoatEvent[]> => {
       if (!configs?.length) return [];
 

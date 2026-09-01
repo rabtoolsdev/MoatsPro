@@ -12,7 +12,7 @@ import {
 import { Link } from "wouter";
 import { formatUnits, parseUnits } from "viem";
 import { useQueryClient } from "@tanstack/react-query";
-import { useAllMoatConfigs, useMoatPointsV2, useUserMoatPointsV2, useEvents, useRewardsDepositedEvents, useOnChainRewardsDeposited } from "@/hooks/use-moats-api";
+import { useAllMoatConfigs, useMoatPointsV2, useUserMoatPointsV2, useEvents, useRewardsDepositedEvents, useOnChainRewardsDeposited, useAllOnChainRecentEvents } from "@/hooks/use-moats-api";
 import { getActiveBoosts, getBoostTier, getEffectiveBoostValue, getMaxBoostValue, type BoostConfig, type BoostTier } from "@/lib/moats-api";
 import {
   useMoatStats, useUserMoatInfo, useTokenBalance,
@@ -308,6 +308,12 @@ export default function MoatDetail() {
     networkToChainId(urlNetwork),
     urlNetwork,
   );
+  // The detail-page fallback must include user events too (Staked, Locked,
+  // Burned, Withdrawn, etc.), not just RewardsDeposited. This keeps Live
+  // Activity independent of the API indexer's processing delay.
+  const { data: onChainRecentEvents } = useAllOnChainRecentEvents(
+    moatConfig ? [moatConfig] : undefined,
+  );
   // Per-token last distribution timestamp (ms) — union of API events and
   // on-chain getLogs results so automated deposits are never missed.
   const lastDepositedMap = useMemo((): Record<string, number> => {
@@ -325,20 +331,20 @@ export default function MoatDetail() {
     return map;
   }, [rewardsDepositedData, onChainRewards]);
 
-  // Merge API events with on-chain RewardsDeposited, deduplicating by
+  // Merge API events with all on-chain MoatV3 events, deduplicating by
   // transactionHash+logIndex. On-chain events go first so the sort puts the
   // most-recent at the top regardless of which source produced them.
   const mergedEvents = useMemo(() => {
     const apiEvents = eventsData?.results ?? [];
     const apiKeys = new Set(apiEvents.map((e) => `${e.transactionHash}-${e.logIndex}`));
-    const supplemental = (onChainRewards ?? []).filter(
+    const supplemental = (onChainRecentEvents ?? []).filter(
       (e) => !apiKeys.has(`${e.transactionHash}-${e.logIndex}`),
     );
     if (!supplemental.length) return apiEvents;
     return [...supplemental, ...apiEvents].sort(
       (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
     );
-  }, [eventsData, onChainRewards]);
+  }, [eventsData, onChainRecentEvents]);
 
   // Extra per-token distributed amounts from on-chain events the backend indexer
   // missed (e.g. deposits via automated reward contracts). Keyed by lowercase
@@ -458,14 +464,20 @@ export default function MoatDetail() {
   const invalidatePointsData = () => {
     const invalidate = () => {
       queryClient.invalidateQueries({ queryKey: ["moats", "points"] });
-      queryClient.invalidateQueries({ queryKey: ["moats", "events", contractAddress] });
+      // Refresh API activity plus the direct on-chain activity fallback.
+      // The latter is what makes Staked/Locked/Burned appear before the API
+      // indexer catches up.
+      queryClient.invalidateQueries({ queryKey: ["moats", "events"] });
+      queryClient.invalidateQueries({ queryKey: ["moats", "events", "onchain-all", "recent"] });
     };
     invalidate();
-    // Delayed retries survive follow-up transactions; they are only
-    // cleared when the page unmounts.
+    // Delayed retries survive follow-up transactions; they are only cleared
+    // when the page unmounts. The receipt can arrive just before the new log
+    // is visible through an RPC provider, so retry at short intervals.
     pointsTimersRef.current.push(
+      setTimeout(invalidate, 2_000),
       setTimeout(invalidate, 6_000),
-      setTimeout(invalidate, 20_000),
+      setTimeout(invalidate, 15_000),
     );
   };
   useEffect(() => {
