@@ -12,6 +12,7 @@ export function useEvents(contractAddress?: string) {
     queryFn: () => moatsApi.getEvents({ contractAddress }),
     staleTime: 10_000,
     refetchInterval: 30_000,
+    refetchOnMount: "always",
   });
 }
 
@@ -162,6 +163,7 @@ export function useUserEvents(address: string | undefined) {
     enabled: !!address,
     staleTime: 10_000,
     refetchInterval: 30_000,
+    refetchOnMount: "always",
   });
 }
 
@@ -301,6 +303,7 @@ export function useAllOnChainRecentEvents(configs: MoatConfig[] | undefined) {
     enabled: !!configs?.length,
     staleTime: 10_000,
     refetchInterval: 30_000,
+    refetchOnMount: "always",
     queryFn: async (): Promise<MoatEvent[]> => {
       if (!configs?.length) return [];
 
@@ -363,11 +366,21 @@ export function useAllOnChainRecentEvents(configs: MoatConfig[] | undefined) {
         if (!parsed.length) continue;
 
         // Resolve timestamps — one getBlock call per unique block number.
+        // A single rate-limited/failed block lookup must not discard every
+        // otherwise-valid event from this query.
         const uniqueBlocks = [...new Set(parsed.map((l) => l.blockNumber!))];
-        const blocks = await Promise.all(
-          uniqueBlocks.map((bn) => client.getBlock({ blockNumber: bn })),
+        const blockTs = new Map<bigint, number>();
+        await Promise.all(
+          uniqueBlocks.map(async (bn) => {
+            try {
+              const block = await client.getBlock({ blockNumber: bn });
+              blockTs.set(block.number, Number(block.timestamp) * 1000);
+            } catch {
+              // Keep the event and use a local fallback timestamp below.
+            }
+          }),
         );
-        const blockTs = new Map(blocks.map((b) => [b.number, Number(b.timestamp) * 1000]));
+        const fallbackTimestamp = Date.now();
 
         for (const log of parsed) {
           const args = log.args as Record<string, unknown>;
@@ -379,7 +392,7 @@ export function useAllOnChainRecentEvents(configs: MoatConfig[] | undefined) {
             blockNumber: Number(log.blockNumber ?? 0n),
             transactionHash: log.transactionHash ?? "",
             logIndex: log.logIndex ?? 0,
-            timestamp: new Date(blockTs.get(log.blockNumber!) ?? Date.now()).toISOString(),
+            timestamp: new Date(blockTs.get(log.blockNumber!) ?? fallbackTimestamp).toISOString(),
             args: {
               user: (args.user as string | undefined) ?? undefined,
               amount: args.amount !== undefined ? String(args.amount) : undefined,
