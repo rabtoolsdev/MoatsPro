@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { usePublicClient } from "wagmi";
 import { moatsApi } from "@/lib/moats-api";
 import type { MoatEvent, MoatConfig } from "@/lib/moats-api";
@@ -284,6 +285,97 @@ export function useAllOnChainRewardsDeposited(configs: MoatConfig[] | undefined)
  * indexer falls behind. Results are mapped to MoatEvent shape and can be
  * diffed against the API set by transactionHash+logIndex.
  */
+type PublicClient = NonNullable<ReturnType<typeof usePublicClient>>;
+
+async function fetchOnChainRecentEvents(
+  client: PublicClient,
+  chainConfigs: MoatConfig[],
+): Promise<MoatEvent[]> {
+  if (!chainConfigs.length) return [];
+
+  const addresses = chainConfigs.map((c) => c.contractAddress as `0x${string}`);
+  const network = chainConfigs[0].network ?? "avalanche";
+
+  let currentBlock: bigint;
+  try {
+    currentBlock = await client.getBlockNumber();
+  } catch {
+    return [];
+  }
+
+  // Try ~80k blocks (~40h). Fall back to 10k if the RPC rejects the range.
+  const WIDE = 80_000n;
+  const NARROW = 10_000n;
+
+  let rawLogs: Awaited<ReturnType<typeof client.getLogs>>;
+  try {
+    rawLogs = await client.getLogs({
+      address: addresses,
+      fromBlock: currentBlock > WIDE ? currentBlock - WIDE : 0n,
+      toBlock: currentBlock,
+    });
+  } catch {
+    try {
+      rawLogs = await client.getLogs({
+        address: addresses,
+        fromBlock: currentBlock > NARROW ? currentBlock - NARROW : 0n,
+        toBlock: currentBlock,
+      });
+    } catch {
+      return [];
+    }
+  }
+
+  if (!rawLogs.length) return [];
+
+  // Decode only logs that match known MoatV3 events; silently skip the rest.
+  const parsed = parseEventLogs({
+    abi: MOAT_ALL_EVENTS_ABI,
+    logs: rawLogs,
+    strict: false,
+  });
+  if (!parsed.length) return [];
+
+  // Resolve timestamps — one getBlock call per unique block number.
+  // A single rate-limited/failed block lookup must not discard every
+  // otherwise-valid event from this chain.
+  const uniqueBlocks = [...new Set(parsed.map((l) => l.blockNumber!))];
+  const blockTs = new Map<bigint, number>();
+  await Promise.all(
+    uniqueBlocks.map(async (bn) => {
+      try {
+        const block = await client.getBlock({ blockNumber: bn });
+        blockTs.set(block.number, Number(block.timestamp) * 1000);
+      } catch {
+        // Keep the event and use a local fallback timestamp below.
+      }
+    }),
+  );
+  const fallbackTimestamp = Date.now();
+
+  return parsed.map((log): MoatEvent => {
+    const args = log.args as Record<string, unknown>;
+    return {
+      _id: `onchain-${log.transactionHash}-${log.logIndex ?? 0}`,
+      network,
+      contractAddress: (log.address ?? "").toLowerCase(),
+      eventType: log.eventName,
+      blockNumber: Number(log.blockNumber ?? 0n),
+      transactionHash: log.transactionHash ?? "",
+      logIndex: log.logIndex ?? 0,
+      timestamp: new Date(blockTs.get(log.blockNumber!) ?? fallbackTimestamp).toISOString(),
+      args: {
+        user: (args.user as string | undefined) ?? undefined,
+        amount: args.amount !== undefined ? String(args.amount) : undefined,
+        token: (args.token as string | undefined) ?? undefined,
+        duration: args.duration !== undefined ? String(args.duration) : undefined,
+        lockIndex: args.lockIndex !== undefined ? String(args.lockIndex) : undefined,
+        fee: args.fee !== undefined ? String(args.fee) : undefined,
+      },
+    };
+  });
+}
+
 export function useAllOnChainRecentEvents(configs: MoatConfig[] | undefined) {
   // Pre-call usePublicClient for each supported chain — hooks at top level, stable order.
   const c43114 = usePublicClient({ chainId: 43114 });  // avalanche
@@ -295,126 +387,52 @@ export function useAllOnChainRecentEvents(configs: MoatConfig[] | undefined) {
   const c46975 = usePublicClient({ chainId: 46975 });  // blaze
   const c4663  = usePublicClient({ chainId: 4663 });   // robinhood
 
-  return useQuery({
-    queryKey: [
-      "moats", "events", "onchain-all", "recent",
-      configs?.map((c) => `${c.contractAddress}:${c.network}`).sort().join(","),
-    ],
-    enabled: !!configs?.length,
-    staleTime: 10_000,
-    refetchInterval: 30_000,
-    refetchOnMount: "always",
-    queryFn: async (): Promise<MoatEvent[]> => {
-      if (!configs?.length) return [];
+  const chainEntries = [
+    { chainId: 43114, client: c43114 },
+    { chainId: 1, client: c1 },
+    { chainId: 8453, client: c8453 },
+    { chainId: 56, client: c56 },
+    { chainId: 10143, client: c10143 },
+    { chainId: 36463, client: c36463 },
+    { chainId: 46975, client: c46975 },
+    { chainId: 4663, client: c4663 },
+  ].map((entry) => ({
+    ...entry,
+    configs: (configs ?? []).filter((cfg) => networkToChainId(cfg.network) === entry.chainId),
+  }));
 
-      const clientByChainId: Record<number, typeof c43114> = {
-        43114: c43114, 1: c1, 8453: c8453, 56: c56,
-        10143: c10143, 36463: c36463, 46975: c46975, 4663: c4663,
-      };
-
-      // Group configs by chainId
-      const byChain = new Map<number, MoatConfig[]>();
-      for (const cfg of configs) {
-        const cid = networkToChainId(cfg.network);
-        if (!cid) continue;
-        if (!byChain.has(cid)) byChain.set(cid, []);
-        byChain.get(cid)!.push(cfg);
-      }
-
-      // Fetch each chain concurrently. The Explore page should not wait for a
-      // slow secondary-network RPC before displaying a fresh Avalanche event.
-      const eventsByChain = await Promise.all(
-        [...byChain].map(async ([chainId, chainConfigs]): Promise<MoatEvent[]> => {
-          const chainEvents: MoatEvent[] = [];
-        const client = clientByChainId[chainId];
-          if (!client) return chainEvents;
-
-          const addresses = chainConfigs.map((c) => c.contractAddress as `0x${string}`);
-          const network = chainConfigs[0].network ?? "avalanche";
-
-          let currentBlock: bigint;
-          try { currentBlock = await client.getBlockNumber(); } catch { return chainEvents; }
-
-          // Try ~80k blocks (~40h). Fall back to 10k if the RPC rejects the range.
-          const WIDE = 80_000n;
-          const NARROW = 10_000n;
-
-          let rawLogs: Awaited<ReturnType<typeof client.getLogs>>;
-          try {
-            rawLogs = await client.getLogs({
-              address: addresses,
-              fromBlock: currentBlock > WIDE ? currentBlock - WIDE : 0n,
-              toBlock: currentBlock,
-            });
-          } catch {
-            try {
-              rawLogs = await client.getLogs({
-                address: addresses,
-                fromBlock: currentBlock > NARROW ? currentBlock - NARROW : 0n,
-                toBlock: currentBlock,
-              });
-            } catch { return chainEvents; }
-          }
-
-          if (!rawLogs.length) return chainEvents;
-
-          // Decode only logs that match known MoatV3 events; silently skip the rest.
-          const parsed = parseEventLogs({
-            abi: MOAT_ALL_EVENTS_ABI,
-            logs: rawLogs,
-            strict: false,
-          });
-
-          if (!parsed.length) return chainEvents;
-
-          // Resolve timestamps — one getBlock call per unique block number.
-          // A single rate-limited/failed block lookup must not discard every
-          // otherwise-valid event from this query.
-          const uniqueBlocks = [...new Set(parsed.map((l) => l.blockNumber!))];
-          const blockTs = new Map<bigint, number>();
-          await Promise.all(
-            uniqueBlocks.map(async (bn) => {
-              try {
-                const block = await client.getBlock({ blockNumber: bn });
-                blockTs.set(block.number, Number(block.timestamp) * 1000);
-              } catch {
-                // Keep the event and use a local fallback timestamp below.
-              }
-            }),
-          );
-          const fallbackTimestamp = Date.now();
-
-          for (const log of parsed) {
-            const args = log.args as Record<string, unknown>;
-            chainEvents.push({
-              _id: `onchain-${log.transactionHash}-${log.logIndex ?? 0}`,
-              network,
-              contractAddress: (log.address ?? "").toLowerCase(),
-              eventType: log.eventName,
-              blockNumber: Number(log.blockNumber ?? 0n),
-              transactionHash: log.transactionHash ?? "",
-              logIndex: log.logIndex ?? 0,
-              timestamp: new Date(blockTs.get(log.blockNumber!) ?? fallbackTimestamp).toISOString(),
-              args: {
-                user: (args.user as string | undefined) ?? undefined,
-                amount: args.amount !== undefined ? String(args.amount) : undefined,
-                token: (args.token as string | undefined) ?? undefined,
-                duration: args.duration !== undefined ? String(args.duration) : undefined,
-                lockIndex: args.lockIndex !== undefined ? String(args.lockIndex) : undefined,
-                fee: args.fee !== undefined ? String(args.fee) : undefined,
-              },
-            });
-          }
-          return chainEvents;
-        }),
-      );
-
-      // Sort newest-first
-      return eventsByChain.flat().sort(
-        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-      );
-    },
+  // Keep one independently-refetching query per network. Returning the merged
+  // data from useQueries means a completed Avalanche query updates Explore
+  // immediately instead of waiting for a slower secondary network.
+  const chainQueries = useQueries({
+    queries: chainEntries.map(({ chainId, client, configs: chainConfigs }) => ({
+      queryKey: [
+        "moats", "events", "onchain-all", "recent", chainId,
+        chainConfigs.map((c) => `${c.contractAddress}:${c.network}`).sort().join(","),
+      ],
+      enabled: chainConfigs.length > 0 && !!client,
+      staleTime: 10_000,
+      refetchInterval: 30_000,
+      refetchOnMount: "always" as const,
+      queryFn: () => client ? fetchOnChainRecentEvents(client, chainConfigs) : Promise.resolve([]),
+    })),
   });
+
+  const data = useMemo(
+    () =>
+      chainQueries
+        .flatMap((query) => query.data ?? [])
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()),
+    [chainQueries],
+  );
+
+  return {
+    data,
+    isLoading: chainQueries.some((query) => query.isLoading),
+    isFetching: chainQueries.some((query) => query.isFetching),
+    isError: chainQueries.some((query) => query.isError),
+    refetch: () => Promise.all(chainQueries.map((query) => query.refetch())),
+  };
 }
 
 /**
