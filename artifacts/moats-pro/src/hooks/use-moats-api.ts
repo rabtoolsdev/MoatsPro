@@ -287,6 +287,56 @@ export function useAllOnChainRewardsDeposited(configs: MoatConfig[] | undefined)
  */
 type PublicClient = NonNullable<ReturnType<typeof usePublicClient>>;
 
+async function fetchLogsInChunks(
+  client: PublicClient,
+  addresses: `0x${string}`[],
+  fromBlock: bigint,
+  toBlock: bigint,
+): Promise<Awaited<ReturnType<typeof client.getLogs>>> {
+  const CHUNK_SIZE = 2_000n;
+  const logs: Awaited<ReturnType<typeof client.getLogs>> = [];
+
+  for (let chunkStart = fromBlock; chunkStart <= toBlock; chunkStart += CHUNK_SIZE) {
+    const chunkEnd = chunkStart + CHUNK_SIZE - 1n > toBlock
+      ? toBlock
+      : chunkStart + CHUNK_SIZE - 1n;
+    try {
+      logs.push(
+        ...(await client.getLogs({
+          address: addresses,
+          fromBlock: chunkStart,
+          toBlock: chunkEnd,
+        })),
+      );
+    } catch {
+      // Some RPCs impose an even smaller range or transiently reject a
+      // request. Retry only the failed slice at a conservative size so one
+      // problematic chunk does not erase the rest of the chain's activity.
+      for (
+        let smallStart = chunkStart;
+        smallStart <= chunkEnd;
+        smallStart += 500n
+      ) {
+        const smallEnd = smallStart + 499n > chunkEnd ? chunkEnd : smallStart + 499n;
+        try {
+          logs.push(
+            ...(await client.getLogs({
+              address: addresses,
+              fromBlock: smallStart,
+              toBlock: smallEnd,
+            })),
+          );
+        } catch {
+          // Keep any successfully fetched chunks; React Query will retry the
+          // complete chain query on its next scheduled refresh.
+        }
+      }
+    }
+  }
+
+  return logs;
+}
+
 async function fetchOnChainRecentEvents(
   client: PublicClient,
   chainConfigs: MoatConfig[],
@@ -303,9 +353,9 @@ async function fetchOnChainRecentEvents(
     return [];
   }
 
-  // Try ~80k blocks (~40h). Fall back to 10k if the RPC rejects the range.
+  // Try ~80k blocks (~40h). Some public RPCs reject large eth_getLogs ranges,
+  // so fall back to safe chunks rather than returning an empty activity feed.
   const WIDE = 80_000n;
-  const NARROW = 10_000n;
 
   let rawLogs: Awaited<ReturnType<typeof client.getLogs>>;
   try {
@@ -315,15 +365,12 @@ async function fetchOnChainRecentEvents(
       toBlock: currentBlock,
     });
   } catch {
-    try {
-      rawLogs = await client.getLogs({
-        address: addresses,
-        fromBlock: currentBlock > NARROW ? currentBlock - NARROW : 0n,
-        toBlock: currentBlock,
-      });
-    } catch {
-      return [];
-    }
+    rawLogs = await fetchLogsInChunks(
+      client,
+      addresses,
+      currentBlock > WIDE ? currentBlock - WIDE : 0n,
+      currentBlock,
+    );
   }
 
   if (!rawLogs.length) return [];
