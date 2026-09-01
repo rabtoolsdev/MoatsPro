@@ -254,7 +254,7 @@ export function useAllOnChainRewardsDeposited(configs: MoatConfig[] | undefined)
         const blockTs = new Map(blocks.map((b) => [b.number, Number(b.timestamp) * 1000]));
 
         for (const [i, log] of logs.entries()) {
-          const args = log.args as { token?: string; amount?: bigint };
+          const args = (log as unknown as { args?: { token?: string; amount?: bigint } }).args ?? {};
           allEvents.push({
             _id: `onchain-${log.transactionHash}-${log.logIndex ?? i}`,
             network,
@@ -495,7 +495,7 @@ export function useOnChainRewardsDeposited(
       const blockTs = new Map(blocks.map((b) => [b.number, Number(b.timestamp) * 1000]));
 
       return logs.map((log, i): MoatEvent => {
-        const args = log.args as { token?: string; amount?: bigint };
+        const args = (log as unknown as { args?: { token?: string; amount?: bigint } }).args ?? {};
         return {
           _id: `onchain-${log.transactionHash}-${log.logIndex ?? i}`,
           network: network ?? "avalanche",
