@@ -321,92 +321,96 @@ export function useAllOnChainRecentEvents(configs: MoatConfig[] | undefined) {
         byChain.get(cid)!.push(cfg);
       }
 
-      const allEvents: MoatEvent[] = [];
-
-      for (const [chainId, chainConfigs] of byChain) {
+      // Fetch each chain concurrently. The Explore page should not wait for a
+      // slow secondary-network RPC before displaying a fresh Avalanche event.
+      const eventsByChain = await Promise.all(
+        [...byChain].map(async ([chainId, chainConfigs]): Promise<MoatEvent[]> => {
+          const chainEvents: MoatEvent[] = [];
         const client = clientByChainId[chainId];
-        if (!client) continue;
+          if (!client) return chainEvents;
 
-        const addresses = chainConfigs.map((c) => c.contractAddress as `0x${string}`);
-        const network = chainConfigs[0].network ?? "avalanche";
+          const addresses = chainConfigs.map((c) => c.contractAddress as `0x${string}`);
+          const network = chainConfigs[0].network ?? "avalanche";
 
-        let currentBlock: bigint;
-        try { currentBlock = await client.getBlockNumber(); } catch { continue; }
+          let currentBlock: bigint;
+          try { currentBlock = await client.getBlockNumber(); } catch { return chainEvents; }
 
-        // Try ~80k blocks (~40h). Fall back to 10k if the RPC rejects the range.
-        const WIDE = 80_000n;
-        const NARROW = 10_000n;
+          // Try ~80k blocks (~40h). Fall back to 10k if the RPC rejects the range.
+          const WIDE = 80_000n;
+          const NARROW = 10_000n;
 
-        let rawLogs: Awaited<ReturnType<typeof client.getLogs>>;
-        try {
-          rawLogs = await client.getLogs({
-            address: addresses,
-            fromBlock: currentBlock > WIDE ? currentBlock - WIDE : 0n,
-            toBlock: currentBlock,
-          });
-        } catch {
+          let rawLogs: Awaited<ReturnType<typeof client.getLogs>>;
           try {
             rawLogs = await client.getLogs({
               address: addresses,
-              fromBlock: currentBlock > NARROW ? currentBlock - NARROW : 0n,
+              fromBlock: currentBlock > WIDE ? currentBlock - WIDE : 0n,
               toBlock: currentBlock,
             });
-          } catch { continue; }
-        }
-
-        if (!rawLogs.length) continue;
-
-        // Decode only logs that match known MoatV3 events; silently skip the rest.
-        const parsed = parseEventLogs({
-          abi: MOAT_ALL_EVENTS_ABI,
-          logs: rawLogs,
-          strict: false,
-        });
-
-        if (!parsed.length) continue;
-
-        // Resolve timestamps — one getBlock call per unique block number.
-        // A single rate-limited/failed block lookup must not discard every
-        // otherwise-valid event from this query.
-        const uniqueBlocks = [...new Set(parsed.map((l) => l.blockNumber!))];
-        const blockTs = new Map<bigint, number>();
-        await Promise.all(
-          uniqueBlocks.map(async (bn) => {
+          } catch {
             try {
-              const block = await client.getBlock({ blockNumber: bn });
-              blockTs.set(block.number, Number(block.timestamp) * 1000);
-            } catch {
-              // Keep the event and use a local fallback timestamp below.
-            }
-          }),
-        );
-        const fallbackTimestamp = Date.now();
+              rawLogs = await client.getLogs({
+                address: addresses,
+                fromBlock: currentBlock > NARROW ? currentBlock - NARROW : 0n,
+                toBlock: currentBlock,
+              });
+            } catch { return chainEvents; }
+          }
 
-        for (const log of parsed) {
-          const args = log.args as Record<string, unknown>;
-          allEvents.push({
-            _id: `onchain-${log.transactionHash}-${log.logIndex ?? 0}`,
-            network,
-            contractAddress: (log.address ?? "").toLowerCase(),
-            eventType: log.eventName,
-            blockNumber: Number(log.blockNumber ?? 0n),
-            transactionHash: log.transactionHash ?? "",
-            logIndex: log.logIndex ?? 0,
-            timestamp: new Date(blockTs.get(log.blockNumber!) ?? fallbackTimestamp).toISOString(),
-            args: {
-              user: (args.user as string | undefined) ?? undefined,
-              amount: args.amount !== undefined ? String(args.amount) : undefined,
-              token: (args.token as string | undefined) ?? undefined,
-              duration: args.duration !== undefined ? String(args.duration) : undefined,
-              lockIndex: args.lockIndex !== undefined ? String(args.lockIndex) : undefined,
-              fee: args.fee !== undefined ? String(args.fee) : undefined,
-            },
+          if (!rawLogs.length) return chainEvents;
+
+          // Decode only logs that match known MoatV3 events; silently skip the rest.
+          const parsed = parseEventLogs({
+            abi: MOAT_ALL_EVENTS_ABI,
+            logs: rawLogs,
+            strict: false,
           });
-        }
-      }
+
+          if (!parsed.length) return chainEvents;
+
+          // Resolve timestamps — one getBlock call per unique block number.
+          // A single rate-limited/failed block lookup must not discard every
+          // otherwise-valid event from this query.
+          const uniqueBlocks = [...new Set(parsed.map((l) => l.blockNumber!))];
+          const blockTs = new Map<bigint, number>();
+          await Promise.all(
+            uniqueBlocks.map(async (bn) => {
+              try {
+                const block = await client.getBlock({ blockNumber: bn });
+                blockTs.set(block.number, Number(block.timestamp) * 1000);
+              } catch {
+                // Keep the event and use a local fallback timestamp below.
+              }
+            }),
+          );
+          const fallbackTimestamp = Date.now();
+
+          for (const log of parsed) {
+            const args = log.args as Record<string, unknown>;
+            chainEvents.push({
+              _id: `onchain-${log.transactionHash}-${log.logIndex ?? 0}`,
+              network,
+              contractAddress: (log.address ?? "").toLowerCase(),
+              eventType: log.eventName,
+              blockNumber: Number(log.blockNumber ?? 0n),
+              transactionHash: log.transactionHash ?? "",
+              logIndex: log.logIndex ?? 0,
+              timestamp: new Date(blockTs.get(log.blockNumber!) ?? fallbackTimestamp).toISOString(),
+              args: {
+                user: (args.user as string | undefined) ?? undefined,
+                amount: args.amount !== undefined ? String(args.amount) : undefined,
+                token: (args.token as string | undefined) ?? undefined,
+                duration: args.duration !== undefined ? String(args.duration) : undefined,
+                lockIndex: args.lockIndex !== undefined ? String(args.lockIndex) : undefined,
+                fee: args.fee !== undefined ? String(args.fee) : undefined,
+              },
+            });
+          }
+          return chainEvents;
+        }),
+      );
 
       // Sort newest-first
-      return allEvents.sort(
+      return eventsByChain.flat().sort(
         (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
       );
     },
