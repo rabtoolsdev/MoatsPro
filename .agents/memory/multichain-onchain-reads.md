@@ -20,3 +20,9 @@ Moats Pro lists Moats from MANY chains at once (Avalanche, Ethereum, Base, The G
 **Why:** The Explore feed was slower than a single-moat Live Activity feed because its all-network RPC scan ran serially; one failed timestamp lookup could also remove the whole on-chain result.
 
 **How to apply:** Use `Promise.all` over grouped chain reads, return an empty result for an unavailable chain, and retain decoded events with a fallback timestamp when a block lookup fails.
+
+**Provider constraint:** The public Avalanche C-Chain RPC rejects `eth_getLogs` requests larger than 2,048 blocks.
+
+**Why:** An 80,000-block request followed by a 10,000-block fallback caused Explore to receive no on-chain activity even though single-moat activity was available.
+
+**How to apply:** Use a 2,000-block maximum for chunked activity log reads, with a smaller retry for a rejected chunk.
