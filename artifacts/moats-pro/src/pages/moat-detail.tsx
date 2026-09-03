@@ -85,6 +85,10 @@ const lockMultiplierInfo = [
   { days: 730, multiplier: "5x", label: "2 Years" },
 ];
 
+// MoatV3 stores position points in token base units normalized by 1e12.
+// For an 18-decimal token, 1 human token contributes 1e6 base point units.
+const POINTS_BASE_UNIT_DIVISOR = 1_000_000_000_000n;
+
 function getLockMultiplierLabel(days: number): string {
   const match = lockMultiplierInfo.find((o) => o.days === days);
   return match?.multiplier ?? "1x";
@@ -800,26 +804,33 @@ export default function MoatDetail() {
   // Estimate pool share after a stake/lock/burn using the same linear on-chain
   // formula as userOnChainPoolShare. The contract tracks two linear counters per
   // wallet — stakingPoints (index 2) and burnPoints (index 3) — and totalPoints()
-  // is their pool-wide sum. A stake adds amount×1, a lock adds amount×lockMult,
-  // and a burn adds amount×10 to both the user's counter and the total.
+  // is their pool-wide sum. Convert the entered token amount into the contract's
+  // normalized point units before applying the action multiplier.
   // Falls back to the leaderboard sqrt model only if on-chain data hasn't loaded.
   const getEstimatedPoolShare = (rawAmount: string, actionWeight: number): number | null => {
-    const amt = parseFloat(rawAmount);
-    if (!amt || amt <= 0) return null;
+    const normalizedAmount = rawAmount.replace(/,/g, "").trim();
+    if (!normalizedAmount || Number(normalizedAmount) <= 0) return null;
 
     // Prefer on-chain: (userPts + delta) / (totalPts + delta)
     const totalPts = stats.totalPoints;
     const ui = userInfo.userInfo;
     if (totalPts && totalPts > 0n && ui !== undefined) {
-      const userCurrentPts = Number((ui[2] ?? 0n) + (ui[3] ?? 0n));
-      const delta = amt * actionWeight;
-      const newUserPts = userCurrentPts + delta;
-      const newTotalPts = Number(totalPts) + delta;
-      if (newTotalPts <= 0) return null;
-      return (newUserPts / newTotalPts) * 100;
+      const tokenDecimals = Number(stakingTokenDecimals ?? decimals);
+      const rawTokenAmount = toBaseUnits(normalizedAmount, tokenDecimals);
+      const pointAmount = rawTokenAmount / POINTS_BASE_UNIT_DIVISOR;
+      if (pointAmount <= 0n) return null;
+
+      // Current action multipliers are whole or half values (1x, 2x, 2.5x,
+      // 3x, 4x, 5x, 10x). Keep the calculation in bigint space.
+      const multiplierTenths = BigInt(Math.round(actionWeight * 10));
+      const delta = (pointAmount * multiplierTenths) / 10n;
+      const newUserPts = (ui[2] ?? 0n) + (ui[3] ?? 0n) + delta;
+      const newTotalPts = totalPts + delta;
+      return calculatePoolSharePercent(newUserPts, newTotalPts);
     }
 
     // Fallback: leaderboard-calibrated sqrt model (used before on-chain data loads)
+    const amt = parseFloat(normalizedAmount);
     if (!pointsSim.ready || pointsSim.k == null) return null;
     const userBase = userLeaderboardEntry?.basePoints ?? userLeaderboardEntry?.points ?? 0;
     const userMult =
