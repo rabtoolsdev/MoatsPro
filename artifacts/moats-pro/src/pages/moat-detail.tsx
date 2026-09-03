@@ -96,6 +96,14 @@ function formatPoolShare(pct: number): string {
   return pct.toPrecision(2);
 }
 
+function calculatePoolSharePercent(userPoints: bigint, totalPoints: bigint): number | null {
+  if (userPoints <= 0n || totalPoints <= 0n) return null;
+  // Keep the ratio exact until the final display conversion. Point counters
+  // can grow beyond Number's safe integer range over the life of a Moat.
+  const scaledPercent = (userPoints * 1_000_000n) / totalPoints;
+  return Number(scaledPercent) / 10_000;
+}
+
 function PointsEstimateBox({
   gained,
   poolShare,
@@ -761,8 +769,7 @@ export default function MoatDetail() {
     const ui = userInfo.userInfo;
     if (!totalPts || totalPts === 0n || !ui) return null;
     const userPts = (ui[2] ?? 0n) + (ui[3] ?? 0n);
-    if (userPts === 0n) return null;
-    return (Number(userPts) / Number(totalPts)) * 100;
+    return calculatePoolSharePercent(userPts, totalPts);
   }, [stats.totalPoints, userInfo.userInfo]);
 
   // Moat Points simulation: calibrate the points model from the leaderboard so
@@ -1371,9 +1378,9 @@ export default function MoatDetail() {
                       value: formatPoints(userMoatPointsValue),
                       testId: "user-moat-points",
                       usd: 0,
-                      weightedPct: userOnChainPoolShare !== null
-                        ? userOnChainPoolShare
-                        : (userLeaderboardEntry?.weight ?? 0),
+                      // Only show the contract-derived share. The API
+                      // leaderboard weight is an estimate and can be stale.
+                      weightedPct: userOnChainPoolShare ?? 0,
                     },
                   ].map((item) => {
                     const weightedPct = (item as { weightedPct?: number }).weightedPct ?? 0;
