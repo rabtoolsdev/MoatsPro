@@ -1,0 +1,4 @@
+- [Token USD pricing sources](token-usd-pricing.md) — prefer DefiLlama, fall back to DexScreener; some moat reward/staking tokens are missing from one source.
+- [Moat point units](moat-point-units.md) — pre-action pool estimates must normalize token base units by 1e12 before applying the action multiplier.
+- [Multichain on-chain reads](multichain-onchain-reads.md) — wagmi useReadContracts defaults to the connected chain; set per-contract chainId or cross-chain moat reads silently fail. Grotto API slug is "thegrotto".
+- [moats.app parity checks](moats-app-parity.md) — their network list, RPCs, and assets are extractable from the main bundle at https://moats.app; don't guess from word counts.
