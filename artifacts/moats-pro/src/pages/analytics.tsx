@@ -351,7 +351,11 @@ export default function Analytics() {
   const [selectedMoat, setSelectedMoat] = useState<string>("ALL");
   const startMs = timeframeStart(tf);
 
-  const { data: configs } = useAllMoatConfigs();
+  const { data: allConfigs } = useAllMoatConfigs();
+  const configs = useMemo(
+    () => allConfigs?.filter((config) => config.moatVersion === 3),
+    [allConfigs],
+  );
   const rawEv = useProtocolEvents();
   const selectedConfig = useMemo(
     () =>
@@ -366,12 +370,31 @@ export default function Analytics() {
   // re-scope to that Moat (DO NOT OVERKILL — one filter, no per-memo changes).
   const singleMoat = selectedMoat !== "ALL";
   const apiEv = useMemo(() => {
-    if (!singleMoat) return rawEv;
+    if (!configs) return rawEv;
+    const currentMoatKeys = new Set(
+      configs.map((config) => moatKey(config.network, config.contractAddress)),
+    );
+    const current = (arr: MoatEvent[]) =>
+      arr.filter((event) =>
+        currentMoatKeys.has(moatKey(event.network, event.contractAddress)),
+      );
+    if (!singleMoat) {
+      return {
+        rewardsDeposited: current(rawEv.rewardsDeposited),
+        staked: current(rawEv.staked),
+        locked: current(rawEv.locked),
+        burned: current(rawEv.burned),
+        withdrawn: current(rawEv.withdrawn),
+        rewardClaimed: current(rawEv.rewardClaimed),
+        lockExited: current(rawEv.lockExited),
+        isLoading: rawEv.isLoading,
+      };
+    }
     const sel = selectedConfig
       ? moatKey(selectedConfig.network, selectedConfig.contractAddress)
       : selectedMoat;
     const f = (arr: MoatEvent[]) =>
-      arr.filter((e) => moatKey(e.network, e.contractAddress) === sel);
+      current(arr).filter((e) => moatKey(e.network, e.contractAddress) === sel);
     return {
       rewardsDeposited: f(rawEv.rewardsDeposited),
       staked: f(rawEv.staked),
@@ -388,8 +411,9 @@ export default function Analytics() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     singleMoat,
-     selectedMoat,
-     selectedConfig,
+    selectedMoat,
+    selectedConfig,
+    configs,
     rawEv.rewardsDeposited,
     rawEv.staked,
     rawEv.locked,
@@ -799,15 +823,17 @@ export default function Analytics() {
       daily: Map<number, number>;
     };
     const m = new Map<string, Row>();
-    const rowFor = (addr: string, network?: string): Row => {
+    const rowFor = (addr: string, network?: string): Row | undefined => {
       const k = moatKey(network, addr);
       let r = m.get(k);
       if (!r) {
+        const cfg = configs?.find(
+          (c) => moatKey(c.network, c.contractAddress) === k,
+        );
+        if (!cfg) return undefined;
         r = {
           address: addr.toLowerCase(),
-          cfg: configs?.find(
-            (c) => moatKey(c.network, c.contractAddress) === k,
-          ),
+          cfg,
           rewardsUsd: 0,
           wallets: new Set<string>(),
           burnedUsd: 0,
@@ -831,6 +857,7 @@ export default function Analytics() {
       const usd = raw * priceFor(net, tokenAddr);
       if (!isFinite(usd) || usd <= 0) continue;
        const r = rowFor(e.contractAddress, e.network);
+       if (!r) continue;
       r.rewardsUsd += usd;
       const k = dayKey(ms);
       r.daily.set(k, (r.daily.get(k) ?? 0) + usd);
@@ -840,7 +867,8 @@ export default function Analytics() {
         const ms = eventMs(e);
         if (!ms || ms < startMs) continue;
         const u = (e.args?.user as string | undefined)?.toLowerCase();
-         if (u) rowFor(e.contractAddress, e.network).wallets.add(u);
+         const r = rowFor(e.contractAddress, e.network);
+         if (u && r) r.wallets.add(u);
       }
     }
     for (const e of ev.burned) {
@@ -858,9 +886,8 @@ export default function Analytics() {
       let raw = 0;
       try { raw = Number(formatUnits(BigInt(amt), dec)); } catch { continue; }
       const usd = raw * priceFor(cfg?.network || "avax", tokenAddr);
-       if (isFinite(usd) && usd > 0) {
-         rowFor(e.contractAddress, e.network).burnedUsd += usd;
-       }
+       const r = rowFor(e.contractAddress, e.network);
+       if (isFinite(usd) && usd > 0 && r) r.burnedUsd += usd;
     }
     return [...m.values()]
       .sort(
