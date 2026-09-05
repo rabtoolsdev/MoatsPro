@@ -539,6 +539,8 @@ export default function Analytics() {
       return [
         { address: c.contractAddress as `0x${string}`, abi: MOAT_V3_ABI, functionName: "stakingToken" as const, chainId },
         { address: c.contractAddress as `0x${string}`, abi: MOAT_V3_ABI, functionName: "totalLocked" as const, chainId },
+        { address: c.contractAddress as `0x${string}`, abi: MOAT_V3_ABI, functionName: "totalStaked" as const, chainId },
+        { address: c.contractAddress as `0x${string}`, abi: MOAT_V3_ABI, functionName: "totalBurned" as const, chainId },
       ];
     });
   }, [configs]);
@@ -552,7 +554,7 @@ export default function Analytics() {
     if (!onchainData || !configs) return {};
     const m: Record<string, string> = {};
     configs.forEach((c, i) => {
-      const r = onchainData[i * 2];
+      const r = onchainData[i * 4];
       if (r?.status === "success") {
         m[moatKey(c.network, c.contractAddress)] = (r.result as string).toLowerCase();
       }
@@ -565,11 +567,66 @@ export default function Analytics() {
     // count of moats with non-zero totalLocked (proxy for "moats with active locks")
     let count = 0;
     configs.forEach((_, i) => {
-      const r = onchainData[i * 2 + 1];
+      const r = onchainData[i * 4 + 1];
       if (r?.status === "success" && (r.result as bigint) > 0n) count += 1;
     });
     return count;
   }, [onchainData, configs]);
+
+  // TVM token reads are keyed by token address + chain so repeated addresses
+  // on different networks never inherit the wrong decimals or total supply.
+  const tvmTokenDescriptors = useMemo(() => {
+    const seen = new Set<string>();
+    const tokens: { address: string; chainId?: number; key: string }[] = [];
+    for (const c of configs ?? []) {
+      const address = stakingTokenByMoat[moatKey(c.network, c.contractAddress)];
+      if (!address) continue;
+      const chainId = networkToChainId(c.network);
+      const key = `${address.toLowerCase()}:${chainId ?? ""}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      tokens.push({ address, chainId, key });
+    }
+    return tokens;
+  }, [configs, stakingTokenByMoat]);
+
+  const { data: tvmDecimalsData } = useReadContracts({
+    contracts: tvmTokenDescriptors.map((token) => ({
+      address: token.address as `0x${string}`,
+      abi: ERC20_ABI,
+      functionName: "decimals" as const,
+      chainId: token.chainId,
+    })),
+    query: { enabled: tvmTokenDescriptors.length > 0 },
+  });
+
+  const { data: tvmSupplyData } = useReadContracts({
+    contracts: tvmTokenDescriptors.map((token) => ({
+      address: token.address as `0x${string}`,
+      abi: ERC20_ABI,
+      functionName: "totalSupply" as const,
+      chainId: token.chainId,
+    })),
+    query: { enabled: tvmTokenDescriptors.length > 0 },
+  });
+
+  const tvmDecimalsMap = useMemo(() => {
+    const m: Record<string, number> = {};
+    tvmTokenDescriptors.forEach((token, i) => {
+      const result = tvmDecimalsData?.[i];
+      m[token.key] = result?.status === "success" ? Number(result.result) : 18;
+    });
+    return m;
+  }, [tvmTokenDescriptors, tvmDecimalsData]);
+
+  const tvmSupplyMap = useMemo(() => {
+    const m: Record<string, bigint> = {};
+    tvmTokenDescriptors.forEach((token, i) => {
+      const result = tvmSupplyData?.[i];
+      if (result?.status === "success") m[token.key] = result.result as bigint;
+    });
+    return m;
+  }, [tvmTokenDescriptors, tvmSupplyData]);
 
   // Map each staking token to the chainId of the Moat that uses it, so the
   // decimals read targets the correct network (a Grotto staking token must be
@@ -681,6 +738,59 @@ export default function Analytics() {
     if (a === USDC_ADDR) return 1;
     return 0;
   }
+
+  // ---- TOTAL TVM (all current Moats, across every configured chain) ----
+  // This mirrors the Explore page: staking/locked/burned balances are valued
+  // using the staking token's chain-specific decimals and price. LP staking
+  // tokens are valued as the Moat's share of their underlying pool TVL.
+  const totalTvmUsd = useMemo(() => {
+    if (!onchainData || !configs) return 0;
+    let total = 0;
+
+    configs.forEach((c, i) => {
+      const tokenResult = onchainData[i * 4];
+      const lockedResult = onchainData[i * 4 + 1];
+      const stakedResult = onchainData[i * 4 + 2];
+      const burnedResult = onchainData[i * 4 + 3];
+      if (tokenResult?.status !== "success" || stakedResult?.status !== "success") return;
+
+      const tokenAddr = (tokenResult.result as string).toLowerCase();
+      const chainId = networkToChainId(c.network);
+      const tokenKey = `${tokenAddr}:${chainId ?? ""}`;
+      const totalStaked = stakedResult.result as bigint;
+      const totalLocked = lockedResult?.status === "success" ? (lockedResult.result as bigint) : 0n;
+      const totalBurned = burnedResult?.status === "success" ? (burnedResult.result as bigint) : 0n;
+      const dexInfo = dexInfoMap?.[tokenAddr];
+
+      if (dexInfo?.isLpToken) {
+        const poolTvl = dexInfo.lpPoolLiquidityUsd ?? dexInfo.liquidityUsd;
+        const supply = tvmSupplyMap[tokenKey];
+        if (poolTvl > 0 && supply && supply > 0n) {
+          const moatShareBp = Number(((totalStaked + totalLocked + totalBurned) * 1_000_000n) / supply);
+          total += (moatShareBp / 1_000_000) * poolTvl;
+        }
+        return;
+      }
+
+      const price = priceFor(c.network ?? "avalanche", tokenAddr);
+      if (price > 0) {
+        total += parseFloat(
+          formatUnits(totalStaked + totalLocked + totalBurned, tvmDecimalsMap[tokenKey] ?? 18),
+        ) * price;
+        return;
+      }
+
+      const liquidity = dexInfo?.liquidityUsd ?? 0;
+      const supply = tvmSupplyMap[tokenKey];
+      if (liquidity > 0 && supply && supply > 0n) {
+        const moatShareBp = Number(((totalStaked + totalLocked + totalBurned) * 1_000_000n) / supply);
+        total += (moatShareBp / 1_000_000) * liquidity;
+      }
+    });
+
+    return total;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onchainData, configs, priceMap, dexInfoMap, tvmDecimalsMap, tvmSupplyMap]);
 
   // ---- DAILY BUCKETS: rewards distributed (by token group) ----
   const rewardsSeries = useMemo(() => {
@@ -1060,6 +1170,15 @@ export default function Analytics() {
 
   const kpis = [
     {
+      label: "Total TVM",
+      value: totalTvmUsd,
+      icon: DollarSign,
+      color: "text-amber-400",
+      bg: "bg-amber-400/10",
+      fmt: fmtUsd,
+      testId: "kpi-total-tvm",
+    },
+    {
       label: `Rewards Paid (${tf})`,
       value: totals.rewardsUsd,
       icon: Gift,
@@ -1173,7 +1292,7 @@ export default function Analytics() {
         {/* KPI Strip */}
         <section
           data-testid="analytics-kpi-strip"
-          className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-8"
+          className="grid grid-cols-2 lg:grid-cols-7 gap-3 mb-8"
         >
           {kpis.map((k, i) => {
             const glowClass = 
