@@ -117,6 +117,20 @@ function dayKey(ms: number): number {
   return d.getTime();
 }
 
+function normalizeNetwork(network?: string): string {
+  const value = (network || "avalanche").toLowerCase();
+  if (value === "avax") return "avalanche";
+  if (value === "mainnet" || value === "eth") return "ethereum";
+  if (value === "bnb") return "bsc";
+  if (value === "grotto") return "thegrotto";
+  if (value === "robinhoodchain") return "robinhood";
+  return value;
+}
+
+function moatKey(network: string | undefined, address: string): string {
+  return `${normalizeNetwork(network)}:${address.toLowerCase()}`;
+}
+
 // Token color palette (consistent with RewardsBar)
 const TOKEN_COLORS = {
   USDC: "#34d399",
@@ -227,7 +241,7 @@ function MoatSelect({
   value,
   onChange,
 }: {
-  options: { address: string; name: string }[];
+  options: { id: string; address: string; name: string; network?: string }[];
   value: string;
   onChange: (v: string) => void;
 }) {
@@ -247,7 +261,7 @@ function MoatSelect({
   const selectedLabel =
     value === "ALL"
       ? "All Moats"
-      : options.find((o) => o.address.toLowerCase() === value.toLowerCase())?.name ?? "Unknown Moat";
+      : options.find((o) => o.id === value)?.name ?? "Unknown Moat";
   const filtered = q
     ? options.filter((o) => o.name.toLowerCase().includes(q.toLowerCase()))
     : options;
@@ -308,14 +322,14 @@ function MoatSelect({
               </button>
               {filtered.map((o) => (
                 <button
-                  key={o.address}
-                  onClick={() => pick(o.address)}
-                  data-testid={`moat-option-${o.address.toLowerCase()}`}
+                  key={o.id}
+                  onClick={() => pick(o.id)}
+                  data-testid={`moat-option-${o.id.replace(/[^a-z0-9]+/gi, "-")}`}
                   className={`w-full text-left px-4 py-2 text-[11px] font-mono tracking-wide transition-colors truncate ${
-                    value.toLowerCase() === o.address.toLowerCase() ? "text-primary bg-primary/10 border-l-2 border-primary" : "text-muted-foreground hover:bg-white/5 hover:text-white border-l-2 border-transparent"
+                    value === o.id ? "text-primary bg-primary/10 border-l-2 border-primary" : "text-muted-foreground hover:bg-white/5 hover:text-white border-l-2 border-transparent"
                   }`}
                 >
-                  {o.name}
+                  {o.name}{o.network ? ` · ${o.network}` : ""}
                 </button>
               ))}
               {filtered.length === 0 && (
@@ -336,6 +350,13 @@ export default function Analytics() {
 
   const { data: configs } = useAllMoatConfigs();
   const rawEv = useProtocolEvents();
+  const selectedConfig = useMemo(
+    () =>
+      configs?.find(
+        (c) => moatKey(c.network, c.contractAddress) === selectedMoat,
+      ),
+    [configs, selectedMoat],
+  );
 
   // When a single Moat is selected, filter every event stream at the source so
   // all downstream daily-bucket / totals / token-mix memos automatically
@@ -343,9 +364,11 @@ export default function Analytics() {
   const singleMoat = selectedMoat !== "ALL";
   const ev = useMemo(() => {
     if (!singleMoat) return rawEv;
-    const sel = selectedMoat.toLowerCase();
+    const sel = selectedConfig
+      ? moatKey(selectedConfig.network, selectedConfig.contractAddress)
+      : selectedMoat;
     const f = (arr: MoatEvent[]) =>
-      arr.filter((e) => e.contractAddress.toLowerCase() === sel);
+      arr.filter((e) => moatKey(e.network, e.contractAddress) === sel);
     return {
       rewardsDeposited: f(rawEv.rewardsDeposited),
       staked: f(rawEv.staked),
@@ -362,7 +385,8 @@ export default function Analytics() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     singleMoat,
-    selectedMoat,
+     selectedMoat,
+     selectedConfig,
     rawEv.rewardsDeposited,
     rawEv.staked,
     rawEv.locked,
@@ -377,11 +401,8 @@ export default function Analytics() {
   // fall back to "All Moats" so we never show a confusing empty scoped view.
   useEffect(() => {
     if (selectedMoat === "ALL" || !configs) return;
-    const exists = configs.some(
-      (c) => c.contractAddress.toLowerCase() === selectedMoat.toLowerCase(),
-    );
-    if (!exists) setSelectedMoat("ALL");
-  }, [configs, selectedMoat]);
+    if (!selectedConfig) setSelectedMoat("ALL");
+  }, [configs, selectedMoat, selectedConfig]);
 
   // ---- on-chain enrichment (staking tokens for activity USD valuation) ----
   const onchainContracts = useMemo(() => {
@@ -405,7 +426,9 @@ export default function Analytics() {
     const m: Record<string, string> = {};
     configs.forEach((c, i) => {
       const r = onchainData[i * 2];
-      if (r?.status === "success") m[c.contractAddress.toLowerCase()] = (r.result as string).toLowerCase();
+      if (r?.status === "success") {
+        m[moatKey(c.network, c.contractAddress)] = (r.result as string).toLowerCase();
+      }
     });
     return m;
   }, [onchainData, configs]);
@@ -428,7 +451,7 @@ export default function Analytics() {
     const m: Record<string, number | undefined> = {};
     if (!configs) return m;
     for (const c of configs) {
-      const token = stakingTokenByMoat[c.contractAddress.toLowerCase()];
+      const token = stakingTokenByMoat[moatKey(c.network, c.contractAddress)];
       if (token && !(token in m)) m[token] = networkToChainId(c.network);
     }
     return m;
@@ -470,7 +493,9 @@ export default function Analytics() {
       if (meta.tokenAddress) ids.add(getLlamaId(c.network, meta.tokenAddress));
     }
     Object.entries(stakingTokenByMoat).forEach(([moat, tokenAddr]) => {
-      const cfg = configs.find((c) => c.contractAddress.toLowerCase() === moat);
+      const cfg = configs.find(
+        (c) => moatKey(c.network, c.contractAddress) === moat,
+      );
       if (cfg && tokenAddr) ids.add(getLlamaId(cfg.network, tokenAddr));
     });
     return [...ids];
@@ -496,7 +521,7 @@ export default function Analytics() {
   useResolveMoatMetas(
     (configs ?? []).map((c) => ({
       contractAddress: c.contractAddress,
-      stakingToken: stakingTokenByMoat[c.contractAddress.toLowerCase()],
+      stakingToken: stakingTokenByMoat[moatKey(c.network, c.contractAddress)],
       network: c.network,
     })),
   );
@@ -572,10 +597,12 @@ export default function Analytics() {
     const addEvent = (e: MoatEvent, key: keyof Omit<Row, "day">) => {
       const ms = eventMs(e);
       if (!ms || ms < startMs) return;
-      const moat = e.contractAddress.toLowerCase();
+      const moat = moatKey(e.network, e.contractAddress);
       const tokenAddr = stakingTokenByMoat[moat];
       if (!tokenAddr) return;
-      const cfg = configs?.find((c) => c.contractAddress.toLowerCase() === moat);
+      const cfg = configs?.find(
+        (c) => moatKey(c.network, c.contractAddress) === moat,
+      );
       const network = cfg?.network || "avax";
       const dec = stakingDecimals[tokenAddr] ?? 18;
       const amt = e.args?.amount as string | undefined;
@@ -611,10 +638,12 @@ export default function Analytics() {
       for (const e of events) {
         const ms = eventMs(e);
         if (!ms) continue;
-        const moat = e.contractAddress.toLowerCase();
+        const moat = moatKey(e.network, e.contractAddress);
         const tokenAddr = stakingTokenByMoat[moat];
         if (!tokenAddr) continue;
-        const cfg = configs?.find((c) => c.contractAddress.toLowerCase() === moat);
+        const cfg = configs?.find(
+          (c) => moatKey(c.network, c.contractAddress) === moat,
+        );
         const dec = stakingDecimals[tokenAddr] ?? 18;
         const amt = e.args?.amount as string | undefined;
         if (!amt) continue;
@@ -704,7 +733,7 @@ export default function Analytics() {
     startMs,
   ]);
 
-  // ---- Top moats by rewards paid (timeframe) ----
+  // ---- Per-moat analytics overview (timeframe) ----
   const topMoats = useMemo(() => {
     type Row = {
       address: string;
@@ -715,13 +744,15 @@ export default function Analytics() {
       daily: Map<number, number>;
     };
     const m = new Map<string, Row>();
-    const rowFor = (addr: string): Row => {
-      const k = addr.toLowerCase();
+    const rowFor = (addr: string, network?: string): Row => {
+      const k = moatKey(network, addr);
       let r = m.get(k);
       if (!r) {
         r = {
-          address: k,
-          cfg: configs?.find((c) => c.contractAddress.toLowerCase() === k),
+          address: addr.toLowerCase(),
+          cfg: configs?.find(
+            (c) => moatKey(c.network, c.contractAddress) === k,
+          ),
           rewardsUsd: 0,
           wallets: new Set<string>(),
           burnedUsd: 0,
@@ -744,7 +775,7 @@ export default function Analytics() {
       try { raw = Number(formatUnits(BigInt(amt), dec)); } catch { continue; }
       const usd = raw * priceFor(net, tokenAddr);
       if (!isFinite(usd) || usd <= 0) continue;
-      const r = rowFor(e.contractAddress);
+       const r = rowFor(e.contractAddress, e.network);
       r.rewardsUsd += usd;
       const k = dayKey(ms);
       r.daily.set(k, (r.daily.get(k) ?? 0) + usd);
@@ -754,28 +785,35 @@ export default function Analytics() {
         const ms = eventMs(e);
         if (!ms || ms < startMs) continue;
         const u = (e.args?.user as string | undefined)?.toLowerCase();
-        if (u) rowFor(e.contractAddress).wallets.add(u);
+         if (u) rowFor(e.contractAddress, e.network).wallets.add(u);
       }
     }
     for (const e of ev.burned) {
       const ms = eventMs(e);
       if (!ms || ms < startMs) continue;
-      const moat = e.contractAddress.toLowerCase();
+       const moat = moatKey(e.network, e.contractAddress);
       const tokenAddr = stakingTokenByMoat[moat];
       if (!tokenAddr) continue;
-      const cfg = configs?.find((c) => c.contractAddress.toLowerCase() === moat);
+      const cfg = configs?.find(
+        (c) => moatKey(c.network, c.contractAddress) === moat,
+      );
       const dec = stakingDecimals[tokenAddr] ?? 18;
       const amt = e.args?.amount as string | undefined;
       if (!amt) continue;
       let raw = 0;
       try { raw = Number(formatUnits(BigInt(amt), dec)); } catch { continue; }
       const usd = raw * priceFor(cfg?.network || "avax", tokenAddr);
-      if (isFinite(usd) && usd > 0) rowFor(e.contractAddress).burnedUsd += usd;
+       if (isFinite(usd) && usd > 0) {
+         rowFor(e.contractAddress, e.network).burnedUsd += usd;
+       }
     }
     return [...m.values()]
-      .filter((r) => r.rewardsUsd > 0)
-      .sort((a, b) => b.rewardsUsd - a.rewardsUsd)
-      .slice(0, 10)
+      .sort(
+        (a, b) =>
+          b.rewardsUsd - a.rewardsUsd ||
+          b.burnedUsd - a.burnedUsd ||
+          b.wallets.size - a.wallets.size,
+      )
       .map((r) => ({
         ...r,
         spark: [...r.daily.entries()].sort(([a], [b]) => a - b).map(([day, v]) => ({ day, v })),
@@ -863,10 +901,12 @@ export default function Analytics() {
     () =>
       (configs ?? [])
         .map((c) => ({
+          id: moatKey(c.network, c.contractAddress),
           address: c.contractAddress,
           name: getMoatMeta(c.contractAddress, c.network).name,
+          network: normalizeNetwork(c.network),
         }))
-        .sort((a, b) => a.name.localeCompare(b.name)),
+        .sort((a, b) => a.name.localeCompare(b.name) || a.network.localeCompare(b.network)),
     [configs],
   );
 
@@ -993,7 +1033,7 @@ export default function Analytics() {
             {singleMoat
               ? `Scoped to ${
                   moatOptions.find(
-                    (o) => o.address.toLowerCase() === selectedMoat.toLowerCase(),
+                    (o) => o.id === selectedMoat,
                   )?.name ?? "this Moat"
                 }. Pick a Moat or timeframe to re-scope the charts below.`
               : "Protocol-wide trends across every Moat. Pick a Moat or timeframe to scope the charts below."}
@@ -1243,8 +1283,8 @@ export default function Analytics() {
           {!singleMoat && (
           <>
           <ChartCard
-            title={`Top Moats by Rewards Paid (${tf})`}
-            subtitle="Click a row to open the Moat detail page"
+             title={`Moat Analytics Overview (${tf})`}
+             subtitle="Every Moat with activity in the selected timeframe"
             testId="table-top-moats"
           >
             {topMoats.length === 0 ? (
