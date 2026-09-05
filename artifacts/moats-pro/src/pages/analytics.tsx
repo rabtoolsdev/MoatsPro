@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import {
   useAllMoatConfigs,
+  useOnChainAllMoatAnalyticsEvents,
   useOnChainMoatAnalyticsEvents,
 } from "@/hooks/use-moats-api";
 import { useProtocolEvents } from "@/hooks/use-protocol-events";
@@ -440,22 +441,65 @@ export default function Analytics() {
       apiEv.rewardClaimed.length +
       apiEv.lockExited.length
     : 0;
+  const indexedMoatKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const events of [
+      rawEv.rewardsDeposited,
+      rawEv.staked,
+      rawEv.locked,
+      rawEv.burned,
+      rawEv.withdrawn,
+      rawEv.rewardClaimed,
+      rawEv.lockExited,
+    ]) {
+      for (const event of events) {
+        keys.add(moatKey(event.network, event.contractAddress));
+      }
+    }
+    return keys;
+  }, [
+    rawEv.rewardsDeposited,
+    rawEv.staked,
+    rawEv.locked,
+    rawEv.burned,
+    rawEv.withdrawn,
+    rawEv.rewardClaimed,
+    rawEv.lockExited,
+  ]);
+  const allMoatFallbackConfigs = useMemo(
+    () =>
+      configs?.filter(
+        (config) =>
+          !indexedMoatKeys.has(moatKey(config.network, config.contractAddress)),
+      ),
+    [configs, indexedMoatKeys],
+  );
   const shouldLoadOnChainAnalytics =
     singleMoat && !apiEv.isLoading && apiScopedEventCount === 0;
   const onChainAnalytics = useOnChainMoatAnalyticsEvents(
     selectedConfig,
     shouldLoadOnChainAnalytics,
   );
+  const onChainAllAnalytics = useOnChainAllMoatAnalyticsEvents(
+    allMoatFallbackConfigs,
+    !singleMoat && !apiEv.isLoading,
+  );
+  const onChainAnalyticsData = singleMoat
+    ? onChainAnalytics.data
+    : onChainAllAnalytics.data;
+  const onChainAnalyticsLoading = singleMoat
+    ? onChainAnalytics.isLoading
+    : onChainAllAnalytics.isLoading;
   const ev = useMemo(() => {
-    if (!singleMoat || !onChainAnalytics.data?.length) {
+    if (!onChainAnalyticsData?.length) {
       return {
         ...apiEv,
-        isLoading: apiEv.isLoading || onChainAnalytics.isLoading,
+        isLoading: apiEv.isLoading || onChainAnalyticsLoading,
       };
     }
 
     const onChainByType = new Map<string, MoatEvent[]>();
-    for (const event of onChainAnalytics.data) {
+    for (const event of onChainAnalyticsData) {
       const list = onChainByType.get(event.eventType) ?? [];
       list.push(event);
       onChainByType.set(event.eventType, list);
@@ -479,9 +523,9 @@ export default function Analytics() {
       withdrawn: merge("Withdrawn", apiEv.withdrawn),
       rewardClaimed: merge("RewardClaimed", apiEv.rewardClaimed),
       lockExited: merge("LockExited", apiEv.lockExited),
-      isLoading: apiEv.isLoading || onChainAnalytics.isLoading,
+      isLoading: apiEv.isLoading || onChainAnalyticsLoading,
     };
-  }, [apiEv, onChainAnalytics.data, onChainAnalytics.isLoading, singleMoat]);
+  }, [apiEv, onChainAnalyticsData, onChainAnalyticsLoading]);
 
   // ---- on-chain enrichment (staking tokens for activity USD valuation) ----
   const onchainContracts = useMemo(() => {
@@ -1391,7 +1435,7 @@ export default function Analytics() {
                       const meta = getMoatMeta(r.address, r.cfg?.network);
                       return (
                         <tr
-                          key={r.address}
+                          key={moatKey(r.cfg?.network, r.address)}
                           className="border-b border-white/5 hover:bg-white/5 transition-colors group"
                         >
                           <td className="py-3 pr-3 text-muted-foreground/50 tabular-nums font-mono text-xs">{i + 1}</td>
