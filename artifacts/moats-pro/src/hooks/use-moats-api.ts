@@ -456,6 +456,64 @@ export function useOnChainMoatAnalyticsEvents(
   });
 }
 
+/**
+ * Full-history fallback for All Moats. Only pass configs that have no indexed
+ * events so current multi-chain Analytics can recover missing networks without
+ * rescanning every V3 contract on every load.
+ */
+export function useOnChainAllMoatAnalyticsEvents(
+  configs: MoatConfig[] | undefined,
+  enabled: boolean,
+) {
+  const c43114 = usePublicClient({ chainId: 43114 });
+  const c1 = usePublicClient({ chainId: 1 });
+  const c8453 = usePublicClient({ chainId: 8453 });
+  const c56 = usePublicClient({ chainId: 56 });
+  const c10143 = usePublicClient({ chainId: 10143 });
+  const c36463 = usePublicClient({ chainId: 36463 });
+  const c46975 = usePublicClient({ chainId: 46975 });
+  const c4663 = usePublicClient({ chainId: 4663 });
+
+  const clients = new Map<number, PublicClient | undefined>([
+    [43114, c43114],
+    [1, c1],
+    [8453, c8453],
+    [56, c56],
+    [10143, c10143],
+    [36463, c36463],
+    [46975, c46975],
+    [4663, c4663],
+  ]);
+
+  const queries = useQueries({
+    queries: (configs ?? []).map((config) => {
+      const chainId = networkToChainId(config.network);
+      const client = chainId === undefined ? undefined : clients.get(chainId);
+      return {
+        queryKey: [
+          "moats",
+          "events",
+          "onchain-analytics-full",
+          chainId,
+          config.contractAddress,
+        ],
+        enabled: enabled && !!client && chainId !== undefined,
+        staleTime: 5 * 60_000,
+        refetchOnMount: "always" as const,
+        queryFn: () =>
+          client
+            ? fetchOnChainRecentEvents(client, [config], 0n)
+            : Promise.resolve([]),
+      };
+    }),
+  });
+
+  return {
+    data: queries.flatMap((query) => query.data ?? []),
+    isLoading: queries.some((query) => query.isLoading),
+  };
+}
+
 export function useAllOnChainRecentEvents(configs: MoatConfig[] | undefined) {
   // Pre-call usePublicClient for each supported chain — hooks at top level, stable order.
   const c43114 = usePublicClient({ chainId: 43114 });  // avalanche
