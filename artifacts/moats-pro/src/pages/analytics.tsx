@@ -357,7 +357,11 @@ export default function Analytics() {
     () => allConfigs?.filter((config) => config.moatVersion === 3),
     [allConfigs],
   );
-  const rawEv = useProtocolEvents();
+  const eventNetworks = useMemo(
+    () => configs?.map((config) => config.network ?? "avalanche"),
+    [configs],
+  );
+  const rawEv = useProtocolEvents(eventNetworks);
   const selectedConfig = useMemo(
     () =>
       configs?.find(

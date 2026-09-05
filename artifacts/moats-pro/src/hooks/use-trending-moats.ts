@@ -44,7 +44,11 @@ export function useTrendingMoats({
   tvmMap,
   limit = 10,
 }: UseTrendingMoatsArgs): { trending: TrendingMoat[]; isLoading: boolean } {
-  const ev = useProtocolEvents();
+  const eventNetworks = useMemo(
+    () => configs?.map((config) => config.network ?? "avalanche"),
+    [configs],
+  );
+  const ev = useProtocolEvents(eventNetworks);
 
   // Map each rewardToken address → {symbol, decimals, network} from configs
   const rewardTokenInfo = useMemo(() => {
