@@ -370,7 +370,13 @@ async function fetchOnChainRecentEvents(
     // A full-history query is intentionally one bounded RPC request per
     // chain. Expanding a failed archive request into thousands of small
     // slices overwhelms public RPCs and still produces an incomplete result.
-    if (fromBlockOverride !== undefined) return [];
+    if (
+      fromBlockOverride !== undefined &&
+      (network.toLowerCase() === "robinhood" ||
+        network.toLowerCase() === "robinhoodchain")
+    ) {
+      return [];
+    }
     rawLogs = await fetchLogsInChunks(
       client,
       addresses,
