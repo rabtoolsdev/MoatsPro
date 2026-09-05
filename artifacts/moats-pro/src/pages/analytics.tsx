@@ -470,9 +470,13 @@ export default function Analytics() {
     () =>
       configs?.filter(
         (config) =>
-          !indexedMoatKeys.has(moatKey(config.network, config.contractAddress)),
+          normalizeNetwork(config.network) !== "avalanche" ||
+          (!rawEv.isLoading &&
+            !indexedMoatKeys.has(
+              moatKey(config.network, config.contractAddress),
+            )),
       ),
-    [configs, indexedMoatKeys],
+    [configs, indexedMoatKeys, rawEv.isLoading],
   );
   const shouldLoadOnChainAnalytics =
     singleMoat && !apiEv.isLoading && apiScopedEventCount === 0;
@@ -482,7 +486,7 @@ export default function Analytics() {
   );
   const onChainAllAnalytics = useOnChainAllMoatAnalyticsEvents(
     allMoatFallbackConfigs,
-    !singleMoat && !apiEv.isLoading,
+    !singleMoat && !!allMoatFallbackConfigs?.length,
   );
   const onChainAnalyticsData = singleMoat
     ? onChainAnalytics.data

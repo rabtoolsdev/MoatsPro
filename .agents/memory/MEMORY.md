@@ -2,3 +2,4 @@
 - [Moat point units](moat-point-units.md) — pre-action pool estimates must normalize token base units by 1e12 before applying the action multiplier.
 - [Multichain on-chain reads](multichain-onchain-reads.md) — wagmi useReadContracts defaults to the connected chain; set per-contract chainId or cross-chain moat reads silently fail. Grotto API slug is "thegrotto".
 - [moats.app parity checks](moats-app-parity.md) — their network list, RPCs, and assets are extractable from the main bundle at https://moats.app; don't guess from word counts.
+- [Robinhood RPC reads](robinhood-rpc.md) — browser RPC has CORS/archive/rate-limit constraints; route read-only requests through the API proxy and batch chain scans.

@@ -367,6 +367,10 @@ async function fetchOnChainRecentEvents(
       toBlock: currentBlock,
     });
   } catch {
+    // A full-history query is intentionally one bounded RPC request per
+    // chain. Expanding a failed archive request into thousands of small
+    // slices overwhelms public RPCs and still produces an incomplete result.
+    if (fromBlockOverride !== undefined) return [];
     rawLogs = await fetchLogsInChunks(
       client,
       addresses,
@@ -385,25 +389,26 @@ async function fetchOnChainRecentEvents(
   });
   if (!parsed.length) return [];
 
-  // Resolve timestamps — one getBlock call per unique block number.
-  // A single rate-limited/failed block lookup must not discard every
-  // otherwise-valid event from this chain.
-  const uniqueBlocks = [...new Set(parsed.map((l) => l.blockNumber!))];
-  const blockTs = new Map<bigint, number>();
-  await Promise.all(
-    uniqueBlocks.map(async (bn) => {
-      try {
-        const block = await client.getBlock({ blockNumber: bn });
-        blockTs.set(block.number, Number(block.timestamp) * 1000);
-      } catch {
-        // Keep the event and use a local fallback timestamp below.
-      }
-    }),
-  );
-  const fallbackTimestamp = Date.now();
+  // Resolve timestamps with one latest-block lookup instead of one RPC call
+  // per event. Robinhood's sub-second blocks make per-event block lookups
+  // especially expensive and quickly exhaust public RPC rate limits.
+  let latestTimestamp = Date.now();
+  try {
+    const latestBlock = await client.getBlock({ blockNumber: currentBlock });
+    latestTimestamp = Number(latestBlock.timestamp) * 1000;
+  } catch {
+    // Keep the event and use the local clock as a fallback.
+  }
+  const secondsPerBlock =
+    network.toLowerCase() === "robinhood" ||
+    network.toLowerCase() === "robinhoodchain"
+      ? 0.1
+      : 2;
 
   return parsed.map((log): MoatEvent => {
     const args = log.args as Record<string, unknown>;
+    const blockDistance = Number(currentBlock - (log.blockNumber ?? currentBlock));
+    const timestamp = latestTimestamp - blockDistance * secondsPerBlock * 1000;
     return {
       _id: `onchain-${log.transactionHash}-${log.logIndex ?? 0}`,
       network,
@@ -412,7 +417,7 @@ async function fetchOnChainRecentEvents(
       blockNumber: Number(log.blockNumber ?? 0n),
       transactionHash: log.transactionHash ?? "",
       logIndex: log.logIndex ?? 0,
-      timestamp: new Date(blockTs.get(log.blockNumber!) ?? fallbackTimestamp).toISOString(),
+      timestamp: new Date(timestamp).toISOString(),
       args: {
         user: (args.user as string | undefined) ?? undefined,
         amount: args.amount !== undefined ? String(args.amount) : undefined,
@@ -485,24 +490,35 @@ export function useOnChainAllMoatAnalyticsEvents(
     [4663, c4663],
   ]);
 
+  const configsByChain = new Map<number, MoatConfig[]>();
+  for (const config of configs ?? []) {
+    const chainId = networkToChainId(config.network);
+    if (chainId === undefined) continue;
+    const chainConfigs = configsByChain.get(chainId) ?? [];
+    chainConfigs.push(config);
+    configsByChain.set(chainId, chainConfigs);
+  }
+
   const queries = useQueries({
-    queries: (configs ?? []).map((config) => {
-      const chainId = networkToChainId(config.network);
-      const client = chainId === undefined ? undefined : clients.get(chainId);
+    queries: [...configsByChain.entries()].map(([chainId, chainConfigs]) => {
+      const client = clients.get(chainId);
       return {
         queryKey: [
           "moats",
           "events",
           "onchain-analytics-full",
           chainId,
-          config.contractAddress,
+          chainConfigs
+            .map((config) => config.contractAddress.toLowerCase())
+            .sort()
+            .join(","),
         ],
-        enabled: enabled && !!client && chainId !== undefined,
+        enabled: enabled && !!client,
         staleTime: 5 * 60_000,
         refetchOnMount: "always" as const,
         queryFn: () =>
           client
-            ? fetchOnChainRecentEvents(client, [config], 0n)
+            ? fetchOnChainRecentEvents(client, chainConfigs, 0n)
             : Promise.resolve([]),
       };
     }),
