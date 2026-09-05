@@ -340,6 +340,7 @@ async function fetchLogsInChunks(
 async function fetchOnChainRecentEvents(
   client: PublicClient,
   chainConfigs: MoatConfig[],
+  fromBlockOverride?: bigint,
 ): Promise<MoatEvent[]> {
   if (!chainConfigs.length) return [];
 
@@ -356,19 +357,20 @@ async function fetchOnChainRecentEvents(
   // Try ~80k blocks (~40h). Some public RPCs reject large eth_getLogs ranges,
   // so fall back to safe chunks rather than returning an empty activity feed.
   const WIDE = 80_000n;
+  const fromBlock = fromBlockOverride ?? (currentBlock > WIDE ? currentBlock - WIDE : 0n);
 
   let rawLogs: Awaited<ReturnType<typeof client.getLogs>>;
   try {
     rawLogs = await client.getLogs({
       address: addresses,
-      fromBlock: currentBlock > WIDE ? currentBlock - WIDE : 0n,
+      fromBlock,
       toBlock: currentBlock,
     });
   } catch {
     rawLogs = await fetchLogsInChunks(
       client,
       addresses,
-      currentBlock > WIDE ? currentBlock - WIDE : 0n,
+      fromBlock,
       currentBlock,
     );
   }
@@ -420,6 +422,37 @@ async function fetchOnChainRecentEvents(
         fee: args.fee !== undefined ? String(args.fee) : undefined,
       },
     };
+  });
+}
+
+/**
+ * Full-history fallback for a selected Moat whose event indexer stream is
+ * empty. This is intentionally scoped to one selected contract so Analytics
+ * can support newer/non-indexed networks without scanning every chain on every
+ * page load.
+ */
+export function useOnChainMoatAnalyticsEvents(
+  config: MoatConfig | undefined,
+  enabled: boolean,
+) {
+  const chainId = networkToChainId(config?.network);
+  const publicClient = usePublicClient({ chainId });
+
+  return useQuery({
+    queryKey: [
+      "moats",
+      "events",
+      "onchain-analytics-full",
+      chainId,
+      config?.contractAddress,
+    ],
+    enabled: enabled && !!config && !!publicClient && chainId !== undefined,
+    staleTime: 5 * 60_000,
+    refetchOnMount: "always",
+    queryFn: () =>
+      config && publicClient
+        ? fetchOnChainRecentEvents(publicClient, [config], 0n)
+        : Promise.resolve([]),
   });
 }
 

@@ -32,7 +32,10 @@ import {
   ChevronDown,
   Search,
 } from "lucide-react";
-import { useAllMoatConfigs } from "@/hooks/use-moats-api";
+import {
+  useAllMoatConfigs,
+  useOnChainMoatAnalyticsEvents,
+} from "@/hooks/use-moats-api";
 import { useProtocolEvents } from "@/hooks/use-protocol-events";
 import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
 import { useDexscreenerInfo } from "@/hooks/use-dexscreener";
@@ -362,7 +365,7 @@ export default function Analytics() {
   // all downstream daily-bucket / totals / token-mix memos automatically
   // re-scope to that Moat (DO NOT OVERKILL — one filter, no per-memo changes).
   const singleMoat = selectedMoat !== "ALL";
-  const ev = useMemo(() => {
+  const apiEv = useMemo(() => {
     if (!singleMoat) return rawEv;
     const sel = selectedConfig
       ? moatKey(selectedConfig.network, selectedConfig.contractAddress)
@@ -403,6 +406,58 @@ export default function Analytics() {
     if (selectedMoat === "ALL" || !configs) return;
     if (!selectedConfig) setSelectedMoat("ALL");
   }, [configs, selectedMoat, selectedConfig]);
+
+  const apiScopedEventCount = singleMoat
+    ? apiEv.rewardsDeposited.length +
+      apiEv.staked.length +
+      apiEv.locked.length +
+      apiEv.burned.length +
+      apiEv.withdrawn.length +
+      apiEv.rewardClaimed.length +
+      apiEv.lockExited.length
+    : 0;
+  const shouldLoadOnChainAnalytics =
+    singleMoat && !apiEv.isLoading && apiScopedEventCount === 0;
+  const onChainAnalytics = useOnChainMoatAnalyticsEvents(
+    selectedConfig,
+    shouldLoadOnChainAnalytics,
+  );
+  const ev = useMemo(() => {
+    if (!singleMoat || !onChainAnalytics.data?.length) {
+      return {
+        ...apiEv,
+        isLoading: apiEv.isLoading || onChainAnalytics.isLoading,
+      };
+    }
+
+    const onChainByType = new Map<string, MoatEvent[]>();
+    for (const event of onChainAnalytics.data) {
+      const list = onChainByType.get(event.eventType) ?? [];
+      list.push(event);
+      onChainByType.set(event.eventType, list);
+    }
+    const merge = (eventType: string, indexed: MoatEvent[]) => {
+      const existing = new Set(
+        indexed.map((event) => `${event.transactionHash}:${event.logIndex}`),
+      );
+      return [
+        ...indexed,
+        ...(onChainByType.get(eventType) ?? []).filter(
+          (event) => !existing.has(`${event.transactionHash}:${event.logIndex}`),
+        ),
+      ];
+    };
+    return {
+      rewardsDeposited: merge("RewardsDeposited", apiEv.rewardsDeposited),
+      staked: merge("Staked", apiEv.staked),
+      locked: merge("Locked", apiEv.locked),
+      burned: merge("Burned", apiEv.burned),
+      withdrawn: merge("Withdrawn", apiEv.withdrawn),
+      rewardClaimed: merge("RewardClaimed", apiEv.rewardClaimed),
+      lockExited: merge("LockExited", apiEv.lockExited),
+      isLoading: apiEv.isLoading || onChainAnalytics.isLoading,
+    };
+  }, [apiEv, onChainAnalytics.data, onChainAnalytics.isLoading, singleMoat]);
 
   // ---- on-chain enrichment (staking tokens for activity USD valuation) ----
   const onchainContracts = useMemo(() => {
