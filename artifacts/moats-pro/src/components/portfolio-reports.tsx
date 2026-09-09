@@ -11,21 +11,32 @@ import type { MoatEvent } from "@/lib/moats-api";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type Timeframe = "7D" | "30D" | "90D" | "All";
+export type ReportTimeframe = "7D" | "30D" | "90D" | "All";
 
-const TIMEFRAME_MS: Record<Timeframe, number> = {
+const TIMEFRAME_MS: Record<ReportTimeframe, number> = {
   "7D":  7  * 86_400_000,
   "30D": 30 * 86_400_000,
   "90D": 90 * 86_400_000,
   "All": Infinity,
 };
 
-interface TokenRow { symbol: string; amount: number; usd: number; logoUrl?: string; address?: string; network?: string; dexLogoUrl?: string; }
-interface ClaimedAggregate {
-  featured: Record<"usdc" | "wavax" | "btcb", TokenRow>;
-  community: TokenRow[];
+export interface ReportTokenRow { symbol: string; amount: number; usd: number; logoUrl?: string; address?: string; network?: string; dexLogoUrl?: string; }
+export interface ClaimedAggregate {
+  featured: Record<"usdc" | "wavax" | "btcb", ReportTokenRow>;
+  community: ReportTokenRow[];
   totalUsd: number;
 }
+
+export interface PortfolioReportMoatOption {
+  key: string;
+  name: string;
+  network: string;
+}
+
+export type ClaimedAggregatesByMoat = Record<
+  string,
+  Partial<Record<ReportTimeframe, ClaimedAggregate>>
+>;
 
 export interface PortfolioReportsProps {
   address?: string;
@@ -34,12 +45,14 @@ export interface PortfolioReportsProps {
   swapPoints?: number;
   ownTransactions: MoatEvent[];
   claimedAggregate: ClaimedAggregate;
+  claimedAggregatesByMoat?: ClaimedAggregatesByMoat;
+  moatOptions?: PortfolioReportMoatOption[];
   activePositionCount: number;
 }
 
 // ── Data builders ────────────────────────────────────────────────────────────
 
-function buildActivityData(events: MoatEvent[], tf: Timeframe) {
+function buildActivityData(events: MoatEvent[], tf: ReportTimeframe) {
   const now = Date.now();
   const cutoff = tf === "All" ? 0 : now - TIMEFRAME_MS[tf];
   const filtered = [...events]
@@ -72,7 +85,7 @@ function buildActivityData(events: MoatEvent[], tf: Timeframe) {
   return orderedKeys.map(k => map.get(k)!);
 }
 
-function buildCumulativeData(events: MoatEvent[], tf: Timeframe) {
+function buildCumulativeData(events: MoatEvent[], tf: ReportTimeframe) {
   const now = Date.now();
   const cutoff = tf === "All" ? 0 : now - TIMEFRAME_MS[tf];
   const claims = [...events]
@@ -89,7 +102,7 @@ function buildCumulativeData(events: MoatEvent[], tf: Timeframe) {
 
 interface GrowthStat { label: string; count: number; pct: number | null; colorClass: string; borderClass: string; glowColor: string; barColor: string; }
 
-function buildGrowthStats(events: MoatEvent[], tf: Timeframe): GrowthStat[] {
+function buildGrowthStats(events: MoatEvent[], tf: ReportTimeframe): GrowthStat[] {
   const now = Date.now();
   const ms = tf === "All" ? null : TIMEFRAME_MS[tf];
   const count = (type: string, from: number, to: number) =>
@@ -439,27 +452,66 @@ function CyberTooltip({ active, payload, label }: { active?: boolean; payload?: 
 
 // ── Main component ───────────────────────────────────────────────────────────
 
-const TIMEFRAMES: Timeframe[] = ["7D", "30D", "90D", "All"];
+const TIMEFRAMES: ReportTimeframe[] = ["7D", "30D", "90D", "All"];
 
 export function PortfolioReports(props: PortfolioReportsProps) {
-  const { ownTransactions, claimedAggregate, mapsScore, totalPortfolioValueUSD, swapPoints, activePositionCount } = props;
+  const {
+    ownTransactions,
+    claimedAggregate,
+    claimedAggregatesByMoat,
+    moatOptions = [],
+    mapsScore,
+    totalPortfolioValueUSD,
+    swapPoints,
+    activePositionCount,
+  } = props;
 
-  const [tf, setTf] = useState<Timeframe>("30D");
+  const [tf, setTf] = useState<ReportTimeframe>("30D");
+  const [selectedMoat, setSelectedMoat] = useState("ALL");
   const [activeCard, setActiveCard] = useState<"portfolio" | "rewards" | "activity">("portfolio");
 
-  const activityData  = useMemo(() => buildActivityData(ownTransactions, tf),  [ownTransactions, tf]);
-  const cumulativeData = useMemo(() => buildCumulativeData(ownTransactions, tf), [ownTransactions, tf]);
-  const growthStats   = useMemo(() => buildGrowthStats(ownTransactions, tf),    [ownTransactions, tf]);
+  const scopedTransactions = useMemo(() => {
+    if (selectedMoat === "ALL") return ownTransactions;
+    return ownTransactions.filter(
+      (event) =>
+        `${(event.network ?? "avalanche").toLowerCase()}:${event.contractAddress.toLowerCase()}` === selectedMoat,
+    );
+  }, [ownTransactions, selectedMoat]);
+
+  const scopedClaimedAggregate =
+    claimedAggregatesByMoat?.[selectedMoat]?.[tf] ?? claimedAggregate;
+
+  const activityData = useMemo(
+    () => buildActivityData(scopedTransactions, tf),
+    [scopedTransactions, tf],
+  );
+  const cumulativeData = useMemo(
+    () => buildCumulativeData(scopedTransactions, tf),
+    [scopedTransactions, tf],
+  );
+  const growthStats = useMemo(
+    () => buildGrowthStats(scopedTransactions, tf),
+    [scopedTransactions, tf],
+  );
 
   const hasActivity   = activityData.length > 0;
   const hasCumulative = cumulativeData.length > 0;
+
+  const reportProps = useMemo<PortfolioReportsProps>(
+    () => ({
+      ...props,
+      ownTransactions: scopedTransactions,
+      claimedAggregate: scopedClaimedAggregate,
+    }),
+    [props, scopedTransactions, scopedClaimedAggregate],
+  );
 
   const [previewUrl, setPreviewUrl]   = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [copied, setCopied]           = useState(false);
 
   // Stable keys derived from data so the preview effect only re-runs when values actually change.
-  const previewKey = `${activeCard}|${props.totalPortfolioValueUSD}|${props.claimedAggregate.totalUsd}|${props.swapPoints ?? 0}|${props.mapsScore?.points ?? 0}|${props.ownTransactions.length}`;
+  const previewKey = `${activeCard}|${tf}|${selectedMoat}|${reportProps.totalPortfolioValueUSD}|${reportProps.claimedAggregate.totalUsd}|${reportProps.swapPoints ?? 0}|${reportProps.mapsScore?.points ?? 0}|${reportProps.ownTransactions.length}`;
 
   useEffect(() => {
     let cancelled = false;
@@ -472,14 +524,14 @@ export function PortfolioReports(props: PortfolioReportsProps) {
     };
 
     // Phase 1 — instant: render with letter-avatar fallbacks (no image fetches).
-    buildCard(activeCard, stripLogos(props)).then(canvas => {
+    buildCard(activeCard, stripLogos(reportProps)).then(canvas => {
       if (cancelled) return;
       const url = tryDataUrl(canvas);
       if (url) { setPreviewUrl(url); setPreviewLoading(false); }
     }).catch(() => {});
 
     // Phase 2 — async: re-render with real logos once loaded (CORS-safe via cache-bust).
-    buildCard(activeCard, props).then(canvas => {
+    buildCard(activeCard, reportProps).then(canvas => {
       if (cancelled) return;
       const url = tryDataUrl(canvas);
       if (url) setPreviewUrl(url);
@@ -492,16 +544,16 @@ export function PortfolioReports(props: PortfolioReportsProps) {
   }, [previewKey]);
 
   const doDownload = useCallback(() => {
-    buildCard(activeCard, props).then(canvas => downloadCard(canvas, activeCard)).catch(console.error);
-  }, [activeCard, props]);
+    buildCard(activeCard, reportProps).then(canvas => downloadCard(canvas, activeCard)).catch(console.error);
+  }, [activeCard, reportProps]);
 
   const doCopy = useCallback(() => {
-    buildCard(activeCard, props).then(async canvas => {
+    buildCard(activeCard, reportProps).then(async canvas => {
       await copyCardToClipboard(canvas);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     }).catch(console.error);
-  }, [activeCard, props]);
+  }, [activeCard, reportProps]);
 
   const pctLabel = (pct: number | null) => {
     if (pct === null) return null;
@@ -538,7 +590,7 @@ export function PortfolioReports(props: PortfolioReportsProps) {
       className="relative pt-6"
     >
       {/* Section header */}
-      <div className="flex items-center justify-between mb-6 relative z-10">
+       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 relative z-10">
         <div className="flex items-center gap-3">
           <div className="p-1.5 rounded bg-primary/10 border border-primary/20">
             <BarChart2 size={16} className="text-primary" />
@@ -549,21 +601,41 @@ export function PortfolioReports(props: PortfolioReportsProps) {
           </div>
         </div>
 
-        {/* Timeframe selector */}
-        <div className="flex items-center gap-1 p-1 rounded-lg bg-black/50 border border-white/10">
-          {TIMEFRAMES.map((t) => (
-            <button
-              key={t}
-              onClick={() => setTf(t)}
-              className={`px-3 py-1.5 rounded-md text-[10px] font-mono font-bold uppercase tracking-widest transition-all duration-200 ${
-                tf === t
-                  ? "bg-primary/20 text-primary border border-primary/40 shadow-[0_0_12px_rgba(0,212,255,0.2)]"
-                  : "text-muted-foreground/60 hover:text-white hover:bg-white/5"
-              }`}
-            >
-              {t}
-            </button>
-          ))}
+         <div className="flex flex-wrap items-center justify-end gap-2">
+           {/* Moat selector */}
+           <label className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-black/50 border border-white/10">
+             <span className="text-[9px] font-mono text-muted-foreground/60 uppercase tracking-widest">Moat</span>
+             <select
+               value={selectedMoat}
+               onChange={(event) => setSelectedMoat(event.target.value)}
+               className="max-w-[190px] bg-transparent text-[10px] font-mono font-bold uppercase tracking-widest text-white outline-none cursor-pointer"
+               aria-label="Filter reports by Moat"
+             >
+               <option value="ALL" className="bg-slate-950">All Participating Moats</option>
+               {moatOptions.map((moat) => (
+                 <option key={moat.key} value={moat.key} className="bg-slate-950">
+                   {moat.name} · {moat.network}
+                 </option>
+               ))}
+             </select>
+           </label>
+
+           {/* Timeframe selector */}
+           <div className="flex items-center gap-1 p-1 rounded-lg bg-black/50 border border-white/10">
+             {TIMEFRAMES.map((t) => (
+               <button
+                 key={t}
+                 onClick={() => setTf(t)}
+                 className={`px-3 py-1.5 rounded-md text-[10px] font-mono font-bold uppercase tracking-widest transition-all duration-200 ${
+                   tf === t
+                     ? "bg-primary/20 text-primary border border-primary/40 shadow-[0_0_12px_rgba(0,212,255,0.2)]"
+                     : "text-muted-foreground/60 hover:text-white hover:bg-white/5"
+                 }`}
+               >
+                 {t}
+               </button>
+             ))}
+           </div>
         </div>
       </div>
 
@@ -680,7 +752,7 @@ export function PortfolioReports(props: PortfolioReportsProps) {
         <div className="p-5 space-y-4">
           {/* Card type picker */}
           <div className="grid grid-cols-3 gap-2">
-            {cardPreviews.map((card) => (
+       {cardPreviews.map((card) => (
               <button
                 key={card.key}
                 onClick={() => setActiveCard(card.key)}

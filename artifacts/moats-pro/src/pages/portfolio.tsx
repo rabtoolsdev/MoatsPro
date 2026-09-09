@@ -35,12 +35,18 @@ import { useDexscreenerInfo } from "@/hooks/use-dexscreener";
 import { useDailyRewardEstimates } from "@/hooks/use-daily-reward-estimates";
 import { MOAT_V3_ABI, ERC20_ABI, MOAT_LOGO_ABI } from "@/lib/moat-abi";
 import { networkToChainId } from "@/lib/wagmi-config";
-import { moatsApi } from "@/lib/moats-api";
+import { moatsApi, type MoatEvent } from "@/lib/moats-api";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { formatAddress, formatPoints, getEventTypeLabel, getEventTypeColor, getExplorerUrl, timeAgo, formatUSD, getMoatMeta, MOAT_METADATA } from "@/lib/moat-metadata";
 import { Link } from "wouter";
-import { PortfolioReports } from "@/components/portfolio-reports";
+import {
+  PortfolioReports,
+  type ClaimedAggregate,
+  type ClaimedAggregatesByMoat,
+  type PortfolioReportMoatOption,
+  type ReportTimeframe,
+} from "@/components/portfolio-reports";
 
 function formatTokenAmount(raw: bigint, decimals: number = 18): string {
   const val = parseFloat(formatUnits(raw, decimals));
@@ -48,6 +54,116 @@ function formatTokenAmount(raw: bigint, decimals: number = 18): string {
     return val.toLocaleString("en-US", { maximumFractionDigits: 2 });
   }
   return val.toLocaleString("en-US", { maximumFractionDigits: 4 });
+}
+
+const REPORT_TIMEFRAMES: ReportTimeframe[] = ["7D", "30D", "90D", "All"];
+const REPORT_TIMEFRAME_MS: Record<ReportTimeframe, number> = {
+  "7D": 7 * 86_400_000,
+  "30D": 30 * 86_400_000,
+  "90D": 90 * 86_400_000,
+  "All": Infinity,
+};
+
+function reportMoatKey(network: string | undefined, contractAddress: string): string {
+  return `${(network ?? "avalanche").toLowerCase()}:${contractAddress.toLowerCase()}`;
+}
+
+type RewardMeta = { symbol: string; decimals: number; network: string };
+type RewardPriceMap = Record<string, number>;
+type RewardDexMap = Record<string, { price?: number; imageUrl?: string }>;
+
+function buildReportClaimedAggregate(
+  events: MoatEvent[] | undefined,
+  address: string | undefined,
+  rewardTokenMeta: Map<string, RewardMeta>,
+  priceMap: RewardPriceMap | undefined,
+  rewardDexInfoMap: RewardDexMap | undefined,
+  dexInfoMap: RewardDexMap | undefined,
+  timeframe: ReportTimeframe,
+  moatKey?: string,
+): ClaimedAggregate {
+  const featured: ClaimedAggregate["featured"] = {
+    usdc: { address: USDC_ADDR, symbol: "USDC", amount: 0, usd: 0, price: 0, logoUrl: USDC_LOGO_URL },
+    wavax: { address: WAVAX_ADDR, symbol: "WAVAX", amount: 0, usd: 0, price: 0, logoUrl: WAVAX_LOGO_URL },
+    btcb: { address: BTCB_ADDR, symbol: "BTC.b", amount: 0, usd: 0, price: 0, logoUrl: btcbLogo },
+  };
+  const community = new Map<string, ClaimedAggregate["community"][number]>();
+
+  if (!events || !address) return { featured, community: [], totalUsd: 0 };
+
+  const lowerAddr = address.toLowerCase();
+  const now = Date.now();
+  const cutoff = timeframe === "All" ? 0 : now - REPORT_TIMEFRAME_MS[timeframe];
+  const perTokenWei = new Map<string, bigint>();
+
+  for (const ev of events) {
+    if (ev.eventType !== "RewardClaimed") continue;
+    if (ev.args?.user?.toLowerCase() !== lowerAddr) continue;
+    if (moatKey && reportMoatKey(ev.network, ev.contractAddress) !== moatKey) continue;
+    const timestamp = new Date(ev.timestamp).getTime();
+    if (!timestamp || timestamp < cutoff || timestamp > now) continue;
+    const token = (ev.args?.token as string | undefined)?.toLowerCase();
+    const amount = ev.args?.amount as string | undefined;
+    if (!token || !amount) continue;
+    try {
+      perTokenWei.set(token, (perTokenWei.get(token) ?? 0n) + BigInt(amount));
+    } catch {
+      // Ignore malformed event amounts without invalidating the report.
+    }
+  }
+
+  let totalUsd = 0;
+  for (const [addr, wei] of perTokenWei.entries()) {
+    const meta = rewardTokenMeta.get(addr);
+    const decimals = meta?.decimals ?? 18;
+    const symbol = meta?.symbol ?? addr.slice(0, 6);
+    const network = meta?.network ?? "avax";
+    const amount = Number(wei) / 10 ** decimals;
+    if (amount <= 0) continue;
+
+    const llamaPrice = priceMap?.[getLlamaId(network, addr).toLowerCase()] ?? 0;
+    const dexPrice = rewardDexInfoMap?.[addr]?.price ?? dexInfoMap?.[addr]?.price ?? 0;
+    let price = llamaPrice || dexPrice || 0;
+    if (price === 0 && addr === USDC_ADDR) price = 1;
+    const usd = amount * price;
+    totalUsd += usd;
+
+    if (addr === USDC_ADDR) {
+      featured.usdc.amount += amount;
+      featured.usdc.usd += usd;
+      featured.usdc.price = price;
+    } else if (addr === WAVAX_ADDR) {
+      featured.wavax.amount += amount;
+      featured.wavax.usd += usd;
+      featured.wavax.price = price;
+    } else if (addr === BTCB_ADDR) {
+      featured.btcb.amount += amount;
+      featured.btcb.usd += usd;
+      featured.btcb.price = price;
+    } else {
+      const metaLogo = Object.values(MOAT_METADATA).find(
+        (m) => m.tokenAddress?.toLowerCase() === addr,
+      )?.logoUrl ?? "";
+      const dexImg = rewardDexInfoMap?.[addr]?.imageUrl ?? "";
+      const logoUrl = metaLogo || dexImg || llamaIconUrl(network, addr);
+      community.set(addr, {
+        address: addr,
+        symbol,
+        amount,
+        usd,
+        price,
+        logoUrl,
+        dexLogoUrl: dexImg,
+        network,
+      });
+    }
+  }
+
+  return {
+    featured,
+    community: [...community.values()].sort((a, b) => b.usd - a.usd),
+    totalUsd,
+  };
 }
 
 
