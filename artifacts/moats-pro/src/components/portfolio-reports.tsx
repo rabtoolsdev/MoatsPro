@@ -20,7 +20,15 @@ const TIMEFRAME_MS: Record<ReportTimeframe, number> = {
   "All": Infinity,
 };
 
-export interface ReportTokenRow { symbol: string; amount: number; usd: number; logoUrl?: string; address?: string; network?: string; dexLogoUrl?: string; }
+function normalizeReportNetwork(network?: string): string {
+  const value = (network ?? "avalanche").toLowerCase();
+  if (value === "avax") return "avalanche";
+  if (value === "grotto") return "thegrotto";
+  if (value === "robinhoodchain") return "robinhood";
+  return value;
+}
+
+export interface ReportTokenRow { symbol: string; amount: number; usd: number; price: number; logoUrl?: string; address?: string; network?: string; dexLogoUrl?: string; }
 export interface ClaimedAggregate {
   featured: Record<"usdc" | "wavax" | "btcb", ReportTokenRow>;
   community: ReportTokenRow[];
@@ -47,6 +55,9 @@ export interface PortfolioReportsProps {
   claimedAggregate: ClaimedAggregate;
   claimedAggregatesByMoat?: ClaimedAggregatesByMoat;
   moatOptions?: PortfolioReportMoatOption[];
+  portfolioValueByMoat?: Record<string, number>;
+  reportTimeframe?: ReportTimeframe;
+  reportMoatLabel?: string;
   activePositionCount: number;
 }
 
@@ -290,7 +301,7 @@ async function buildCard(
   // Card-type label
   const typeLabels = { portfolio: "PORTFOLIO SUMMARY", rewards: "REWARDS REPORT", activity: "ACTIVITY SUMMARY" };
   ctx.font = `10px ${mono}`; ctx.fillStyle = "rgba(255,255,255,0.28)";
-  ctx.fillText(typeLabels[type], 36, 82);
+  ctx.fillText(`${typeLabels[type]} · ${props.reportMoatLabel ?? "ALL MOATS"}`, 36, 82);
 
   // Divider
   ctx.strokeStyle = "rgba(255,255,255,0.07)"; ctx.lineWidth = 1;
@@ -306,7 +317,12 @@ async function buildCard(
     const cols = [
       { label: "MAPS SCORE", value: props.mapsScore?.points?.toLocaleString() ?? "—", sub: props.mapsScore?.rank ? `RANK #${props.mapsScore.rank}` : "", color: "#a78bfa" },
       { label: "SWAP POINTS", value: (props.swapPoints ?? 0).toLocaleString(), sub: "TOTAL EARNED", color: "#34d399" },
-      { label: "REWARDS EARNED", value: formatUSD(props.claimedAggregate.totalUsd), sub: "LIFETIME", color: "#00d4ff" },
+      {
+        label: "REWARDS EARNED",
+        value: formatUSD(props.claimedAggregate.totalUsd),
+        sub: props.reportTimeframe === "All" ? "ALL TIME" : `LAST ${props.reportTimeframe ?? "ALL"}`,
+        color: "#00d4ff",
+      },
     ];
     cols.forEach((c, i) => {
       const x = 36 + i * 244;
@@ -320,7 +336,13 @@ async function buildCard(
   } else if (type === "rewards") {
     ctx.font = `bold 58px ${sans}`; ctx.fillStyle = "#34d399";
     ctx.fillText(formatUSD(props.claimedAggregate.totalUsd), 36, 175);
-    ctx.font = `10px ${mono}`; ctx.fillStyle = "rgba(255,255,255,0.28)"; ctx.fillText("LIFETIME REWARDS CLAIMED", 36, 198);
+    ctx.font = `10px ${mono}`;
+    ctx.fillStyle = "rgba(255,255,255,0.28)";
+    ctx.fillText(
+      `${props.reportTimeframe === "All" ? "ALL TIME" : `LAST ${props.reportTimeframe ?? "ALL"}`} REWARDS CLAIMED`,
+      36,
+      198,
+    );
     ctx.strokeStyle = "rgba(255,255,255,0.06)"; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(36, 220); ctx.lineTo(W - 36, 220); ctx.stroke();
 
@@ -460,6 +482,7 @@ export function PortfolioReports(props: PortfolioReportsProps) {
     claimedAggregate,
     claimedAggregatesByMoat,
     moatOptions = [],
+    portfolioValueByMoat,
     mapsScore,
     totalPortfolioValueUSD,
     swapPoints,
@@ -474,12 +497,18 @@ export function PortfolioReports(props: PortfolioReportsProps) {
     if (selectedMoat === "ALL") return ownTransactions;
     return ownTransactions.filter(
       (event) =>
-        `${(event.network ?? "avalanche").toLowerCase()}:${event.contractAddress.toLowerCase()}` === selectedMoat,
+        `${normalizeReportNetwork(event.network)}:${event.contractAddress.toLowerCase()}` === selectedMoat,
     );
   }, [ownTransactions, selectedMoat]);
 
   const scopedClaimedAggregate =
     claimedAggregatesByMoat?.[selectedMoat]?.[tf] ?? claimedAggregate;
+  const scopedPortfolioValue =
+    portfolioValueByMoat?.[selectedMoat] ?? totalPortfolioValueUSD;
+  const selectedMoatLabel =
+    selectedMoat === "ALL"
+      ? "ALL MOATS"
+      : moatOptions.find((moat) => moat.key === selectedMoat)?.name ?? "SELECTED MOAT";
 
   const activityData = useMemo(
     () => buildActivityData(scopedTransactions, tf),
@@ -502,8 +531,21 @@ export function PortfolioReports(props: PortfolioReportsProps) {
       ...props,
       ownTransactions: scopedTransactions,
       claimedAggregate: scopedClaimedAggregate,
+      totalPortfolioValueUSD: scopedPortfolioValue,
+      activePositionCount: selectedMoat === "ALL" ? activePositionCount : 1,
+      reportTimeframe: tf,
+      reportMoatLabel: selectedMoatLabel,
     }),
-    [props, scopedTransactions, scopedClaimedAggregate],
+    [
+      props,
+      scopedTransactions,
+      scopedClaimedAggregate,
+      scopedPortfolioValue,
+      selectedMoatLabel,
+      selectedMoat,
+      activePositionCount,
+      tf,
+    ],
   );
 
   const [previewUrl, setPreviewUrl]   = useState<string | null>(null);
@@ -565,19 +607,19 @@ export function PortfolioReports(props: PortfolioReportsProps) {
     {
       key: "portfolio",
       label: "Portfolio Summary",
-      headline: formatUSD(totalPortfolioValueUSD),
+      headline: formatUSD(scopedPortfolioValue),
       sub: `MAPS ${mapsScore?.points?.toLocaleString() ?? "—"} · ${(swapPoints ?? 0).toLocaleString()} swap pts`,
     },
     {
       key: "rewards",
       label: "Rewards Report",
-      headline: formatUSD(claimedAggregate.totalUsd),
-      sub: `USDC · WAVAX · BTC.b${claimedAggregate.community.length > 0 ? ` · +${claimedAggregate.community.length} more` : ""}`,
+      headline: formatUSD(scopedClaimedAggregate.totalUsd),
+      sub: `${tf === "All" ? "ALL TIME" : `LAST ${tf}`} · USDC · WAVAX · BTC.b${scopedClaimedAggregate.community.length > 0 ? ` · +${scopedClaimedAggregate.community.length} more` : ""}`,
     },
     {
       key: "activity",
       label: "Activity Summary",
-      headline: `${ownTransactions.length} txs`,
+      headline: `${scopedTransactions.length} txs`,
       sub: `${growthStats[0].count} stakes · ${growthStats[1].count} locks · ${growthStats[2].count} burns`,
     },
   ];

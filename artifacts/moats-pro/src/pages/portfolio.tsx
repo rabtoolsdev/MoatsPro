@@ -65,7 +65,13 @@ const REPORT_TIMEFRAME_MS: Record<ReportTimeframe, number> = {
 };
 
 function reportMoatKey(network: string | undefined, contractAddress: string): string {
-  return `${(network ?? "avalanche").toLowerCase()}:${contractAddress.toLowerCase()}`;
+  const value = (network ?? "avalanche").toLowerCase();
+  const normalized =
+    value === "avax" ? "avalanche"
+    : value === "grotto" ? "thegrotto"
+    : value === "robinhoodchain" ? "robinhood"
+    : value;
+  return `${normalized}:${contractAddress.toLowerCase()}`;
 }
 
 type RewardMeta = { symbol: string; decimals: number; network: string };
@@ -507,88 +513,86 @@ export default function Portfolio() {
     return m;
   }, [moatPointsResults, activePositions]);
 
-  // Aggregate this wallet's lifetime RewardClaimed events per token.
-  // Buckets: USDC, WAVAX, BTC.b are always shown (even if zero). Every other
-  // token (community asset) gets its own row, sorted by USD value desc.
-  type ClaimedRow = {
-    address: string;
-    symbol: string;
-    amount: number;
-    usd: number;
-    price: number;
-    logoUrl?: string;
-    network?: string;
-    dexLogoUrl?: string;
-  };
-  const claimedAggregate = useMemo(() => {
-    const featured: Record<"usdc" | "wavax" | "btcb", ClaimedRow> = {
-      usdc: { address: USDC_ADDR, symbol: "USDC", amount: 0, usd: 0, price: 0, logoUrl: USDC_LOGO_URL },
-      wavax: { address: WAVAX_ADDR, symbol: "WAVAX", amount: 0, usd: 0, price: 0, logoUrl: WAVAX_LOGO_URL },
-      btcb: { address: BTCB_ADDR, symbol: "BTC.b", amount: 0, usd: 0, price: 0, logoUrl: btcbLogo },
-    };
-    const community = new Map<string, ClaimedRow>();
-    if (!userEvents || !address) {
-      return { featured, community: [] as ClaimedRow[], totalUsd: 0 };
-    }
-    const lowerAddr = address.toLowerCase();
+  // Build report totals for every period and every Moat scope. Keeping this
+  // keyed by network + contractAddress prevents same-address Moats on different
+  // chains from being combined.
+  const claimedAggregatesByMoat = useMemo<ClaimedAggregatesByMoat>(() => {
+    const scopes = [
+      "ALL",
+      ...activePositions.map((pos) =>
+        reportMoatKey(pos.config.network, pos.config.contractAddress),
+      ),
+    ];
+    const uniqueScopes = [...new Set(scopes)];
+    const result: ClaimedAggregatesByMoat = {};
 
-    // Sum raw wei per token from this user's RewardClaimed events
-    const perTokenWei = new Map<string, bigint>();
-    for (const ev of userEvents) {
-      if (ev.eventType !== "RewardClaimed") continue;
-      if (ev.args?.user?.toLowerCase() !== lowerAddr) continue;
-      const tok = (ev.args?.token as string | undefined)?.toLowerCase();
-      const amt = ev.args?.amount as string | undefined;
-      if (!tok || !amt) continue;
-      try {
-        perTokenWei.set(tok, (perTokenWei.get(tok) ?? 0n) + BigInt(amt));
-      } catch {
-        // skip malformed amount
+    for (const scope of uniqueScopes) {
+      result[scope] = {};
+      for (const timeframe of REPORT_TIMEFRAMES) {
+        result[scope][timeframe] = buildReportClaimedAggregate(
+          userEvents,
+          address,
+          rewardTokenMeta,
+          priceMap,
+          rewardDexInfoMap,
+          dexInfoMap,
+          timeframe,
+          scope === "ALL" ? undefined : scope,
+        );
       }
     }
+    return result;
+  }, [
+    activePositions,
+    userEvents,
+    address,
+    rewardTokenMeta,
+    priceMap,
+    rewardDexInfoMap,
+    dexInfoMap,
+  ]);
 
-    let totalUsd = 0;
-    for (const [addr, wei] of perTokenWei.entries()) {
-      const meta = rewardTokenMeta.get(addr);
-      const decimals = meta?.decimals ?? 18;
-      const symbol = meta?.symbol ?? addr.slice(0, 6);
-      const network = meta?.network ?? "avax";
-      const amount = Number(wei) / 10 ** decimals;
-      if (amount <= 0) continue;
+  const claimedAggregate =
+    claimedAggregatesByMoat.ALL?.All ??
+    buildReportClaimedAggregate(
+      userEvents,
+      address,
+      rewardTokenMeta,
+      priceMap,
+      rewardDexInfoMap,
+      dexInfoMap,
+      "All",
+    );
 
-      const llamaPrice = priceMap?.[getLlamaId(network, addr).toLowerCase()] ?? 0;
-      const dexPrice = rewardDexInfoMap?.[addr]?.price ?? dexInfoMap?.[addr]?.price ?? 0;
-      let price = llamaPrice || dexPrice || 0;
-      if (price === 0 && addr === USDC_ADDR) price = 1;
-      const usd = amount * price;
-      totalUsd += usd;
+  const reportMoatOptions = useMemo<PortfolioReportMoatOption[]>(() => {
+    const seen = new Set<string>();
+    return activePositions.flatMap((pos) => {
+      const key = reportMoatKey(pos.config.network, pos.config.contractAddress);
+      if (seen.has(key)) return [];
+      seen.add(key);
+      return [{
+        key,
+        name: getMoatMeta(pos.config.contractAddress, pos.config.network).name,
+        network: pos.config.network ?? "avalanche",
+      }];
+    });
+  }, [activePositions]);
 
-      if (addr === USDC_ADDR) {
-        featured.usdc.amount += amount;
-        featured.usdc.usd += usd;
-        featured.usdc.price = price;
-      } else if (addr === WAVAX_ADDR) {
-        featured.wavax.amount += amount;
-        featured.wavax.usd += usd;
-        featured.wavax.price = price;
-      } else if (addr === BTCB_ADDR) {
-        featured.btcb.amount += amount;
-        featured.btcb.usd += usd;
-        featured.btcb.price = price;
-      } else {
-        // Priority: our system (MOAT_METADATA by tokenAddress) → DexScreener → DefiLlama
-        const metaLogo = Object.values(MOAT_METADATA).find(
-          m => m.tokenAddress?.toLowerCase() === addr
-        )?.logoUrl ?? "";
-        const dexImg = rewardDexInfoMap?.[addr]?.imageUrl ?? "";
-        const logoUrl = metaLogo || dexImg || llamaIconUrl(network, addr);
-        community.set(addr, { address: addr, symbol, amount, usd, price, logoUrl, dexLogoUrl: dexImg, network });
-      }
-    }
-
-    const communitySorted = [...community.values()].sort((a, b) => b.usd - a.usd);
-    return { featured, community: communitySorted, totalUsd };
-  }, [userEvents, address, rewardTokenMeta, priceMap, rewardDexInfoMap, dexInfoMap]);
+  const reportPortfolioValues = useMemo<Record<string, number>>(() => {
+    const values: Record<string, number> = { ALL: totalPortfolioValueUSD };
+    activePositions.forEach((pos, index) => {
+      const key = reportMoatKey(pos.config.network, pos.config.contractAddress);
+      values[key] = (values[key] ?? 0) + getPositionValueUSD(pos, index);
+    });
+    return values;
+  }, [
+    activePositions,
+    totalPortfolioValueUSD,
+    positionStakingTokens,
+    decimalsMap,
+    dexInfoMap,
+    lockedMap,
+  ]);
 
   // Transaction history: only this wallet's own actions
   const ownTransactions = useMemo(() => {
@@ -1167,6 +1171,9 @@ export default function Portfolio() {
                 swapPoints={swapPoints?.points}
                 ownTransactions={ownTransactions}
                 claimedAggregate={claimedAggregate}
+                claimedAggregatesByMoat={claimedAggregatesByMoat}
+                moatOptions={reportMoatOptions}
+                portfolioValueByMoat={reportPortfolioValues}
                 activePositionCount={activePositions.length}
               />
             )}
