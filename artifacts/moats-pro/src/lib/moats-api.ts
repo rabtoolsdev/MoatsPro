@@ -212,6 +212,50 @@ export interface RewardToken {
   useCustomFrequency?: boolean;
 }
 
+// Fortifi's Bensi record has temporarily returned null metadata for Avalanche
+// USDC.e. Keep this address-specific correction close to the API boundary so
+// every page (home, moat detail, portfolio, and activity) uses the same token
+// identity and decimal scale.
+const KNOWN_REWARD_TOKEN_METADATA: Record<
+  string,
+  { name: string; symbol: string; decimals: number }
+> = {
+  "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e": {
+    name: "USD Coin",
+    symbol: "USDC",
+    decimals: 6,
+  },
+};
+
+function normalizeRewardToken(token: RewardToken): RewardToken {
+  const address =
+    typeof token.tokenAddress === "string" ? token.tokenAddress.toLowerCase() : "";
+  const known = KNOWN_REWARD_TOKEN_METADATA[address];
+  const decimals =
+    typeof token.decimals === "number" &&
+    Number.isInteger(token.decimals) &&
+    token.decimals >= 0 &&
+    token.decimals <= 36
+      ? token.decimals
+      : 18;
+
+  return {
+    ...token,
+    name: known?.name ?? (typeof token.name === "string" && token.name.trim() ? token.name : "Reward Token"),
+    symbol: known?.symbol ?? (typeof token.symbol === "string" && token.symbol.trim() ? token.symbol : "TOKEN"),
+    decimals: known?.decimals ?? decimals,
+  };
+}
+
+function normalizeMoatConfig(config: MoatConfig): MoatConfig {
+  return {
+    ...config,
+    rewardTokens: (Array.isArray(config.rewardTokens) ? config.rewardTokens : []).map(
+      normalizeRewardToken,
+    ),
+  };
+}
+
 export interface BoostTier {
   minHolding: number;
   maxHolding: number | null;
@@ -401,10 +445,12 @@ export const moatsApi = {
   },
 
   getAllMoatConfigs: () =>
-    apiFetch<MoatConfig[]>("/moat-config"),
+    apiFetch<MoatConfig[]>("/moat-config").then((configs) =>
+      configs.map(normalizeMoatConfig),
+    ),
 
   getMoatConfig: (contractAddress: string) =>
-    apiFetch<MoatConfig>(`/moat-config/${contractAddress}`),
+    apiFetch<MoatConfig>(`/moat-config/${contractAddress}`).then(normalizeMoatConfig),
 
   getSwapPoints: (address: string) =>
     ownFetch<SwapPointsResponse>(`/swap-points/${address.toLowerCase()}`),
