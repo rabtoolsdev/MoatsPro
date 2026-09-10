@@ -367,16 +367,18 @@ async function fetchOnChainRecentEvents(
       toBlock: currentBlock,
     });
   } catch {
-    // A full-history query is intentionally one bounded RPC request per
-    // chain. Expanding a failed archive request into thousands of small
-    // slices overwhelms public RPCs and still produces an incomplete result.
+    // Robinhood rejects wide log ranges and rate-limits the many small
+    // requests that a chunked fallback would create. Keep this path to one
+    // bounded attempt; the Fortifi indexer remains the source for Robinhood
+    // activity when the RPC cannot serve the fallback.
     if (
-      fromBlockOverride !== undefined &&
-      (network.toLowerCase() === "robinhood" ||
-        network.toLowerCase() === "robinhoodchain")
+      network.toLowerCase() === "robinhood" ||
+      network.toLowerCase() === "robinhoodchain"
     ) {
       return [];
     }
+    // For other networks, expand a failed archive request into conservative
+    // chunks so the activity fallback still works where the RPC supports it.
     rawLogs = await fetchLogsInChunks(
       client,
       addresses,
@@ -571,8 +573,8 @@ export function useAllOnChainRecentEvents(configs: MoatConfig[] | undefined) {
         chainConfigs.map((c) => `${c.contractAddress}:${c.network}`).sort().join(","),
       ],
       enabled: chainConfigs.length > 0 && !!client,
-      staleTime: 10_000,
-      refetchInterval: 30_000,
+        staleTime: chainId === 4663 ? 5 * 60_000 : 10_000,
+        refetchInterval: chainId === 4663 ? 5 * 60_000 : 30_000,
       refetchOnMount: "always" as const,
       queryFn: () => client ? fetchOnChainRecentEvents(client, chainConfigs) : Promise.resolve([]),
     })),
@@ -611,12 +613,16 @@ export function useOnChainRewardsDeposited(
   network: string | undefined,
 ) {
   const publicClient = usePublicClient({ chainId });
+  const isRobinhood =
+    network?.toLowerCase() === "robinhood" ||
+    network?.toLowerCase() === "robinhoodchain";
 
   return useQuery({
     queryKey: ["moats", "events", "onchain-rewards", chainId, contractAddress],
     enabled: !!contractAddress && !!publicClient && !!chainId,
     staleTime: 60_000,
-    refetchInterval: 120_000,
+    refetchInterval: isRobinhood ? 5 * 60_000 : 120_000,
+    retry: false,
     queryFn: async (): Promise<MoatEvent[]> => {
       if (!publicClient || !contractAddress) return [];
 
@@ -637,12 +643,19 @@ export function useOnChainRewardsDeposited(
           toBlock: currentBlock,
         });
       } catch {
-        logs = await publicClient.getLogs({
-          address: contractAddress as `0x${string}`,
-          event: REWARDS_DEPOSITED_EVENT_ABI[0],
-          fromBlock: currentBlock > NARROW ? currentBlock - NARROW : 0n,
-          toBlock: currentBlock,
-        });
+        try {
+          logs = await publicClient.getLogs({
+            address: contractAddress as `0x${string}`,
+            event: REWARDS_DEPOSITED_EVENT_ABI[0],
+            fromBlock: currentBlock > NARROW ? currentBlock - NARROW : 0n,
+            toBlock: currentBlock,
+          });
+        } catch {
+          // Robinhood's RPC can reject both ranges. Do not let React Query
+          // retry this scan repeatedly; indexed events remain available.
+          if (isRobinhood) return [];
+          throw new Error("RewardsDeposited log scan failed");
+        }
       }
 
       if (!logs.length) return [];
