@@ -2,8 +2,13 @@ import { useReadContract, useReadContracts, useWriteContract, useWaitForTransact
 import { useAccount } from "wagmi";
 import { parseUnits, formatUnits } from "viem";
 import { useMemo } from "react";
-import { MOAT_V3_ABI, ERC20_ABI } from "@/lib/moat-abi";
-import { isNativeToken, type MoatToken } from "@/lib/moat-tokens";
+import { MOAT_V3_ABI, ERC20_ABI, WRAPPED_BLAZE_ABI } from "@/lib/moat-abi";
+import {
+  BLAZE_CHAIN_ID,
+  WRAPPED_BLAZE_ADDRESS,
+  isNativeToken,
+  type MoatToken,
+} from "@/lib/moat-tokens";
 
 export type MoatContractAddress = `0x${string}`;
 
@@ -176,6 +181,70 @@ export function useTokenBalance(
         : undefined,
     isLoading: balance.isLoading,
     refetch: balance.refetch,
+  };
+}
+
+export function useBlazeWrap() {
+  const { address } = useAccount();
+  const native = useBalance({
+    address,
+    chainId: BLAZE_CHAIN_ID,
+    query: { enabled: !!address, refetchInterval: 15_000 },
+  });
+  const wrapped = useTokenBalance(WRAPPED_BLAZE_ADDRESS, BLAZE_CHAIN_ID);
+  const {
+    writeContract,
+    data: hash,
+    isPending,
+    error: writeError,
+    reset,
+  } = useWriteContract();
+  const receipt = useWaitForTransactionReceipt({
+    hash,
+    chainId: BLAZE_CHAIN_ID,
+  });
+
+  const wrap = (amount: string) => {
+    writeContract({
+      address: WRAPPED_BLAZE_ADDRESS,
+      abi: WRAPPED_BLAZE_ABI,
+      functionName: "deposit",
+      value: parseUnits(amount, 18),
+      chainId: BLAZE_CHAIN_ID,
+    });
+  };
+
+  const unwrap = (amount: string) => {
+    writeContract({
+      address: WRAPPED_BLAZE_ADDRESS,
+      abi: WRAPPED_BLAZE_ABI,
+      functionName: "withdraw",
+      args: [parseUnits(amount, 18)],
+      chainId: BLAZE_CHAIN_ID,
+    });
+  };
+
+  return {
+    nativeBalance: native.data?.value,
+    nativeFormatted:
+      native.data?.value !== undefined
+        ? formatUnits(native.data.value, native.data.decimals)
+        : undefined,
+    wrappedBalance: wrapped.balance as bigint | undefined,
+    wrappedFormatted: wrapped.formatted,
+    wrappedDecimals: (wrapped.decimals as number | undefined) ?? 18,
+    wrap,
+    unwrap,
+    hash,
+    isPending,
+    isConfirming: receipt.isLoading,
+    isSuccess: receipt.isSuccess,
+    error: writeError ?? receipt.error ?? null,
+    reset,
+    refetch: () => {
+      void native.refetch();
+      void wrapped.refetch();
+    },
   };
 }
 

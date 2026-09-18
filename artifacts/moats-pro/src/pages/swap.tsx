@@ -18,6 +18,7 @@ import { TokenSelectModal } from "@/components/swap/token-select-modal";
 import { TokenLogo } from "@/components/swap/token-logo";
 import { SlippageSettings } from "@/components/swap/slippage-settings";
 import {
+  BLAZE_CHAIN_ID,
   getBaseTokensForChain,
   deriveMoatTokens,
   isNativeToken,
@@ -40,6 +41,7 @@ import {
   useTokenBalance,
   useApproveToken,
   useSwapFromBalance,
+  useBlazeWrap,
 } from "@/hooks/use-moat-contract";
 import {
   useSwapQuote,
@@ -77,6 +79,7 @@ export default function Swap() {
   // Aggregator coverage gate. Subnets (Grotto, Blaze) aren't in Li.Fi/0x.
   const isSwapSupported =
     !!activeChainId && SWAP_SUPPORTED_CHAIN_IDS.includes(activeChainId);
+  const isBlaze = activeChainId === BLAZE_CHAIN_ID;
 
   // Base assets shown to the user are pulled from the *connected* chain so
   // they swap with what they actually hold (AVAX/USDC on Avalanche, ETH/USDC
@@ -541,132 +544,141 @@ export default function Swap() {
             data-testid="swap-card"
           >
           <div className="absolute h-px inset-x-0 top-0 bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
-          <div className="flex items-center justify-between mb-3 px-1 relative z-10">
-            <div className="text-[10px] font-mono uppercase tracking-widest text-primary/70 font-semibold">
-              You pay
-            </div>
-            <SlippageSettings slippage={slippage} onChange={setSlippage} />
-          </div>
+           {isBlaze ? (
+             <BlazeWrapPanel
+               isConnected={isConnected}
+               onConnect={() => open({ view: "Connect" })}
+             />
+           ) : (
+             <>
+               <div className="flex items-center justify-between mb-3 px-1 relative z-10">
+                 <div className="text-[10px] font-mono uppercase tracking-widest text-primary/70 font-semibold">
+                   You pay
+                 </div>
+                 <SlippageSettings slippage={slippage} onChange={setSlippage} />
+               </div>
 
-          <TokenInput
-            token={fromToken}
-            balance={fromBal.formatted}
-            value={amount}
-            onChange={setAmount}
-            onPick={() => setPickerSide("from")}
-            onMax={setMax}
-            showMax
-            isInsufficient={insufficient}
-          />
+               <TokenInput
+                 token={fromToken}
+                 balance={fromBal.formatted}
+                 value={amount}
+                 onChange={setAmount}
+                 onPick={() => setPickerSide("from")}
+                 onMax={setMax}
+                 showMax
+                 isInsufficient={insufficient}
+               />
 
-          <div className="flex justify-center my-2 relative z-10">
-            <div className="h-px w-full bg-gradient-to-r from-transparent via-primary/15 to-transparent absolute top-1/2" />
-            <button
-              onClick={flip}
-              disabled={!canFlip}
-              data-testid="btn-flip-tokens"
-              title={canFlip ? "Flip tokens" : "Pick both tokens first"}
-              className={`relative z-10 w-10 h-10 rounded-full border border-border bg-card transition-all duration-200 flex items-center justify-center group ${
-                canFlip
-                  ? "hover:border-primary/60 hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_20px_rgba(0,212,255,0.4)] active:scale-90"
-                  : "opacity-40 cursor-not-allowed"
-              }`}
-              aria-label="Flip tokens"
-            >
-              <ArrowDownUp
-                size={14}
-                style={{ transform: `rotate(${flipCount * 180}deg)` }}
-                className={`text-muted-foreground transition-transform duration-300 ease-out ${canFlip ? "group-hover:text-primary" : ""}`}
-              />
-            </button>
-          </div>
+               <div className="flex justify-center my-2 relative z-10">
+                 <div className="h-px w-full bg-gradient-to-r from-transparent via-primary/15 to-transparent absolute top-1/2" />
+                 <button
+                   onClick={flip}
+                   disabled={!canFlip}
+                   data-testid="btn-flip-tokens"
+                   title={canFlip ? "Flip tokens" : "Pick both tokens first"}
+                   className={`relative z-10 w-10 h-10 rounded-full border border-border bg-card transition-all duration-200 flex items-center justify-center group ${
+                     canFlip
+                       ? "hover:border-primary/60 hover:bg-primary/10 hover:text-primary hover:shadow-[0_0_20px_rgba(0,212,255,0.4)] active:scale-90"
+                       : "opacity-40 cursor-not-allowed"
+                   }`}
+                   aria-label="Flip tokens"
+                 >
+                   <ArrowDownUp
+                     size={14}
+                     style={{ transform: `rotate(${flipCount * 180}deg)` }}
+                     className={`text-muted-foreground transition-transform duration-300 ease-out ${canFlip ? "group-hover:text-primary" : ""}`}
+                   />
+                 </button>
+               </div>
 
-          <div className="text-[10px] font-mono uppercase tracking-widest text-primary/70 font-semibold px-1 mb-1 relative z-10">
-            You receive
-          </div>
+               <div className="text-[10px] font-mono uppercase tracking-widest text-primary/70 font-semibold px-1 mb-1 relative z-10">
+                 You receive
+               </div>
 
-          <TokenInput
-            token={toToken}
-            balance={toBal.formatted}
-            value={toAmountFormatted}
-            onChange={() => {}}
-            onPick={() => setPickerSide("to")}
-            readOnly
-            isLoading={quote.isFetching && amountRaw > 0n}
-          />
+               <TokenInput
+                 token={toToken}
+                 balance={toBal.formatted}
+                 value={toAmountFormatted}
+                 onChange={() => {}}
+                 onPick={() => setPickerSide("to")}
+                 readOnly
+                 isLoading={quote.isFetching && amountRaw > 0n}
+               />
 
-          {/* Quote details */}
-          <div
-            key={quote.best ? quote.best.toAmountRaw : "no-quote"}
-            className={`mt-4 px-1 space-y-1.5 relative z-10 ${quote.best ? "fade-rise" : ""}`}
-          >
-            {quote.best && rate && fromToken && toToken && (
-              <Row
-                label="Rate"
-                value={`1 ${fromToken.symbol} ≈ ${formatNumber(rate)} ${toToken.symbol}`}
-              />
-            )}
-            {quote.best && (
-              <Row
-                label="Min received"
-                value={`${formatNumber(parseFloat(toAmountMinFormatted))} ${toToken?.symbol ?? ""}`}
-              />
-            )}
-            <Row label="Moat fee" value={`${(FEE_BPS / 100).toFixed(2)}%`} />
-            {(quote.best || quote.results.length > 0) && (
-              <Row
-                label="Routed via"
-                value={
-                  <RouterSelector
-                    preferred={preferredRouter}
-                    onChange={setPreferredRouter}
-                    results={quote.results}
-                    autoBest={quote.autoBest}
-                    activeQuote={quote.best}
-                    toDecimals={toDecimals}
-                    toSymbol={toToken?.symbol}
-                  />
-                }
-              />
-            )}
-            {routeError && (
-              <div className="text-[11px] text-amber-400/90 mt-2 px-2 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 border-l-2 border-l-amber-400/60">
-                {routeError}
-              </div>
-            )}
-          </div>
+               {/* Quote details */}
+               <div
+                 key={quote.best ? quote.best.toAmountRaw : "no-quote"}
+                 className={`mt-4 px-1 space-y-1.5 relative z-10 ${quote.best ? "fade-rise" : ""}`}
+               >
+                 {quote.best && rate && fromToken && toToken && (
+                   <Row
+                     label="Rate"
+                     value={`1 ${fromToken.symbol} ≈ ${formatNumber(rate)} ${toToken.symbol}`}
+                   />
+                 )}
+                 {quote.best && (
+                   <Row
+                     label="Min received"
+                     value={`${formatNumber(parseFloat(toAmountMinFormatted))} ${toToken?.symbol ?? ""}`}
+                   />
+                 )}
+                 <Row label="Moat fee" value={`${(FEE_BPS / 100).toFixed(2)}%`} />
+                 {(quote.best || quote.results.length > 0) && (
+                   <Row
+                     label="Routed via"
+                     value={
+                       <RouterSelector
+                         preferred={preferredRouter}
+                         onChange={setPreferredRouter}
+                         results={quote.results}
+                         autoBest={quote.autoBest}
+                         activeQuote={quote.best}
+                         toDecimals={toDecimals}
+                         toSymbol={toToken?.symbol}
+                       />
+                     }
+                   />
+                 )}
+                 {routeError && (
+                   <div className="text-[11px] text-amber-400/90 mt-2 px-2 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 border-l-2 border-l-amber-400/60">
+                     {routeError}
+                   </div>
+                 )}
+               </div>
 
-          {/* Action button */}
-          <button
-            onClick={buttonState.action}
-            disabled={buttonState.disabled}
-            data-testid="btn-swap-action"
-            className={`w-full mt-5 py-3.5 rounded-xl text-sm transition-all duration-200 flex items-center justify-center gap-2 relative z-10 ${
-              buttonState.disabled
-                ? "bg-muted/40 text-muted-foreground font-semibold cursor-not-allowed"
-                : "bg-primary text-primary-foreground font-bold uppercase tracking-widest hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(0,212,255,0.35)] btn-shimmer"
-            }`}
-          >
-            {buttonState.loading && <Loader2 size={14} className="animate-spin" />}
-            {buttonState.label}
-          </button>
+               {/* Action button */}
+               <button
+                 onClick={buttonState.action}
+                 disabled={buttonState.disabled}
+                 data-testid="btn-swap-action"
+                 className={`w-full mt-5 py-3.5 rounded-xl text-sm transition-all duration-200 flex items-center justify-center gap-2 relative z-10 ${
+                   buttonState.disabled
+                     ? "bg-muted/40 text-muted-foreground font-semibold cursor-not-allowed"
+                     : "bg-primary text-primary-foreground font-bold uppercase tracking-widest hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(0,212,255,0.35)] btn-shimmer"
+                 }`}
+               >
+                 {buttonState.loading && <Loader2 size={14} className="animate-spin" />}
+                 {buttonState.label}
+               </button>
 
-          <div className="mt-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground/70 text-center flex items-center justify-center gap-1.5 relative z-10">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary/80 live-dot" aria-hidden />
-            <span>Quotes auto-refresh every 20s </span>
-          </div>
+               <div className="mt-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground/70 text-center flex items-center justify-center gap-1.5 relative z-10">
+                 <span className="w-1.5 h-1.5 rounded-full bg-primary/80 live-dot" aria-hidden />
+                 <span>Quotes auto-refresh every 20s </span>
+               </div>
 
-          <div className="mt-3 pt-3 border-t border-border/30 flex items-center justify-center gap-2 relative z-10">
-            <span className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/60 font-medium">
-              Powered by
-            </span>
-            <img
-              src={lifiLogo}
-              alt="Li.Fi"
-              className="h-3 w-auto opacity-60 hover:opacity-90 transition-opacity"
-              draggable={false}
-            />
-          </div>
+               <div className="mt-3 pt-3 border-t border-border/30 flex items-center justify-center gap-2 relative z-10">
+                 <span className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/60 font-medium">
+                   Powered by
+                 </span>
+                 <img
+                   src={lifiLogo}
+                   alt="Li.Fi"
+                   className="h-3 w-auto opacity-60 hover:opacity-90 transition-opacity"
+                   draggable={false}
+                 />
+               </div>
+             </>
+           )}
           </div>
         </div>
       </div>
@@ -696,6 +708,205 @@ export default function Swap() {
         footerLabel={`${allTokens.length} tokens`}
       />
     </div>
+  );
+}
+
+function BlazeWrapPanel({
+  isConnected,
+  onConnect,
+}: {
+  isConnected: boolean;
+  onConnect: () => void;
+}) {
+  const [mode, setMode] = useState<"wrap" | "unwrap">("wrap");
+  const [amount, setAmount] = useState("");
+  const { toast } = useToast();
+  const {
+    nativeBalance,
+    nativeFormatted,
+    wrappedBalance,
+    wrappedFormatted,
+    wrap,
+    unwrap,
+    hash,
+    isPending,
+    isConfirming,
+    isSuccess,
+    error,
+    reset,
+    refetch,
+  } = useBlazeWrap();
+
+  const [nativeToken, wrappedToken] = getBaseTokensForChain(BLAZE_CHAIN_ID);
+  const fromToken = mode === "wrap" ? nativeToken : wrappedToken;
+  const toToken = mode === "wrap" ? wrappedToken : nativeToken;
+  const balanceRaw = mode === "wrap" ? nativeBalance : wrappedBalance;
+  const balanceFormatted = mode === "wrap" ? nativeFormatted : wrappedFormatted;
+
+  const amountRaw = useMemo(() => {
+    try {
+      if (!amount || parseFloat(amount) <= 0) return 0n;
+      return parseUnits(amount, 18);
+    } catch {
+      return 0n;
+    }
+  }, [amount]);
+  const insufficient = amountRaw > 0n && (balanceRaw ?? 0n) < amountRaw;
+
+  useEffect(() => {
+    if (!isSuccess) return;
+    toast({
+      title: mode === "wrap" ? "BLAZE wrapped" : "BLAZE unwrapped",
+      description: mode === "wrap"
+        ? "Your WLAZE is now in your wallet."
+        : "Your native BLAZE is now in your wallet.",
+      variant: "success",
+    });
+    setAmount("");
+    refetch();
+    reset();
+  }, [isSuccess]);
+
+  useEffect(() => {
+    if (!error) return;
+    toast({
+      title: mode === "wrap" ? "Wrap failed" : "Unwrap failed",
+      description: error.message ?? "Transaction rejected or failed.",
+      variant: "destructive",
+    });
+    reset();
+  }, [error]);
+
+  const setMax = () => {
+    if (balanceFormatted) setAmount(balanceFormatted);
+  };
+
+  const buttonState = (() => {
+    if (!isConnected) {
+      return { label: "Connect Wallet", action: onConnect, disabled: false };
+    }
+    if (!amount || amountRaw === 0n) {
+      return { label: "Enter an amount", disabled: true };
+    }
+    if (insufficient) {
+      return { label: `Insufficient ${fromToken.symbol}`, disabled: true };
+    }
+    if (isPending) {
+      return { label: "Confirm in wallet…", disabled: true, loading: true };
+    }
+    if (isConfirming) {
+      return { label: "Confirming transaction…", disabled: true, loading: true };
+    }
+    return {
+      label: mode === "wrap" ? "Wrap BLAZE" : "Unwrap WLAZE",
+      action: () => (mode === "wrap" ? wrap(amount) : unwrap(amount)),
+      disabled: false,
+    };
+  })();
+
+  return (
+    <>
+      <div className="flex items-center justify-between mb-3 px-1 relative z-10">
+        <div>
+          <div className="text-[10px] font-mono uppercase tracking-widest text-primary/70 font-semibold">
+            Blaze L1 wrapper
+          </div>
+          <div className="text-xs text-muted-foreground/70 mt-1">
+            Convert native BLAZE to WLAZE directly on-chain
+          </div>
+        </div>
+        <Zap size={16} className="text-primary/70" aria-hidden />
+      </div>
+
+      <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-black/30 border border-white/8 relative z-10">
+        {(["wrap", "unwrap"] as const).map((nextMode) => (
+          <button
+            key={nextMode}
+            type="button"
+            onClick={() => {
+              setMode(nextMode);
+              setAmount("");
+            }}
+            data-testid={`btn-blaze-${nextMode}`}
+            className={`rounded-lg py-2 text-xs font-semibold uppercase tracking-wider transition-colors ${
+              mode === nextMode
+                ? "bg-primary/15 text-primary border border-primary/30"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {nextMode}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-4 text-[10px] font-mono uppercase tracking-widest text-primary/70 font-semibold px-1 relative z-10">
+        You pay
+      </div>
+      <TokenInput
+        token={fromToken}
+        balance={balanceFormatted}
+        value={amount}
+        onChange={setAmount}
+        onPick={() => {}}
+        onMax={setMax}
+        showMax
+        isInsufficient={insufficient}
+      />
+
+      <div className="flex justify-center my-2 relative z-10">
+        <div className="h-px w-full bg-gradient-to-r from-transparent via-primary/15 to-transparent absolute top-1/2" />
+        <div className="relative z-10 w-10 h-10 rounded-full border border-border bg-card flex items-center justify-center">
+          <ArrowDownUp size={14} className="text-primary rotate-90" aria-hidden />
+        </div>
+      </div>
+
+      <div className="text-[10px] font-mono uppercase tracking-widest text-primary/70 font-semibold px-1 mb-1 relative z-10">
+        You receive
+      </div>
+      <TokenInput
+        token={toToken}
+        balance={mode === "wrap" ? wrappedFormatted : nativeFormatted}
+        value={amount}
+        onChange={() => {}}
+        onPick={() => {}}
+        readOnly
+      />
+
+      <div className="mt-4 px-1 space-y-1.5 relative z-10">
+        <Row label="Rate" value={`1 ${fromToken.symbol} = 1 ${toToken.symbol}`} />
+        <Row label="Network" value="Blaze L1" />
+        <Row label="Contract" value="WLAZE · 18 decimals" />
+      </div>
+
+      <button
+        onClick={buttonState.action}
+        disabled={buttonState.disabled}
+        data-testid="btn-blaze-wrap-action"
+        className={`w-full mt-5 py-3.5 rounded-xl text-sm transition-all duration-200 flex items-center justify-center gap-2 relative z-10 ${
+          buttonState.disabled
+            ? "bg-muted/40 text-muted-foreground font-semibold cursor-not-allowed"
+            : "bg-primary text-primary-foreground font-bold uppercase tracking-widest hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(0,212,255,0.35)] btn-shimmer"
+        }`}
+      >
+        {buttonState.loading && <Loader2 size={14} className="animate-spin" />}
+        {buttonState.label}
+      </button>
+
+      <div className="mt-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground/70 text-center flex items-center justify-center gap-1.5 relative z-10">
+        <span className="w-1.5 h-1.5 rounded-full bg-primary/80 live-dot" aria-hidden />
+        <span>1:1 conversion · no swap fee</span>
+      </div>
+      {hash && (
+        <a
+          href={`https://subnets.avax.network/blaze/tx/${hash}`}
+          target="_blank"
+          rel="noreferrer"
+          className="block mt-3 text-center text-[10px] font-mono text-primary/70 hover:text-primary relative z-10"
+        >
+          View transaction
+        </a>
+      )}
+    </>
   );
 }
 

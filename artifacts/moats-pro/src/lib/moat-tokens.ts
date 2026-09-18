@@ -14,6 +14,10 @@ export interface MoatToken {
 export const NATIVE_AVAX_ADDRESS =
   "0x0000000000000000000000000000000000000000" as const;
 
+export const BLAZE_CHAIN_ID = 46975;
+export const WRAPPED_BLAZE_ADDRESS =
+  "0xb5DAc0dEE18fF7C3535Cd565356b1b5e2b460966" as const;
+
 export function isNativeToken(address: string | undefined): boolean {
   return !!address && address.toLowerCase() === NATIVE_AVAX_ADDRESS;
 }
@@ -165,6 +169,25 @@ const BASE_TOKENS_BASE: MoatToken[] = [
   },
 ];
 
+const BASE_TOKENS_BLAZE: MoatToken[] = [
+  {
+    address: NATIVE_AVAX_ADDRESS,
+    symbol: "BLAZE",
+    name: "Blaze",
+    logoUrl: "/chains/blaze.png",
+    decimals: 18,
+    moatContractAddresses: [],
+  },
+  {
+    address: WRAPPED_BLAZE_ADDRESS,
+    symbol: "WLAZE",
+    name: "Wrapped BLAZE",
+    logoUrl: "/chains/blaze.png",
+    decimals: 18,
+    moatContractAddresses: [],
+  },
+];
+
 // Per-chain base token universe used by the Moat Swap. The swap UI looks
 // these up by the wallet's connected chainId so users can pay with assets
 // they actually hold on that chain (not just AVAX-on-Avalanche).
@@ -172,6 +195,7 @@ export const BASE_TOKENS_BY_CHAIN: Record<number, MoatToken[]> = {
   43114: BASE_TOKENS_AVALANCHE,
   1: BASE_TOKENS_ETHEREUM,
   8453: BASE_TOKENS_BASE,
+  [BLAZE_CHAIN_ID]: BASE_TOKENS_BLAZE,
 };
 
 // Default Avalanche list — kept exported for legacy imports / fallback.
