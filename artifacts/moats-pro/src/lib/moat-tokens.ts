@@ -180,7 +180,7 @@ const BASE_TOKENS_BLAZE: MoatToken[] = [
   },
   {
     address: WRAPPED_BLAZE_ADDRESS,
-    symbol: "WLAZE",
+    symbol: "WBLAZE",
     name: "Wrapped BLAZE",
     logoUrl: "/chains/blaze.png",
     decimals: 18,

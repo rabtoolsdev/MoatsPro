@@ -758,7 +758,7 @@ function BlazeWrapPanel({
     toast({
       title: mode === "wrap" ? "BLAZE wrapped" : "BLAZE unwrapped",
       description: mode === "wrap"
-        ? "Your WLAZE is now in your wallet."
+        ? "Your WBLAZE is now in your wallet."
         : "Your native BLAZE is now in your wallet.",
       variant: "success",
     });
@@ -798,7 +798,7 @@ function BlazeWrapPanel({
       return { label: "Confirming transaction…", disabled: true, loading: true };
     }
     return {
-      label: mode === "wrap" ? "Wrap BLAZE" : "Unwrap WLAZE",
+      label: mode === "wrap" ? "Wrap BLAZE" : "Unwrap WBLAZE",
       action: () => (mode === "wrap" ? wrap(amount) : unwrap(amount)),
       disabled: false,
     };
@@ -812,7 +812,7 @@ function BlazeWrapPanel({
             Blaze L1 wrapper
           </div>
           <div className="text-xs text-muted-foreground/70 mt-1">
-            Convert native BLAZE to WLAZE directly on-chain
+            Convert native BLAZE to WBLAZE directly on-chain
           </div>
         </div>
         <Zap size={16} className="text-primary/70" aria-hidden />
@@ -875,7 +875,7 @@ function BlazeWrapPanel({
       <div className="mt-4 px-1 space-y-1.5 relative z-10">
         <Row label="Rate" value={`1 ${fromToken.symbol} = 1 ${toToken.symbol}`} />
         <Row label="Network" value="Blaze L1" />
-        <Row label="Contract" value="WLAZE · 18 decimals" />
+        <Row label="Contract" value="WBLAZE · 18 decimals" />
       </div>
 
       <button
