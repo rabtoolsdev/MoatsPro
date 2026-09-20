@@ -323,9 +323,12 @@ export function useTokenAllowance(
   });
 }
 
-export function useStakeMoat(contractAddress: MoatContractAddress | undefined) {
+export function useStakeMoat(
+  contractAddress: MoatContractAddress | undefined,
+  chainId?: number,
+) {
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash, chainId });
 
   const stake = (amount: string, decimals: number = 18) => {
     if (!contractAddress) return;
@@ -334,15 +337,19 @@ export function useStakeMoat(contractAddress: MoatContractAddress | undefined) {
       abi: MOAT_V3_ABI,
       functionName: "stake",
       args: [parseUnits(amount, decimals)],
+      chainId,
     });
   };
 
   return { stake, isPending, isConfirming, isSuccess, error, hash };
 }
 
-export function useLockMoat(contractAddress: MoatContractAddress | undefined) {
+export function useLockMoat(
+  contractAddress: MoatContractAddress | undefined,
+  chainId?: number,
+) {
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash, chainId });
 
   const lock = (amount: string, durationDays: number, decimals: number = 18) => {
     if (!contractAddress) return;
@@ -352,15 +359,19 @@ export function useLockMoat(contractAddress: MoatContractAddress | undefined) {
       abi: MOAT_V3_ABI,
       functionName: "lock",
       args: [parseUnits(amount, decimals), durationSeconds],
+      chainId,
     });
   };
 
   return { lock, isPending, isConfirming, isSuccess, error, hash };
 }
 
-export function useClaimRewards(contractAddress: MoatContractAddress | undefined) {
+export function useClaimRewards(
+  contractAddress: MoatContractAddress | undefined,
+  chainId?: number,
+) {
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash, chainId });
 
   const claim = () => {
     if (!contractAddress) return;
@@ -368,15 +379,19 @@ export function useClaimRewards(contractAddress: MoatContractAddress | undefined
       address: contractAddress,
       abi: MOAT_V3_ABI,
       functionName: "claimAllRewards",
+      chainId,
     });
   };
 
   return { claim, isPending, isConfirming, isSuccess, error, hash };
 }
 
-export function useApproveToken(tokenAddress: MoatContractAddress | undefined) {
+export function useApproveToken(
+  tokenAddress: MoatContractAddress | undefined,
+  chainId?: number,
+) {
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash, chainId });
 
   const approve = (spender: MoatContractAddress, amount: string, decimals: number = 18) => {
     if (!tokenAddress) return;
@@ -385,6 +400,7 @@ export function useApproveToken(tokenAddress: MoatContractAddress | undefined) {
       abi: ERC20_ABI,
       functionName: "approve",
       args: [spender, parseUnits(amount, decimals)],
+      chainId,
     });
   };
 
@@ -440,9 +456,12 @@ export function useNftBoostBalances(
   return { balances, isLoading, refetch };
 }
 
-export function useUnstakeMoat(contractAddress: MoatContractAddress | undefined) {
+export function useUnstakeMoat(
+  contractAddress: MoatContractAddress | undefined,
+  chainId?: number,
+) {
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash, chainId });
 
   const unstake = (amount: string, decimals: number = 18) => {
     if (!contractAddress) return;
@@ -451,15 +470,19 @@ export function useUnstakeMoat(contractAddress: MoatContractAddress | undefined)
       abi: MOAT_V3_ABI,
       functionName: "unstake",
       args: [parseUnits(amount, decimals)],
+      chainId,
     });
   };
 
   return { unstake, isPending, isConfirming, isSuccess, error, hash };
 }
 
-export function useBurnMoat(contractAddress: MoatContractAddress | undefined) {
+export function useBurnMoat(
+  contractAddress: MoatContractAddress | undefined,
+  chainId?: number,
+) {
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash, chainId });
 
   const burn = (amount: string, decimals: number = 18) => {
     if (!contractAddress) return;
@@ -468,15 +491,19 @@ export function useBurnMoat(contractAddress: MoatContractAddress | undefined) {
       abi: MOAT_V3_ABI,
       functionName: "burn",
       args: [parseUnits(amount, decimals)],
+      chainId,
     });
   };
 
   return { burn, isPending, isConfirming, isSuccess, error, hash };
 }
 
-export function useExitLock(contractAddress: MoatContractAddress | undefined) {
+export function useExitLock(
+  contractAddress: MoatContractAddress | undefined,
+  chainId?: number,
+) {
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash, chainId });
 
   const exitLock = (lockIndex: number) => {
     if (!contractAddress) return;
@@ -485,6 +512,7 @@ export function useExitLock(contractAddress: MoatContractAddress | undefined) {
       abi: MOAT_V3_ABI,
       functionName: "exitLock",
       args: [BigInt(lockIndex)],
+      chainId,
     });
   };
 
@@ -495,6 +523,7 @@ export function useExitLock(contractAddress: MoatContractAddress | undefined) {
       abi: MOAT_V3_ABI,
       functionName: "earlyExitLock",
       args: [BigInt(lockIndex)],
+      chainId,
     });
   };
 

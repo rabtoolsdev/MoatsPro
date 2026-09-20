@@ -442,13 +442,16 @@ export default function MoatDetail() {
     return "< 0.000001";
   };
 
-  const stakeAction = useStakeMoat(contractAddress as MoatContractAddress | undefined);
-  const lockAction = useLockMoat(contractAddress as MoatContractAddress | undefined);
-  const claimAction = useClaimRewards(contractAddress as MoatContractAddress | undefined);
-  const approveAction = useApproveToken(stats.stakingToken as MoatContractAddress | undefined);
-  const unstakeAction = useUnstakeMoat(contractAddress as MoatContractAddress | undefined);
-  const burnAction = useBurnMoat(contractAddress as MoatContractAddress | undefined);
-  const exitAction = useExitLock(contractAddress as MoatContractAddress | undefined);
+  const stakeAction = useStakeMoat(contractAddress as MoatContractAddress | undefined, moatChainId);
+  const lockAction = useLockMoat(contractAddress as MoatContractAddress | undefined, moatChainId);
+  const claimAction = useClaimRewards(contractAddress as MoatContractAddress | undefined, moatChainId);
+  const approveAction = useApproveToken(
+    stats.stakingToken as MoatContractAddress | undefined,
+    moatChainId,
+  );
+  const unstakeAction = useUnstakeMoat(contractAddress as MoatContractAddress | undefined, moatChainId);
+  const burnAction = useBurnMoat(contractAddress as MoatContractAddress | undefined, moatChainId);
+  const exitAction = useExitLock(contractAddress as MoatContractAddress | undefined, moatChainId);
   // Resolve every active boost NFT for this moat (multi-NFT via boostConfigs[],
   // with legacy nftBoostContract as fallback) so pro.moats.app shows the same
   // boosts that moats.app does.
