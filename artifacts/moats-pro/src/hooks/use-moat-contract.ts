@@ -1,7 +1,14 @@
-import { useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt, useBalance } from "wagmi";
+import {
+  useReadContract,
+  useReadContracts,
+  useWriteContract,
+  useWaitForTransactionReceipt,
+  useBalance,
+  useSwitchChain,
+} from "wagmi";
 import { useAccount } from "wagmi";
 import { parseUnits, formatUnits } from "viem";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { MOAT_V3_ABI, ERC20_ABI, WRAPPED_BLAZE_ABI } from "@/lib/moat-abi";
 import {
   BLAZE_CHAIN_ID,
@@ -11,6 +18,41 @@ import {
 } from "@/lib/moat-tokens";
 
 export type MoatContractAddress = `0x${string}`;
+
+/**
+ * Wallet connectors reject a chain-pinned write while the wallet is still on
+ * another network. Switch first, then submit the write with the same chain ID
+ * so the transaction cannot fall through to the connector's default chain.
+ */
+function useMoatWrite(chainId?: number) {
+  const { writeContract, data: hash, isPending: isWritePending, error: writeError } =
+    useWriteContract();
+  const { chainId: connectedChainId } = useAccount();
+  const { switchChainAsync, isPending: isSwitching, error: switchError } = useSwitchChain();
+  const [localError, setLocalError] = useState<Error | null>(null);
+
+  const write = async (request: Parameters<typeof writeContract>[0]) => {
+    setLocalError(null);
+    try {
+      if (chainId && connectedChainId !== chainId) {
+        if (!switchChainAsync) {
+          throw new Error("This wallet cannot switch networks automatically.");
+        }
+        await switchChainAsync({ chainId });
+      }
+      writeContract({ ...request, chainId });
+    } catch (error) {
+      setLocalError(error instanceof Error ? error : new Error(String(error)));
+    }
+  };
+
+  return {
+    write,
+    hash,
+    isPending: isWritePending || isSwitching,
+    error: localError ?? switchError ?? writeError,
+  };
+}
 
 export function useMoatStats(contractAddress: MoatContractAddress | undefined, chainId?: number) {
   const enabled = !!contractAddress;
@@ -327,7 +369,7 @@ export function useStakeMoat(
   contractAddress: MoatContractAddress | undefined,
   chainId?: number,
 ) {
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { write: writeContract, hash, isPending, error } = useMoatWrite(chainId);
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash, chainId });
 
   const stake = (amount: string, decimals: number = 18) => {
@@ -348,7 +390,7 @@ export function useLockMoat(
   contractAddress: MoatContractAddress | undefined,
   chainId?: number,
 ) {
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { write: writeContract, hash, isPending, error } = useMoatWrite(chainId);
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash, chainId });
 
   const lock = (amount: string, durationDays: number, decimals: number = 18) => {
@@ -370,7 +412,7 @@ export function useClaimRewards(
   contractAddress: MoatContractAddress | undefined,
   chainId?: number,
 ) {
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { write: writeContract, hash, isPending, error } = useMoatWrite(chainId);
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash, chainId });
 
   const claim = () => {
@@ -390,7 +432,7 @@ export function useApproveToken(
   tokenAddress: MoatContractAddress | undefined,
   chainId?: number,
 ) {
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { write: writeContract, hash, isPending, error } = useMoatWrite(chainId);
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash, chainId });
 
   const approve = (spender: MoatContractAddress, amount: string, decimals: number = 18) => {
@@ -460,7 +502,7 @@ export function useUnstakeMoat(
   contractAddress: MoatContractAddress | undefined,
   chainId?: number,
 ) {
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { write: writeContract, hash, isPending, error } = useMoatWrite(chainId);
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash, chainId });
 
   const unstake = (amount: string, decimals: number = 18) => {
@@ -481,7 +523,7 @@ export function useBurnMoat(
   contractAddress: MoatContractAddress | undefined,
   chainId?: number,
 ) {
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { write: writeContract, hash, isPending, error } = useMoatWrite(chainId);
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash, chainId });
 
   const burn = (amount: string, decimals: number = 18) => {
@@ -502,7 +544,7 @@ export function useExitLock(
   contractAddress: MoatContractAddress | undefined,
   chainId?: number,
 ) {
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { write: writeContract, hash, isPending, error } = useMoatWrite(chainId);
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash, chainId });
 
   const exitLock = (lockIndex: number) => {
