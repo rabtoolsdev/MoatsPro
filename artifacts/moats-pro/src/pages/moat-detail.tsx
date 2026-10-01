@@ -308,6 +308,39 @@ export default function MoatDetail() {
     chainId: networkToChainId(urlNetwork),
     query: { enabled: !!contractAddress, staleTime: 2 * 60 * 1000, gcTime: 10 * 60 * 1000 },
   });
+  const onChainRewardTokenAddresses = useMemo(() => {
+    if (!onChainRewardTokensRaw) return [];
+    const [addresses] = onChainRewardTokensRaw as unknown as [string[], bigint[], bigint[], bigint[]];
+    return [...new Map(addresses.map((address) => [address.toLowerCase(), address])).values()];
+  }, [onChainRewardTokensRaw]);
+  const { data: onChainRewardTokenMetadata } = useReadContracts({
+    contracts: onChainRewardTokenAddresses.flatMap((address) => [
+      {
+        address: address as `0x${string}`,
+        abi: ERC20_ABI,
+        functionName: "symbol" as const,
+        chainId: networkToChainId(urlNetwork),
+      },
+      {
+        address: address as `0x${string}`,
+        abi: ERC20_ABI,
+        functionName: "name" as const,
+        chainId: networkToChainId(urlNetwork),
+      },
+      {
+        address: address as `0x${string}`,
+        abi: ERC20_ABI,
+        functionName: "decimals" as const,
+        chainId: networkToChainId(urlNetwork),
+      },
+    ]),
+    allowFailure: true,
+    query: {
+      enabled: onChainRewardTokenAddresses.length > 0,
+      staleTime: 5 * 60 * 1000,
+      gcTime: 30 * 60 * 1000,
+    },
+  });
   const { data: pointsV2 } = useMoatPointsV2(contractAddress, urlNetwork);
   const { data: userMoatPoints } = useUserMoatPointsV2(userAddress, contractAddress, urlNetwork);
   const { data: eventsData } = useEvents(contractAddress);
@@ -392,20 +425,32 @@ export default function MoatDetail() {
   // so it's accurate regardless of event-indexer gaps or getLogs lookback windows.
   // When loaded, this takes priority over the API counter + event supplement.
   const onChainTotalDepositedByToken = useMemo((): Record<string, number> => {
-    if (!onChainRewardTokensRaw || !moatConfig) return {};
+    if (!onChainRewardTokensRaw) return {};
     const [addresses, totalDeposited] = onChainRewardTokensRaw as unknown as [string[], bigint[], bigint[], bigint[]];
     if (!addresses?.length) return {};
     const result: Record<string, number> = {};
     for (let i = 0; i < addresses.length; i++) {
       const tokenAddr = addresses[i].toLowerCase();
-      const rtConfig = moatConfig.rewardTokens.find(
+      const rtConfig = moatConfig?.rewardTokens.find(
         (t) => t.tokenAddress.toLowerCase() === tokenAddr,
       );
-      const decimals = rtConfig?.decimals ?? 18;
+      const metadataIndex = onChainRewardTokenAddresses.findIndex(
+        (address) => address.toLowerCase() === tokenAddr,
+      );
+      const decimalsResult =
+        metadataIndex >= 0 ? onChainRewardTokenMetadata?.[metadataIndex * 3 + 2] : undefined;
+      const metadataDecimals =
+        decimalsResult?.status === "success" ? Number(decimalsResult.result) : undefined;
+      const decimals = rtConfig?.decimals ?? metadataDecimals ?? 18;
       result[tokenAddr] = parseFloat(formatUnits(totalDeposited[i] ?? 0n, decimals));
     }
     return result;
-  }, [onChainRewardTokensRaw, moatConfig]);
+  }, [
+    onChainRewardTokensRaw,
+    moatConfig?.rewardTokens,
+    onChainRewardTokenAddresses,
+    onChainRewardTokenMetadata,
+  ]);
 
   const moatChainId = networkToChainId(urlNetwork);
   const stats = useMoatStats(contractAddress as MoatContractAddress | undefined, moatChainId);
@@ -566,8 +611,66 @@ export default function MoatDetail() {
       seen.add(key);
       out.push(t);
     }
+    // The API reward-token config can lag behind a moat's on-chain list. Keep
+    // explicitly disabled API entries suppressed, but surface on-chain-only
+    // tokens using their ERC-20 metadata and cumulative reward counters.
+    const [chainAddresses, totalDeposited, totalClaimed] =
+      (onChainRewardTokensRaw as unknown as [string[], bigint[], bigint[], bigint[]] | undefined) ?? [
+        [],
+        [],
+        [],
+        [],
+      ];
+    for (const [index, address] of onChainRewardTokenAddresses.entries()) {
+      const key = address.toLowerCase();
+      if (seen.has(key)) continue;
+      if (moatConfig?.rewardTokens.some((token) => token.tokenAddress?.toLowerCase() === key)) {
+        continue;
+      }
+
+      const symbolResult = onChainRewardTokenMetadata?.[index * 3];
+      const nameResult = onChainRewardTokenMetadata?.[index * 3 + 1];
+      const decimalsResult = onChainRewardTokenMetadata?.[index * 3 + 2];
+      const symbol =
+        symbolResult?.status === "success" && typeof symbolResult.result === "string"
+          ? symbolResult.result
+          : formatAddress(address);
+      const name =
+        nameResult?.status === "success" && typeof nameResult.result === "string"
+          ? nameResult.result
+          : symbol;
+      const decimals =
+        decimalsResult?.status === "success" ? Number(decimalsResult.result) : 18;
+      const chainIndex = chainAddresses.findIndex(
+        (chainAddress) => chainAddress.toLowerCase() === key,
+      );
+      seen.add(key);
+      out.push({
+        _id: `onchain-${key}`,
+        tokenAddress: address,
+        name,
+        symbol,
+        decimals,
+        tokenAmount: 0,
+        totalRewardsDeposited:
+          chainIndex >= 0
+            ? Number(formatUnits(totalDeposited[chainIndex] ?? 0n, decimals))
+            : 0,
+        totalRewardsClaimed:
+          chainIndex >= 0
+            ? Number(formatUnits(totalClaimed[chainIndex] ?? 0n, decimals))
+            : 0,
+        enabled: true,
+        frequencyHours: 24,
+      });
+    }
     return out;
-  }, [moatConfig?.rewardTokens]);
+  }, [
+    moatConfig?.rewardTokens,
+    onChainRewardTokenAddresses,
+    onChainRewardTokenMetadata,
+    onChainRewardTokensRaw,
+  ]);
   const rewardLlamaIds = enabledRewardTokens.map((t) =>
     getLlamaId(network, t.tokenAddress),
   );
@@ -678,14 +781,15 @@ export default function MoatDetail() {
       address: addr as `0x${string}`,
       abi: ERC20_ABI,
       functionName: "decimals" as const,
+      chainId: moatChainId,
     })),
     query: { enabled: pendingRewardTokenAddrs.length > 0 },
   });
   const getPendingRewardDecimals = (idx: number): number => {
-    const fromConfig = moatConfig?.rewardTokens.find(
+    const fromConfig = enabledRewardTokens.find(
       (t) => t.tokenAddress?.toLowerCase() === pendingRewardTokenAddrs[idx]?.toLowerCase()
     );
-    if (fromConfig?.decimals) return fromConfig.decimals;
+    if (fromConfig) return fromConfig.decimals;
     const r = pendingRewardDecimals?.[idx];
     return r?.status === "success" ? Number(r.result) : 18;
   };
@@ -1432,7 +1536,7 @@ export default function MoatDetail() {
                         const amount = parseFloat(formatUnits(userInfo.pendingRewards![1][i], rewardDec));
                         const price = getRewardTokenPrice(token);
                         const usdVal = amount * price;
-                        const rewardConfig = moatConfig?.rewardTokens.find(
+                        const rewardConfig = enabledRewardTokens.find(
                           (t) => t.tokenAddress?.toLowerCase() === token.toLowerCase()
                         );
                         return (
@@ -2229,7 +2333,7 @@ export default function MoatDetail() {
                     const dec = getPendingRewardDecimals(i);
                     const rawAmt = userInfo.pendingRewards?.[1]?.[i] ?? 0n;
                     const amt = parseFloat(formatUnits(rawAmt, dec));
-                    const cfg = moatConfig?.rewardTokens.find(
+                    const cfg = enabledRewardTokens.find(
                       (t) => t.tokenAddress?.toLowerCase() === token.toLowerCase()
                     );
                     const usd = amt * getRewardTokenPrice(token);
