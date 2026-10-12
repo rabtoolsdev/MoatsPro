@@ -17,12 +17,15 @@ import MoatCalculator from "@/pages/moat-calculator";
 import Admin from "@/pages/admin";
 import MoatAdmin from "@/pages/moat-admin";
 import { PasswordGate } from "@/components/password-gate";
+import { DataSourceNotice } from "@/components/data-source-notice";
+import { shouldRetryQuery } from "@/lib/data-source-status";
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 2,
+      retry: shouldRetryQuery,
       staleTime: 30_000,
+      refetchOnWindowFocus: false,
     },
   },
 });
@@ -89,6 +92,7 @@ function App() {
             <Router />
           </WouterRouter>
           <Toaster />
+          <DataSourceNotice />
         </TooltipProvider>
       </QueryClientProvider>
     </WagmiProvider>

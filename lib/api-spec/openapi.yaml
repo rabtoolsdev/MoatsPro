@@ -11,6 +11,53 @@ tags:
   - name: health
     description: Health operations
 paths:
+  /rpc/{network}:
+    post:
+      operationId: readNetworkRpc
+      summary: Allowlisted read-only JSON-RPC proxy with upstream backoff
+      parameters:
+        - in: path
+          name: network
+          required: true
+          schema: { type: string, enum: [robinhood, blaze, thegrotto] }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReadOnlyRpcPayload" }
+      responses:
+        "200":
+          description: Upstream JSON-RPC response, including explicit contract/RPC errors.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReadOnlyRpcPayload" }
+        "400":
+          description: Unsupported write method or malformed batch.
+        "503":
+          description: Provider unavailable; Retry-After specifies the cooldown.
+  /moats-data:
+    get:
+      operationId: getMoatsData
+      summary: Read cached, rate-limited Moats indexer data
+      parameters:
+        - in: query
+          name: path
+          required: true
+          schema: { type: string, maxLength: 2048 }
+          description: Allowlisted Moats API resource path with optional query parameters.
+      responses:
+        "200":
+          description: Indexer response. X-Data-Stale marks retained data during an upstream outage.
+          headers:
+            X-Data-Stale:
+              schema: { type: string, enum: ["true", "false"] }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MoatsDataPayload" }
+        "400":
+          description: Resource or parameter is not allowed.
+        "503":
+          description: Upstream unavailable; Retry-After specifies the backoff.
   /healthz:
     get:
       operationId: healthCheck
@@ -26,6 +73,10 @@ paths:
                 $ref: "#/components/schemas/HealthStatus"
 components:
   schemas:
+    ReadOnlyRpcPayload:
+      description: Single JSON-RPC request/response or batch; server validates read-only methods.
+    MoatsDataPayload:
+      description: Unmodified JSON returned by the third-party Moats indexer.
     HealthStatus:
       type: object
       properties:

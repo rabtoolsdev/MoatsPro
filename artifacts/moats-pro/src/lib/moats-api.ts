@@ -1,17 +1,82 @@
-const BASE_URL = "https://moat-api.fortifi.network/api";
+import { DataSourceError, setDataSourceStatus } from "./data-source-status";
 
-// Our own backend (api-server). Used for endpoints we host ourselves
-// (swap recording, swap points, admin stats). Keep separate from the
-// Fortifi BASE_URL above — those are read-only third-party data.
+// Shared backend also caches/queues read-only Fortifi indexer requests.
 const OWN_API_BASE =
-  (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "/api";
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
+  `${import.meta.env.BASE_URL.replace(/\/$/, "")}/api`;
+
+const activeReads = new Map<string, Promise<unknown>>();
+let indexerRetryAt = 0;
 
 async function apiFetch<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`);
-  if (!res.ok) {
-    throw new Error(`Moats API Error: ${res.status} for ${path}`);
+  const existing = activeReads.get(path);
+  if (existing) return existing as Promise<T>;
+  if (Date.now() < indexerRetryAt) {
+    throw new DataSourceError("Moats indexer requests are paused until its rate limit resets.", 503, indexerRetryAt);
   }
-  return res.json() as Promise<T>;
+  const pending = (async () => {
+    const res = await fetch(`${OWN_API_BASE}/moats-data?path=${encodeURIComponent(path)}`, {
+      signal: AbortSignal.timeout(120_000),
+    });
+    if (!res.ok) {
+      const retrySeconds = Number(res.headers.get("retry-after")) || 60;
+      const retryAt = Date.now() + retrySeconds * 1000;
+      if (res.status === 429 || res.status === 503) {
+        indexerRetryAt = retryAt;
+        setDataSourceStatus("Moats indexer", {
+          message: "The provider is busy or rate-limited. Refresh requests are paused.",
+          retryAt,
+        });
+      }
+      throw new DataSourceError(`Moats data request failed (HTTP ${res.status}).`, res.status, retryAt);
+    }
+    if (res.headers.get("x-data-stale") === "true") {
+      setDataSourceStatus("Moats indexer", { message: "The provider is unavailable; showing previously loaded data." });
+    } else if (Date.now() >= indexerRetryAt) {
+      setDataSourceStatus("Moats indexer");
+    }
+    return res.json() as Promise<T>;
+  })().finally(() => activeReads.delete(path));
+  activeReads.set(path, pending);
+  return pending;
+}
+
+const histories = new Map<string, { events: MoatEvent[]; fullScanAt: number }>();
+const historyReads = new Map<string, Promise<MoatEvent[]>>();
+
+// Preserve lifetime history, but stop a refresh once it reaches known events.
+// Periodic full scans reconcile indexer corrections rather than retaining
+// deleted/replaced records forever.
+function getEventHistory(filters: Record<string, string>, maxEvents: number): Promise<MoatEvent[]> {
+  const key = JSON.stringify([filters, maxEvents]);
+  const pending = historyReads.get(key);
+  if (pending) return pending;
+  const saved = histories.get(key);
+  const incremental = !!saved && Date.now() - saved.fullScanAt < 30 * 60_000;
+  const known = new Set((saved?.events ?? []).map((event) => event._id));
+  const read = (async () => {
+    const events: MoatEvent[] = [];
+    let reachedKnown = false;
+    for (let skip = 0; skip < maxEvents; skip += 1000) {
+      const params = new URLSearchParams({ ...filters, limit: String(Math.min(1000, maxEvents - skip)), skip: String(skip) });
+      const response = await apiFetch<EventsResponse>(`/events?${params}`);
+      const batch = response.results ?? [];
+      events.push(...batch);
+      reachedKnown = incremental && batch.some((event) => known.has(event._id));
+      if (reachedKnown || batch.length < Math.min(1000, maxEvents - skip)) break;
+    }
+    const merged = new Map<string, MoatEvent>();
+    if (reachedKnown) for (const event of saved!.events) merged.set(event._id, event);
+    for (const event of events) merged.set(event._id, event);
+    const result = [...merged.values()]
+      .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))
+      .slice(0, maxEvents);
+    histories.set(key, { events: result, fullScanAt: incremental && reachedKnown ? saved!.fullScanAt : Date.now() });
+    if (histories.size > 64) histories.delete(histories.keys().next().value!);
+    return result;
+  })().finally(() => historyReads.delete(key));
+  historyReads.set(key, read);
+  return read;
 }
 
 async function ownFetch<T>(path: string): Promise<T> {
@@ -392,21 +457,7 @@ export const moatsApi = {
     maxEvents = 30000,
     network?: string,
   ): Promise<MoatEvent[]> => {
-    const PAGE = 1000;
-    const all: MoatEvent[] = [];
-    for (let skip = 0; skip < maxEvents; skip += PAGE) {
-      const qs = new URLSearchParams({
-        eventType,
-        limit: String(PAGE),
-        skip: String(skip),
-      });
-      if (network) qs.set("network", network);
-      const res = await apiFetch<EventsResponse>(`/events?${qs}`);
-      const batch = res.results ?? [];
-      all.push(...batch);
-      if (batch.length < PAGE) break;
-    }
-    return all;
+    return getEventHistory({ eventType, ...(network ? { network } : {}) }, maxEvents);
   },
 
   getAllMoatPoints: (contractAddress?: string) => {
@@ -433,17 +484,7 @@ export const moatsApi = {
   getEventsByUser: async (userAddress: string, maxEvents = 10000): Promise<MoatEvent[]> => {
     // API hard-caps each request at 1000 results; paginate with `skip` until
     // either the server returns a short page (end of data) or we hit maxEvents.
-    const PAGE = 1000;
-    const all: MoatEvent[] = [];
-    for (let skip = 0; skip < maxEvents; skip += PAGE) {
-      const res = await apiFetch<EventsResponse>(
-        `/events?userAddress=${userAddress}&limit=${PAGE}&skip=${skip}`
-      );
-      const batch = res.results ?? [];
-      all.push(...batch);
-      if (batch.length < PAGE) break;
-    }
-    return all;
+    return getEventHistory({ userAddress }, maxEvents);
   },
 
   getAllMoatConfigs: () =>

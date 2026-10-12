@@ -8,6 +8,43 @@
 import * as zod from "zod";
 
 /**
+ * @summary Allowlisted read-only JSON-RPC proxy with upstream backoff
+ */
+export const ReadNetworkRpcParams = zod.object({
+  network: zod.enum(["robinhood", "blaze", "thegrotto"]),
+});
+
+export const ReadNetworkRpcBody = zod
+  .unknown()
+  .describe(
+    "Single JSON-RPC request\/response or batch; server validates read-only methods.",
+  );
+
+export const ReadNetworkRpcResponse = zod
+  .unknown()
+  .describe(
+    "Single JSON-RPC request\/response or batch; server validates read-only methods.",
+  );
+
+/**
+ * @summary Read cached, rate-limited Moats indexer data
+ */
+export const getMoatsDataQueryPathMax = 2048;
+
+export const GetMoatsDataQueryParams = zod.object({
+  path: zod.coerce
+    .string()
+    .max(getMoatsDataQueryPathMax)
+    .describe(
+      "Allowlisted Moats API resource path with optional query parameters.",
+    ),
+});
+
+export const GetMoatsDataResponse = zod
+  .unknown()
+  .describe("Unmodified JSON returned by the third-party Moats indexer.");
+
+/**
  * Returns server health status
  * @summary Health check
  */

@@ -4,6 +4,9 @@ import { mainnet, base, avalanche, bsc, monad } from "@reown/appkit/networks";
 import type { AppKitNetwork } from "@reown/appkit/networks";
 import { defineChain } from "viem";
 import { http } from "wagmi";
+import { createRpcFetch } from "./rpc-fetch";
+
+const apiBase = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/api`;
 
 export const projectId = "13318bff388bcd13cf50b4a10e9d7671";
 
@@ -29,7 +32,7 @@ export const robinhoodChain = defineChain({
   name: "Robinhood Chain",
   nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
   rpcUrls: {
-    default: { http: ["/api/rpc/robinhood"] },
+    default: { http: ["https://robinhood-rpc.publicnode.com", "https://robinhood.rpc.blxrbdn.com"] },
   },
   blockExplorers: {
     default: {
@@ -77,9 +80,9 @@ export const wagmiAdapter = new WagmiAdapter({
     [base.id]: http("https://mainnet.base.org"),
     [bsc.id]: http("https://bsc.drpc.org"),
     [monad.id]: http("https://rpc.monad.xyz"),
-    [grotto.id]: http(grotto.rpcUrls.default.http[0]),
-    [blaze.id]: http(blaze.rpcUrls.default.http[0]),
-    [robinhoodChain.id]: http(robinhoodChain.rpcUrls.default.http[0]),
+    [grotto.id]: http(`${apiBase}/rpc/thegrotto`, { retryCount: 0, batch: true, fetchFn: createRpcFetch("Grotto RPC") }),
+    [blaze.id]: http(`${apiBase}/rpc/blaze`, { retryCount: 0, batch: true, fetchFn: createRpcFetch("Blaze RPC") }),
+    [robinhoodChain.id]: http(`${apiBase}/rpc/robinhood`, { retryCount: 0, batch: true, fetchFn: createRpcFetch("Robinhood RPC") }),
   },
 });
 
@@ -90,7 +93,7 @@ createAppKit({
   metadata: {
     name: "Moats Pro",
     description: "Premium DeFi Moats Experience — Stake, Lock, and Earn",
-    url: "https://moats.app",
+    url: typeof window !== "undefined" ? window.location.origin : "https://moats.app",
     icons: ["https://moats.app/favicon.ico"],
   },
   features: {

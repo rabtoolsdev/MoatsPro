@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { useQueries } from "@tanstack/react-query";
 import { moatsApi, type MoatEvent } from "@/lib/moats-api";
 
 const STALE = 5 * 60 * 1000;
@@ -21,18 +22,21 @@ function uniqueNetworks(networks?: string[]): string[] {
 function useEventStream(eventType: string, networks?: string[], maxEvents = 100000) {
   const requestedNetworks = uniqueNetworks(networks);
 
-  return useQuery({
-    queryKey: ["moats", "events", "all", eventType, maxEvents, requestedNetworks],
-    enabled: requestedNetworks.length > 0,
-    queryFn: async () => {
-      const eventsByNetwork = await Promise.all(
-        requestedNetworks.map((network) => moatsApi.getAllEvents(eventType, maxEvents, network)),
-      );
-      return eventsByNetwork.flat();
-    },
-    staleTime: STALE,
-    refetchInterval: REFETCH,
+  const queries = useQueries({
+    queries: requestedNetworks.map((network) => ({
+      queryKey: ["moats", "events", "all", eventType, maxEvents, network],
+      queryFn: () => moatsApi.getAllEvents(eventType, maxEvents, network),
+      staleTime: STALE,
+      refetchInterval: REFETCH,
+    })),
   });
+  const data = useMemo(() => queries.flatMap((query) => query.data ?? []), [queries]);
+  return {
+    data,
+    isLoading: queries.some((query) => query.isLoading),
+    isError: queries.some((query) => query.isError),
+    isSuccess: queries.length > 0 && queries.every((query) => query.isSuccess),
+  };
 }
 
 /**
@@ -67,5 +71,7 @@ export function useProtocolEvents(networks?: string[]) {
     rewardClaimed: rewardClaimed.data ?? ([] as MoatEvent[]),
     lockExited: lockExited.data ?? ([] as MoatEvent[]),
     isLoading,
+    isError: [rewardsDeposited, staked, locked, burned, withdrawn, rewardClaimed, lockExited].some((stream) => stream.isError),
+    isSuccess: [rewardsDeposited, staked, locked, burned, withdrawn, rewardClaimed, lockExited].every((stream) => stream.isSuccess),
   };
 }
