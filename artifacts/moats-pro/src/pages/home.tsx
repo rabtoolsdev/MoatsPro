@@ -11,6 +11,7 @@ import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
 import { useDexscreenerInfo } from "@/hooks/use-dexscreener";
 import { MOAT_V3_ABI, MOAT_V3_ADMIN_ABI, ERC20_ABI, MOAT_LOGO_ABI } from "@/lib/moat-abi";
 import { getMoatMeta } from "@/lib/moat-metadata";
+import { mergeMoatActivity } from "@/lib/moat-activity";
 import { useResolveMoatMetas } from "@/hooks/use-resolve-moat-metas";
 import { useDailyRewardEstimates } from "@/hooks/use-daily-reward-estimates";
 import { useRewardPoolBalances } from "@/hooks/use-reward-pool-balances";
@@ -421,22 +422,10 @@ export default function Home() {
   const { data: allOnChainRewards } = useAllOnChainRewardsDeposited(configs);
   const { data: allOnChainRecentEvents } = useAllOnChainRecentEvents(configs);
 
-  // Merge all on-chain events the API indexer missed into the activity feed.
-  // Diff by txHash+logIndex so already-indexed events aren't duplicated.
+  // Include independent Blaze activity and direct logs from other chains,
+  // preferring indexed logs once the primary indexer catches up.
   const mergedActivityEvents = useMemo(() => {
-    const apiEvents = eventsData?.results ?? [];
-    if (!allOnChainRecentEvents?.length) return apiEvents;
-    // Key: `${txHash.toLowerCase()}:${logIndex}` — unique per log
-    const apiKeys = new Set(
-      apiEvents.map((e) => `${e.transactionHash.toLowerCase()}:${e.logIndex}`),
-    );
-    const missed = allOnChainRecentEvents.filter(
-      (e) => !apiKeys.has(`${e.transactionHash.toLowerCase()}:${e.logIndex}`),
-    );
-    if (!missed.length) return apiEvents;
-    return [...missed, ...apiEvents].sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-    );
+    return mergeMoatActivity(eventsData?.results ?? [], allOnChainRecentEvents ?? []);
   }, [eventsData, allOnChainRecentEvents]);
 
   // Extra per-token amounts (human-readable) from two sources merged together:

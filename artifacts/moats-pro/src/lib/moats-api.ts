@@ -96,6 +96,8 @@ export interface SwapPointsResponse {
 // ---- Event types ----
 export interface MoatEvent {
   _id: string;
+  // Confirmed calls are activity records, not emitted logs; logIndex is -1.
+  source?: "confirmed-transaction";
   network: string;
   contractAddress: string;
   eventType: "Staked" | "Withdrawn" | "Locked" | "Burned" | "RewardClaimed" | "LockExited" | "EarlyExit" | string;

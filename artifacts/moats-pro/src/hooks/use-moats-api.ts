@@ -6,6 +6,7 @@ import type { MoatEvent, MoatConfig } from "@/lib/moats-api";
 import { REWARDS_DEPOSITED_EVENT_ABI, MOAT_ALL_EVENTS_ABI } from "@/lib/moat-abi";
 import { parseEventLogs } from "viem";
 import { networkToChainId } from "@/lib/wagmi-config";
+import { fetchBlazeRecentActivity } from "@/lib/blaze-activity";
 
 export function useEvents(contractAddress?: string) {
   return useQuery({
@@ -347,6 +348,13 @@ async function fetchOnChainRecentEvents(
   const addresses = chainConfigs.map((c) => c.contractAddress as `0x${string}`);
   const network = chainConfigs[0].network ?? "avalanche";
 
+  // Blaze's public RPC can fail CORS/rate limits, leaving activity dependent
+  // on the Fortifi indexer. Its recent feed has an independent confirmed-call
+  // source; retain actual RPC logs for explicitly requested full analytics.
+  if (network.toLowerCase() === "blaze" && fromBlockOverride === undefined) {
+    return fetchBlazeRecentActivity(chainConfigs);
+  }
+
   let currentBlock: bigint;
   try {
     currentBlock = await client.getBlockNumber();
@@ -573,8 +581,8 @@ export function useAllOnChainRecentEvents(configs: MoatConfig[] | undefined) {
         chainConfigs.map((c) => `${c.contractAddress}:${c.network}`).sort().join(","),
       ],
       enabled: chainConfigs.length > 0 && !!client,
-        staleTime: chainId === 4663 ? 5 * 60_000 : 10_000,
-        refetchInterval: chainId === 4663 ? 5 * 60_000 : 30_000,
+      staleTime: chainId === 4663 ? 5 * 60_000 : 10_000,
+      refetchInterval: chainId === 4663 ? 5 * 60_000 : chainId === 46975 ? 15_000 : 30_000,
       refetchOnMount: "always" as const,
       queryFn: () => client ? fetchOnChainRecentEvents(client, chainConfigs) : Promise.resolve([]),
     })),

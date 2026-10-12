@@ -12,6 +12,7 @@ import {
 import { Link } from "wouter";
 import { formatUnits, parseUnits } from "viem";
 import { useQueryClient } from "@tanstack/react-query";
+import { mergeMoatActivity } from "@/lib/moat-activity";
 import { useAllMoatConfigs, useMoatPointsV2, useUserMoatPointsV2, useEvents, useRewardsDepositedEvents, useOnChainRewardsDeposited, useAllOnChainRecentEvents } from "@/hooks/use-moats-api";
 import { getActiveBoosts, getBoostTier, getEffectiveBoostValue, getMaxBoostValue, type BoostConfig, type BoostTier } from "@/lib/moats-api";
 import {
@@ -376,19 +377,10 @@ export default function MoatDetail() {
     return map;
   }, [rewardsDepositedData, onChainRewards]);
 
-  // Merge API events with all on-chain MoatV3 events, deduplicating by
-  // transactionHash+logIndex. On-chain events go first so the sort puts the
-  // most-recent at the top regardless of which source produced them.
+  // Merge independent activity with indexed logs without duplicating confirmed
+  // Blaze calls once the indexer publishes their actual event logs.
   const mergedEvents = useMemo(() => {
-    const apiEvents = eventsData?.results ?? [];
-    const apiKeys = new Set(apiEvents.map((e) => `${e.transactionHash}-${e.logIndex}`));
-    const supplemental = (onChainRecentEvents ?? []).filter(
-      (e) => !apiKeys.has(`${e.transactionHash}-${e.logIndex}`),
-    );
-    if (!supplemental.length) return apiEvents;
-    return [...supplemental, ...apiEvents].sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-    );
+    return mergeMoatActivity(eventsData?.results ?? [], onChainRecentEvents ?? []);
   }, [eventsData, onChainRecentEvents]);
 
   // Extra per-token distributed amounts from on-chain events the backend indexer
@@ -1810,7 +1802,10 @@ export default function MoatDetail() {
                     Live Activity
                   </span>
                   <span className="text-[10px] font-mono text-primary/70 uppercase tracking-widest px-3 py-1 rounded-[4px] bg-primary/10 border border-primary/20 shadow-[0_0_10px_rgba(0,212,255,0.1)]">
-                    {(eventsData?.total ?? mergedEvents.length).toLocaleString()} total events
+                    {(
+                      (eventsData?.total ?? eventsData?.results?.length ?? 0) +
+                      mergedEvents.length - (eventsData?.results?.length ?? 0)
+                    ).toLocaleString()} total events
                   </span>
                 </h3>
                 <ActivityFeed events={mergedEvents.slice(0, 8)} moatConfigs={moatConfig ? [moatConfig] : undefined} />
