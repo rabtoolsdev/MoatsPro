@@ -6,7 +6,4 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export * from "./getMoatsDataParams";
 export * from "./healthStatus";
-export * from "./moatsDataPayload";
-export * from "./readOnlyRpcPayload";

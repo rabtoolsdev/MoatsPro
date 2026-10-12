@@ -7,7 +7,6 @@ import zeroxRouter from "./zerox";
 import calculatorRouter from "./calculator";
 import proxyImageRouter from "./proxy-image";
 import robinhoodRpcRouter from "./robinhood-rpc";
-import moatsDataRouter from "./moats-data";
 
 const router: IRouter = Router();
 
@@ -19,6 +18,5 @@ router.use(zeroxRouter);
 router.use(calculatorRouter);
 router.use(proxyImageRouter);
 router.use(robinhoodRpcRouter);
-router.use(moatsDataRouter);
 
 export default router;

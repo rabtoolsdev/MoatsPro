@@ -5,24 +5,6 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-/**
- * Single JSON-RPC request/response or batch; server validates read-only methods.
- */
-export interface ReadOnlyRpcPayload {}
-
-/**
- * Unmodified JSON returned by the third-party Moats indexer.
- */
-export interface MoatsDataPayload {}
-
 export interface HealthStatus {
   status: string;
 }
-
-export type GetMoatsDataParams = {
-  /**
-   * Allowlisted Moats API resource path with optional query parameters.
-   * @maxLength 2048
-   */
-  path: string;
-};

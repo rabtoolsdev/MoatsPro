@@ -45,7 +45,7 @@ export function useAllRewardsDeposited() {
   return useQuery({
     queryKey: ["moats", "events", "rewards-deposited", "all"],
     queryFn: () =>
-      moatsApi.getAllEvents("RewardsDeposited", 100000).then((results) => ({ results, total: results.length })),
+      moatsApi.getEvents({ eventType: "RewardsDeposited", limit: 10000 }),
     staleTime: 60_000,
     refetchInterval: 120_000,
   });
@@ -118,7 +118,7 @@ export function useMapsLeaderboard() {
 
 export function useMapsEpoch() {
   return useQuery({
-    queryKey: ["moats", "maps", "leaderboard"],
+    queryKey: ["moats", "maps", "epoch"],
     queryFn: () => moatsApi.getMapsLeaderboard(),
     staleTime: 60_000,
     refetchInterval: 60_000,
@@ -128,16 +128,16 @@ export function useMapsEpoch() {
 
 export function useMapsScore(address: string | undefined) {
   return useQuery({
-    queryKey: ["moats", "maps", "leaderboard"],
-    queryFn: () => moatsApi.getMapsLeaderboard(),
-    select: (data) => {
+    queryKey: ["moats", "maps", "score", address],
+    queryFn: () =>
+      moatsApi.getMapsLeaderboard().then((data) => {
         const entry = data?.scores?.find(
           (s) => s.address.toLowerCase() === address!.toLowerCase()
         );
         if (!entry) return null;
         const rank = (data?.scores?.indexOf(entry) ?? 0) + 1;
         return { address: entry.address, username: entry.username, points: entry.mapScore, rank };
-      },
+      }),
     enabled: !!address,
     staleTime: 60_000,
   });
@@ -217,16 +217,13 @@ export function useAllOnChainRewardsDeposited(configs: MoatConfig[] | undefined)
       const allEvents: MoatEvent[] = [];
 
       for (const [chainId, chainConfigs] of byChain) {
-        // Public Robinhood providers explicitly require archive credentials
-        // for logs. Use indexed rewards and live contract state there.
-        if (chainId === 4663) continue;
         const client = clientByChainId[chainId];
         if (!client) continue;
 
         const addresses = chainConfigs.map((c) => c.contractAddress as `0x${string}`);
         const network = chainConfigs[0].network ?? "avalanche";
-        const WIDE = chainId === 43114 ? 2_000n : 50_000n;
-        const NARROW = 2_000n;
+        const WIDE = 50_000n;
+        const NARROW = 2_048n;
         let currentBlock: bigint;
         try { currentBlock = await client.getBlockNumber(); } catch { continue; }
 
@@ -235,7 +232,7 @@ export function useAllOnChainRewardsDeposited(configs: MoatConfig[] | undefined)
           logs = await client.getLogs({
             address: addresses,
             event: REWARDS_DEPOSITED_EVENT_ABI[0],
-            fromBlock: currentBlock >= WIDE ? currentBlock - WIDE + 1n : 0n,
+            fromBlock: currentBlock > WIDE ? currentBlock - WIDE : 0n,
             toBlock: currentBlock,
           });
         } catch {
@@ -243,7 +240,7 @@ export function useAllOnChainRewardsDeposited(configs: MoatConfig[] | undefined)
             logs = await client.getLogs({
               address: addresses,
               event: REWARDS_DEPOSITED_EVENT_ABI[0],
-              fromBlock: currentBlock >= NARROW ? currentBlock - NARROW + 1n : 0n,
+              fromBlock: currentBlock > NARROW ? currentBlock - NARROW : 0n,
               toBlock: currentBlock,
             });
           } catch { continue; }
@@ -350,11 +347,6 @@ async function fetchOnChainRecentEvents(
 
   const addresses = chainConfigs.map((c) => c.contractAddress as `0x${string}`);
   const network = chainConfigs[0].network ?? "avalanche";
-  if (network.toLowerCase() === "robinhood" || network.toLowerCase() === "robinhoodchain") {
-    // Current public providers refuse eth_getLogs without archive access.
-    // The indexed stream remains available; don't issue known-rejected scans.
-    return [];
-  }
 
   // Blaze's public RPC can fail CORS/rate limits, leaving activity dependent
   // on the Fortifi indexer. Its recent feed has an independent confirmed-call
@@ -372,8 +364,8 @@ async function fetchOnChainRecentEvents(
 
   // Try ~80k blocks (~40h). Some public RPCs reject large eth_getLogs ranges,
   // so fall back to safe chunks rather than returning an empty activity feed.
-  const WIDE = network.toLowerCase() === "avalanche" ? 2_000n : 80_000n;
-  const fromBlock = fromBlockOverride ?? (currentBlock >= WIDE ? currentBlock - WIDE + 1n : 0n);
+  const WIDE = 80_000n;
+  const fromBlock = fromBlockOverride ?? (currentBlock > WIDE ? currentBlock - WIDE : 0n);
 
   let rawLogs: Awaited<ReturnType<typeof client.getLogs>>;
   try {
@@ -475,7 +467,7 @@ export function useOnChainMoatAnalyticsEvents(
       chainId,
       config?.contractAddress,
     ],
-    enabled: enabled && !!config && !!publicClient && chainId !== undefined && chainId !== 4663,
+    enabled: enabled && !!config && !!publicClient && chainId !== undefined,
     staleTime: 5 * 60_000,
     refetchOnMount: "always",
     queryFn: () =>
@@ -537,7 +529,7 @@ export function useOnChainAllMoatAnalyticsEvents(
             .sort()
             .join(","),
         ],
-        enabled: enabled && !!client && chainId !== 4663,
+        enabled: enabled && !!client,
         staleTime: 5 * 60_000,
         refetchOnMount: "always" as const,
         queryFn: () =>
@@ -588,7 +580,7 @@ export function useAllOnChainRecentEvents(configs: MoatConfig[] | undefined) {
         "moats", "events", "onchain-all", "recent", chainId,
         chainConfigs.map((c) => `${c.contractAddress}:${c.network}`).sort().join(","),
       ],
-      enabled: chainConfigs.length > 0 && !!client && chainId !== 4663,
+      enabled: chainConfigs.length > 0 && !!client,
       staleTime: chainId === 4663 ? 5 * 60_000 : 10_000,
       refetchInterval: chainId === 4663 ? 5 * 60_000 : chainId === 46975 ? 15_000 : 30_000,
       refetchOnMount: "always" as const,
@@ -635,7 +627,7 @@ export function useOnChainRewardsDeposited(
 
   return useQuery({
     queryKey: ["moats", "events", "onchain-rewards", chainId, contractAddress],
-    enabled: !!contractAddress && !!publicClient && !!chainId && !isRobinhood,
+    enabled: !!contractAddress && !!publicClient && !!chainId,
     staleTime: 60_000,
     refetchInterval: isRobinhood ? 5 * 60_000 : 120_000,
     retry: false,
@@ -647,15 +639,15 @@ export function useOnChainRewardsDeposited(
       // Try to fetch last ~50,000 blocks (≈1 day on Avalanche @2s/block).
       // Many public RPCs cap eth_getLogs at 2,048 blocks; fall back to that
       // window if the wide query is rejected.
-      const WIDE = chainId === 43114 ? 2_000n : 50_000n;
-      const NARROW = 2_000n;
+      const WIDE = 50_000n;
+      const NARROW = 2_048n;
 
       let logs: Awaited<ReturnType<typeof publicClient.getLogs>>;
       try {
         logs = await publicClient.getLogs({
           address: contractAddress as `0x${string}`,
           event: REWARDS_DEPOSITED_EVENT_ABI[0],
-          fromBlock: currentBlock >= WIDE ? currentBlock - WIDE + 1n : 0n,
+          fromBlock: currentBlock > WIDE ? currentBlock - WIDE : 0n,
           toBlock: currentBlock,
         });
       } catch {
@@ -663,7 +655,7 @@ export function useOnChainRewardsDeposited(
           logs = await publicClient.getLogs({
             address: contractAddress as `0x${string}`,
             event: REWARDS_DEPOSITED_EVENT_ABI[0],
-            fromBlock: currentBlock >= NARROW ? currentBlock - NARROW + 1n : 0n,
+            fromBlock: currentBlock > NARROW ? currentBlock - NARROW : 0n,
             toBlock: currentBlock,
           });
         } catch {

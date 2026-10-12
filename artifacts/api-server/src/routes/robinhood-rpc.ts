@@ -1,12 +1,10 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 
 const router: IRouter = Router();
-const RPCS: Record<string, string[]> = {
-  robinhood: ["https://robinhood-rpc.publicnode.com", "https://robinhood.rpc.blxrbdn.com"],
-  blaze: ["https://subnets.avax.network/blaze/mainnet/rpc"],
-  thegrotto: ["https://subnets.avax.network/thegrotto/mainnet/rpc"],
-};
-const providerBackoff = new Map<string, number>();
+const ROBINHOOD_RPCS = [
+  "https://robinhood-rpc.publicnode.com",
+  "https://robinhood.rpc.blxrbdn.com",
+];
 const UPSTREAM_TIMEOUT_MS = 8_000;
 // Retry provider failures, not contract reverts or invalid RPC parameters.
 const RETRYABLE_RPC_CODES = new Set([-32603, -32002, -32005, -32016]);
@@ -30,13 +28,7 @@ const ALLOWED_METHODS = new Set([
   "net_version",
 ]);
 
-router.post("/rpc/:network", async (req: Request, res: Response) => {
-  const network = String(req.params.network);
-  const endpoints = RPCS[network];
-  if (!endpoints) {
-    res.status(404).json({ error: "Unsupported RPC network" });
-    return;
-  }
+router.post("/rpc/robinhood", async (req: Request, res: Response) => {
   const body = req.body as
     | { jsonrpc?: string; id?: string | number; method?: string; params?: unknown[] }
     | Array<{ jsonrpc?: string; id?: string | number; method?: string; params?: unknown[] }>
@@ -44,10 +36,10 @@ router.post("/rpc/:network", async (req: Request, res: Response) => {
   const requests = Array.isArray(body) ? body : body ? [body] : [];
 
   if (
-    !requests.length || requests.length > 100 ||
+    !requests.length ||
     requests.some((request) => !request || !request.method || !ALLOWED_METHODS.has(request.method))
   ) {
-    res.status(400).json({ error: "Unsupported read-only RPC request" });
+    res.status(400).json({ error: "Unsupported Robinhood RPC method" });
     return;
   }
 
@@ -60,16 +52,7 @@ router.post("/rpc/:network", async (req: Request, res: Response) => {
   const isBatch = Array.isArray(body);
   const requestBody = JSON.stringify(isBatch ? normalized : normalized[0]);
 
-  let retryAt = 0;
-  for (const [index, endpoint] of endpoints.entries()) {
-    const blockedUntil = Math.max(
-      providerBackoff.get(endpoint) ?? 0,
-      ...normalized.map((request) => providerBackoff.get(`${endpoint}:${request.method}`) ?? 0),
-    );
-    if (Date.now() < blockedUntil) {
-      retryAt = Math.max(retryAt, blockedUntil);
-      continue;
-    }
+  for (const [index, endpoint] of ROBINHOOD_RPCS.entries()) {
     try {
       const upstream = await fetch(endpoint, {
         method: "POST",
@@ -77,22 +60,11 @@ router.post("/rpc/:network", async (req: Request, res: Response) => {
         body: requestBody,
         signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
       });
-      if (upstream.status === 429 || upstream.status >= 500) {
-        const header = upstream.headers.get("retry-after");
-        const seconds = header ? Number(header) || (Date.parse(header) - Date.now()) / 1000 : 60;
-        retryAt = Date.now() + (Number.isFinite(seconds) ? Math.max(5, seconds) : 60) * 1000;
-        providerBackoff.set(endpoint, retryAt);
+      if (!upstream.ok) {
         throw new Error(`Upstream HTTP ${upstream.status}`);
       }
-      // PublicNode returns a valid JSON-RPC archive-access error with HTTP 403.
-      // Preserve that explicit error, rather than turning it into an opaque 502.
-      const payload = await upstream.json().catch(() => {
-        if (upstream.status === 403) {
-          retryAt = Date.now() + 5 * 60_000;
-          for (const request of normalized) providerBackoff.set(`${endpoint}:${request.method}`, retryAt);
-        }
-        throw new Error(`Upstream HTTP ${upstream.status}: non-JSON response`);
-      });
+      // A Cloudflare HTML challenge or malformed response must not reach viem.
+      const payload = await upstream.json();
       const responses = Array.isArray(payload) ? payload : [payload];
       if (
         Array.isArray(payload) !== isBatch ||
@@ -108,7 +80,7 @@ router.post("/rpc/:network", async (req: Request, res: Response) => {
         throw new Error("Invalid upstream JSON-RPC response");
       }
       if (
-        index < endpoints.length - 1 &&
+        index < ROBINHOOD_RPCS.length - 1 &&
         responses.some((response) => RETRYABLE_RPC_CODES.has(response.error?.code))
       ) {
         throw new Error("Upstream JSON-RPC provider failure");
@@ -117,8 +89,8 @@ router.post("/rpc/:network", async (req: Request, res: Response) => {
       return;
     } catch (error) {
       req.log.warn(
-        { endpoint, methods: normalized.map((request) => request.method), reason: error instanceof Error ? error.message : "RPC request failed" },
-        "Read-only RPC upstream unavailable",
+        { endpoint, reason: error instanceof Error ? error.message : "RPC request failed" },
+        "Robinhood RPC upstream unavailable",
       );
     }
   }
@@ -128,12 +100,11 @@ router.post("/rpc/:network", async (req: Request, res: Response) => {
     jsonrpc: "2.0",
     id: request.id,
     error: {
-      code: retryAt > Date.now() ? -32005 : -32603,
-      message: `${network} RPC providers are temporarily unavailable. Please try again.`,
+      code: -32603,
+      message: "Robinhood RPC providers are temporarily unavailable. Please try again.",
     },
   }));
-  res.set("Retry-After", String(Math.max(5, Math.ceil((retryAt - Date.now()) / 1000) || 30)));
-  res.status(503).json(isBatch ? errors : errors[0]);
+  res.status(502).json(isBatch ? errors : errors[0]);
 });
 
 export default router;

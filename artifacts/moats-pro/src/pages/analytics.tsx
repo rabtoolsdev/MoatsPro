@@ -474,15 +474,16 @@ export default function Analytics() {
     () =>
       configs?.filter(
         (config) =>
-          (rawEv.isSuccess &&
+          normalizeNetwork(config.network) !== "avalanche" ||
+          (!rawEv.isLoading &&
             !indexedMoatKeys.has(
               moatKey(config.network, config.contractAddress),
             )),
       ),
-    [configs, indexedMoatKeys, rawEv.isSuccess],
+    [configs, indexedMoatKeys, rawEv.isLoading],
   );
   const shouldLoadOnChainAnalytics =
-    singleMoat && rawEv.isSuccess && apiScopedEventCount === 0;
+    singleMoat && !apiEv.isLoading && apiScopedEventCount === 0;
   const onChainAnalytics = useOnChainMoatAnalyticsEvents(
     selectedConfig,
     shouldLoadOnChainAnalytics,
