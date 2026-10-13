@@ -1,0 +1,84 @@
+Log files found: 9
+Matching requests: 23248
+
+UTC time | Site | Requests | Response MiB | 4xx | 5xx | >=30s | Max seconds
+09:15 | gov.moats.app | 1 | 0.0 | 0 | 0 | 0 | 0.0
+08:10 | pro.moats.app | 78 | 1.2 | 0 | 12 | 0 | 0.9
+08:15 | pro.moats.app | 91 | 3.0 | 0 | 1 | 1 | 85.6
+08:20 | pro.moats.app | 41 | 0.0 | 0 | 12 | 0 | 0.4
+08:25 | pro.moats.app | 121 | 1.3 | 0 | 24 | 0 | 0.4
+08:30 | pro.moats.app | 39 | 0.0 | 0 | 12 | 0 | 0.3
+08:40 | pro.moats.app | 47 | 1.2 | 0 | 12 | 0 | 0.5
+08:55 | pro.moats.app | 1 | 0.0 | 0 | 0 | 0 | 0.0
+09:00 | pro.moats.app | 94 | 3.2 | 0 | 12 | 0 | 0.6
+09:05 | pro.moats.app | 28 | 0.9 | 0 | 0 | 0 | 0.4
+09:10 | pro.moats.app | 186 | 2.0 | 1 | 11 | 0 | 0.5
+09:15 | pro.moats.app | 136 | 1.8 | 0 | 20 | 0 | 0.8
+09:25 | pro.moats.app | 109 | 1.5 | 0 | 19 | 0 | 1.9
+09:30 | pro.moats.app | 123 | 1.5 | 0 | 25 | 0 | 1.2
+09:35 | pro.moats.app | 53 | 1.3 | 0 | 0 | 0 | 0.5
+09:40 | pro.moats.app | 22100 | 14.2 | 0 | 1 | 0 | 4.9
+
+Request categories:
+gov.moats.app Frontend/other 1
+pro.moats.app Assets 151
+pro.moats.app Frontend/other 22128
+pro.moats.app Other API 3
+pro.moats.app RPC 965
+root@ubuntu-4gb-nbg1-1:~# sudo python3 - <<'PY'
+import glob, gzip, json, hashlib
+from collections import Counter
+from datetime import datetime, timezone
+
+start = datetime(2026, 10, 13, 9, 40, tzinfo=timezone.utc).timestamp()
+end = datetime(2026, 10, 13, 9, 43, tzinfo=timezone.utc).timestamp()
+
+clients, methods, statuses, protocols = (Counter() for _ in range(4))
+seconds, targets, agents = (Counter() for _ in range(3))
+paths = set()
+first, last, longest_uri, total = None, None, 0, 0
+
+for file in sorted(glob.glob("/var/log/caddy/moats-*.log*")):
+    opener = gzip.open if file.endswith(".gz") else open
+    try:
+        with opener(file, "rt", errors="replace") as f:
+            for line in f:
+                try:
+                    e = json.loads(line)
+                    ts = float(e.get("ts", 0))
+                    r = e.get("request") or {}
+                    if not start <= ts < end:
+                        continue
+                    if r.get("host", "").split(":")[0] != "pro.moats.app":
+                        continue
+
+                    total += 1
+                    first = ts if first is None else min(first, ts)
+                    last = ts if last is None else max(last, ts)
+                    clients[r.get("client_ip") or r.get("remote_ip") or "unknown"] += 1
+                    methods[r.get("method", "unknown")] += 1
+                    statuses[str(e.get("status", "unknown"))] += 1
+                    protocols[r.get("proto", "unknown")] += 1
+                    seconds[int(ts)] += 1
+
+                    uri = r.get("uri", "")
+                    longest_uri = max(longest_uri, len(uri))
+                    path = uri.split("?")[0]
+                    paths.add(hashlib.sha256(path.encode()).digest())
+                    target = (
+                        path if path in ("/", "/index.html", "/robots.txt", "/favicon.ico")
+                        else "API" if path.startswith("/api/")
+                        else "Assets" if path.startswith("/assets/")
+                        else "Other paths"
+                    )
+                    targets[target] += 1
+
+                    ua = (r.get("headers", {}).get("User-Agent") or [""])[0].lower()
+                    label = next(
+                        (x for x in ("curl", "python", "go-http-client", "bot", "mozilla")
+                         if x in ua), "other/empty"
+                    )
+                    agents[label] += 1
+                except (ValueError, TypeError, AttributeError):
+                    continue
+    for name, counts in ( URI, characters:", longest_uri)nds.values()))
