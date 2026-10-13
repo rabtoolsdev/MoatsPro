@@ -1,0 +1,39 @@
+curl -I --connect-timeout 10 https://pro.moats.app
+               total        used        free      shared  buff/cache   available
+Mem:           3.7Gi       715Mi       2.9Gi        21Mi       399Mi       3.0Gi
+Swap:             0B          0B          0B
+● caddy.service - Caddy
+     Loaded: loaded (/usr/lib/systemd/system/caddy.service; enabled; preset: enabled)
+     Active: active (running) since Tue 2026-10-13 13:20:26 UTC; 24ms ago
+       Docs: https://caddyserver.com/docs/
+   Main PID: 2390732 (caddy)
+      Tasks: 7 (limit: 4531)
+     Memory: 50.1M (peak: 50.1M)
+        CPU: 121ms
+     CGroup: /system.slice/caddy.service
+             └─2390732 /usr/bin/caddy run --environ --config /etc/caddy/Caddyfile
+
+Oct 13 13:20:26 ubuntu-4gb-nbg1-1 caddy[2390732]: {"level":"warn","ts":1791897626.6375537,"logger":"http","msg":"HTTP/3 skipped because it requires TLS","network":"tcp","addr":":80"}
+Oct 13 13:20:26 ubuntu-4gb-nbg1-1 caddy[2390732]: {"level":"info","ts":1791897626.6375575,"logger":"http.log","msg":"server running","name":"remaining_auto_https_redirects","protocols":["h1","h2","h3"]}
+Oct 13 13:20:26 ubuntu-4gb-nbg1-1 caddy[2390732]: {"level":"info","ts":1791897626.637592,"logger":"http","msg":"enabling HTTP/3 listener","addr":":443"}
+Oct 13 13:20:26 ubuntu-4gb-nbg1-1 caddy[2390732]: {"level":"info","ts":1791897626.6388953,"logger":"http.log","msg":"server running","name":"srv0","protocols":["h1","h2","h3"]}
+Oct 13 13:20:26 ubuntu-4gb-nbg1-1 caddy[2390732]: {"level":"info","ts":1791897626.6389072,"logger":"http","msg":"enabling automatic TLS certificate management","domains":["pro.moats.app","gov.moats.app"]}
+Oct 13 13:20:26 ubuntu-4gb-nbg1-1 caddy[2390732]: {"level":"info","ts":1791897626.645815,"msg":"autosaved config (load with --resume flag)","file":"/var/lib/caddy/.config/caddy/autosave.json"}
+Oct 13 13:20:26 ubuntu-4gb-nbg1-1 caddy[2390732]: {"level":"info","ts":1791897626.6459231,"msg":"serving initial configuration"}
+Oct 13 13:20:26 ubuntu-4gb-nbg1-1 systemd[1]: Started caddy.service - Caddy.
+Oct 13 13:20:26 ubuntu-4gb-nbg1-1 caddy[2390732]: {"level":"info","ts":1791897626.6550338,"logger":"tls","msg":"storage cleaning happened too recently; skipping for now","storage":"FileStorage:/var/lib/caddy/.local/share/caddy","instance":"9e92382d-6447-4487-80ed-90dbb3f1889d","try_again":1791984026.655032,"try_again_in":86399.99999944}
+Oct 13 13:20:26 ubuntu-4gb-nbg1-1 caddy[2390732]: {"level":"info","ts":1791897626.6552155,"logger":"tls","msg":"finished cleaning storage units"}
+HTTP/2 200 
+accept-ranges: bytes
+alt-svc: h3=":443"; ma=2592000
+cache-control: no-cache, must-revalidate
+content-type: text/html; charset=utf-8
+etag: "dm355rep8tjazm"
+last-modified: Mon, 12 Oct 2026 20:27:52 GMT
+permissions-policy: geolocation=(), microphone=(), camera=()
+referrer-policy: strict-origin-when-cross-origin
+vary: Accept-Encoding
+x-content-type-options: nosniff
+x-frame-options: DENY
+content-length: 1282
+date: Tue, 13 Oct 2026 13:20:26 GMT
