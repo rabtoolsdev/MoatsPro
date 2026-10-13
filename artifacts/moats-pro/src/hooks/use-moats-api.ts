@@ -9,10 +9,10 @@ import { networkToChainId } from "@/lib/wagmi-config";
 import { fetchBlazeRecentActivity } from "@/lib/blaze-activity";
 import { usesIndexedMoatHistory } from "@/lib/moat-history-policy";
 
-export function useEvents(contractAddress?: string) {
+export function useEvents(contractAddress?: string, network?: string) {
   return useQuery({
-    queryKey: ["moats", "events", contractAddress],
-    queryFn: () => moatsApi.getEvents({ contractAddress }),
+    queryKey: ["moats", "events", contractAddress, ...(network ? [network] : [])],
+    queryFn: () => moatsApi.getEvents({ contractAddress, network }),
     staleTime: 10_000,
     refetchInterval: 30_000,
     refetchOnMount: "always",
@@ -25,11 +25,11 @@ export function useEvents(contractAddress?: string) {
  * the lastProcessed field on the config object is set when the config
  * record is updated by the backend and can be severely stale/wrong.
  */
-export function useRewardsDepositedEvents(contractAddress?: string) {
+export function useRewardsDepositedEvents(contractAddress?: string, network?: string) {
   return useQuery({
-    queryKey: ["moats", "events", contractAddress, "RewardsDeposited"],
+    queryKey: ["moats", "events", contractAddress, "RewardsDeposited", ...(network ? [network] : [])],
     queryFn: () =>
-      moatsApi.getEvents({ contractAddress, eventType: "RewardsDeposited", limit: 100 }),
+      moatsApi.getEvents({ contractAddress, network, eventType: "RewardsDeposited", limit: 100 }),
     enabled: !!contractAddress,
     staleTime: 60_000,
     refetchInterval: 120_000,

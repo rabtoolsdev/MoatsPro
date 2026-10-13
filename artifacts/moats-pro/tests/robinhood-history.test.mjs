@@ -108,6 +108,44 @@ test("Robinhood activity and reward-deposit queries retain their Moats API sourc
   assert.deepEqual(f.calls, []);
 });
 
+test("each Robinhood moat requests its own network-scoped activity and reward deposits", async () => {
+  const addresses = [
+    "0x1cc326b8a13f89e7de64dd073e5a1a9fdcdd1d28",
+    "0x989ea8325138026c80d11167f0e04ea5ce6047da", // ARENA
+    "0x527c5ff76247fec4d26d3fc664c0192313786b0e",
+    "0x56b6864ebf43d8fa5f4b729fd706627d466115e9",
+    "0x57e7e1d6eb7c9e3a5d2a5b4d8fff0d667c840272",
+  ];
+  const f = fixture();
+  for (const address of addresses) {
+    f.hooks.useEvents(address, "robinhood");
+    f.hooks.useRewardsDepositedEvents(address, "robinhood");
+  }
+  for (const query of f.queries) await query.queryFn();
+  addresses.forEach((address, index) => {
+    assert.deepEqual(f.apiCalls[index * 2], { contractAddress: address, network: "robinhood" });
+    assert.deepEqual(f.apiCalls[index * 2 + 1], {
+      contractAddress: address, network: "robinhood", eventType: "RewardsDeposited", limit: 100,
+    });
+    assert.ok(f.queries[index * 2].queryKey.includes(address));
+    assert.ok(f.queries[index * 2].queryKey.includes("robinhood"));
+    assert.equal(f.queries[index * 2].refetchInterval, 30_000);
+  });
+  assert.deepEqual(f.calls, []);
+});
+
+test("network-scoped event caches do not collide and existing unscoped callers stay unchanged", () => {
+  const f = fixture();
+  const address = config("robinhood").contractAddress;
+  f.hooks.useEvents(address);
+  f.hooks.useEvents(address, "robinhood");
+  f.hooks.useEvents(address, "avalanche");
+  assert.deepEqual(f.queries[0].queryKey, ["moats", "events", address]);
+  assert.notDeepEqual(f.queries[1].queryKey, f.queries[2].queryKey);
+  f.hooks.useRewardsDepositedEvents(address);
+  assert.deepEqual(f.queries[3].queryKey, ["moats", "events", address, "RewardsDeposited"]);
+});
+
 test("single-moat reward and full-analytics scans cannot issue Robinhood RPCs", async () => {
   for (const network of ["robinhood", "RobinhoodChain"]) {
     const f = fixture();

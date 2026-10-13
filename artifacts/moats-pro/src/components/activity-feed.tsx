@@ -43,7 +43,7 @@ function formatEventAmount(
     symbol = found?.symbol ?? formatAddress(args.token);
     decimals = found?.decimals ?? 18;
   } else {
-    const meta = getMoatMeta(contractAddress);
+    const meta = getMoatMeta(contractAddress, event.network);
     symbol = meta.tokenSymbol;
     const stakingEntry = tokenMap[meta.tokenAddress?.toLowerCase() ?? ""];
     if (stakingEntry) decimals = stakingEntry.decimals;

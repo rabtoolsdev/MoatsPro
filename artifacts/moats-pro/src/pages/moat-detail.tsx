@@ -344,8 +344,16 @@ export default function MoatDetail() {
   });
   const { data: pointsV2 } = useMoatPointsV2(contractAddress, urlNetwork);
   const { data: userMoatPoints } = useUserMoatPointsV2(userAddress, contractAddress, urlNetwork);
-  const { data: eventsData } = useEvents(contractAddress);
-  const { data: rewardsDepositedData } = useRewardsDepositedEvents(contractAddress);
+  // The Moats API defaults to Avalanche when network is omitted. Explicitly
+  // scope Robinhood history (including its route alias) to the API's slug.
+  const historyNetwork = networkToChainId(urlNetwork) === 4663 ? "robinhood" : undefined;
+  const {
+    data: eventsData,
+    isLoading: eventsLoading,
+    isError: eventsError,
+    refetch: refetchEvents,
+  } = useEvents(contractAddress, historyNetwork);
+  const { data: rewardsDepositedData } = useRewardsDepositedEvents(contractAddress, historyNetwork);
   // On supported networks, fetch RewardsDeposited logs directly via getLogs so
   // deposits made by automated reward contracts (which the moat-api indexer
   // may miss) still appear in the activity feed and lastDepositedMap.
@@ -1795,8 +1803,8 @@ export default function MoatDetail() {
             })()}
 
             {/* Recent Events for this contract */}
-            {mergedEvents.length > 0 && (
-              <div className="relative">
+            {(mergedEvents.length > 0 || historyNetwork === "robinhood") && (
+              <div className="relative" data-testid="section-live-activity">
                 <div className="absolute -inset-x-6 top-10 bottom-0 bg-black/20 -z-10 rounded-3xl" />
                 <h3 className="font-bold mb-6 flex items-center justify-between text-white text-lg tracking-tight">
                   <span className="flex items-center gap-2">
@@ -1810,7 +1818,22 @@ export default function MoatDetail() {
                     ).toLocaleString()} total events
                   </span>
                 </h3>
-                <ActivityFeed events={mergedEvents.slice(0, 8)} moatConfigs={moatConfig ? [moatConfig] : undefined} />
+                {historyNetwork === "robinhood" && eventsError && (
+                  <div role="alert" className="mb-3 rounded-xl border border-rose-400/20 bg-card/30 p-4 text-sm text-muted-foreground">
+                    {mergedEvents.length > 0 ? "Unable to refresh activity. Showing previously loaded events." : "Unable to load activity from the Moats API."}
+                    <button type="button" onClick={() => void refetchEvents()} className="ml-2 text-primary hover:underline" data-testid="retry-live-activity">
+                      Retry
+                    </button>
+                  </div>
+                )}
+                {historyNetwork === "robinhood" && !mergedEvents.length && !eventsError && (
+                  <div role="status" className="rounded-xl border border-border bg-card/30 p-4 text-sm text-muted-foreground" data-testid="status-live-activity">
+                    {eventsLoading ? "Loading activity…" : "No indexed activity yet. New transactions appear after the Moats API indexes them."}
+                  </div>
+                )}
+                {mergedEvents.length > 0 && (
+                  <ActivityFeed events={mergedEvents.slice(0, 8)} moatConfigs={moatConfig ? [moatConfig] : undefined} />
+                )}
               </div>
             )}
 
