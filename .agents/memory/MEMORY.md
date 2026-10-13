@@ -4,3 +4,4 @@
 - [moats.app parity checks](moats-app-parity.md) — their network list, RPCs, and assets are extractable from the main bundle at https://moats.app; don't guess from word counts.
 - [Robinhood RPC reads](robinhood-rpc.md) — browser RPC has CORS/archive/rate-limit constraints; route read-only requests through the API proxy and batch chain scans.
 - [Blaze data access](blaze-data-access.md) — public RPC can fail CORS/rate limits; indexed transaction fallback is not instant confirmation, and block timestamps must be real.
+- [Production hosting](production-hosting.md) — the user manages the Hetzner server for pro.moats.app; distinguish external production from Replit preview and GitHub.
