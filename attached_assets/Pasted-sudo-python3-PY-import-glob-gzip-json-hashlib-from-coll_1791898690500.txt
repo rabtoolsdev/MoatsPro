@@ -1,0 +1,77 @@
+sudo python3 - <<'PY'
+import glob, gzip, json, hashlib
+from collections import Counter
+from datetime import datetime, timezone
+
+start = datetime(2026, 10, 13, 9, 40, tzinfo=timezone.utc).timestamp()
+end = datetime(2026, 10, 13, 9, 43, tzinfo=timezone.utc).timestamp()
+
+clients, methods, statuses, protocols = (Counter() for _ in range(4))
+seconds, targets, agents = (Counter() for _ in range(3))
+paths = set()
+first, last, longest_uri, total = None, None, 0, 0
+
+for file in sorted(glob.glob("/var/log/caddy/moats-*.log*")):
+    opener = gzip.open if file.endswith(".gz") else open
+    try:
+        with opener(file, "rt", errors="replace") as f:
+            for line in f:
+                try:
+                    e = json.loads(line)
+                    ts = float(e.get("ts", 0))
+                    r = e.get("request") or {}
+                    if not start <= ts < end:
+                        continue
+                    if r.get("host", "").split(":")[0] != "pro.moats.app":
+                        continue
+
+                    total += 1
+                    first = ts if first is None else min(first, ts)
+                    last = ts if last is None else max(last, ts)
+                    clients[r.get("client_ip") or r.get("remote_ip") or "unknown"] += 1
+                    methods[r.get("method", "unknown")] += 1
+                    statuses[str(e.get("status", "unknown"))] += 1
+                    protocols[r.get("proto", "unknown")] += 1
+                    seconds[int(ts)] += 1
+
+                    uri = r.get("uri", "")
+                    longest_uri = max(longest_uri, len(uri))
+                    path = uri.split("?")[0]
+                    paths.add(hashlib.sha256(path.encode()).digest())
+                    target = (
+                        path if path in ("/", "/index.html", "/robots.txt", "/favicon.ico")
+                        else "API" if path.startswith("/api/")
+                        else "Assets" if path.startswith("/assets/")
+                        else "Other paths"
+                    )
+                    targets[target] += 1
+
+                    ua = (r.get("headers", {}).get("User-Agent") or [""])[0].lower()
+                    label = next(
+                        (x for x in ("curl", "python", "go-http-client", "bot", "mozilla")
+                         if x in ua), "other/empty"
+                    )
+                    agents[label] += 1
+                except (ValueError, TypeError, AttributeError):
+                    continue
+    except (OSError, EOFError):
+        print("Unreadable log file:", file)
+
+print("Requests:", total)
+if total:
+    print("First/last UTC:",
+          datetime.fromtimestamp(first, timezone.utc).isoformat(),
+          datetime.fromtimestamp(last, timezone.utc).isoformat())
+    print("Distinct client addresses:", len(clients))
+    print("Top anonymous client request counts:",
+          [n for _, n in clients.most_common(10)])
+    print("Peak logged requests in one second:", max(seconds.values()))
+    print("Distinct paths:", len(paths))
+    print("Longest logged URI, characters:", longest_uri)
+    for name, counts in (
+        ("Methods", methods), ("Statuses", statuses),
+        ("Protocols", protocols), ("Targets", targets),
+        ("User-agent categories (can be spoofed)", agents)
+    ):
+        print(name + ":", dict(counts))
+PY
