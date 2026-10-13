@@ -1,0 +1,301 @@
+head -n 80 /tmp/caddy-heap.txt
+head -n 80 /tmp/caddy-goroutines.txt
+Tue Oct 13 01:29:45 PM UTC 2026
+Restart=on-failure
+RestartUSec=5s
+MainPID=2390732
+MemoryCurrent=87937024
+MemoryPeak=170549248
+               total        used        free      shared  buff/cache   available
+Mem:           3.7Gi       757Mi       2.7Gi        21Mi       577Mi       3.0Gi
+Swap:             0B          0B          0B
+admin.api.load
+admin.api.metrics
+admin.api.pki
+admin.api.reverse_proxy
+caddy.adapters.caddyfile
+caddy.config_loaders.http
+caddy.filesystems
+caddy.listeners.http_redirect
+caddy.listeners.proxy_protocol
+caddy.listeners.tls
+caddy.logging.cores.mock
+caddy.logging.encoders.append
+caddy.logging.encoders.console
+caddy.logging.encoders.filter
+caddy.logging.encoders.filter.cookie
+caddy.logging.encoders.filter.delete
+caddy.logging.encoders.filter.hash
+caddy.logging.encoders.filter.ip_mask
+caddy.logging.encoders.filter.multi_regexp
+caddy.logging.encoders.filter.query
+caddy.logging.encoders.filter.regexp
+caddy.logging.encoders.filter.rename
+caddy.logging.encoders.filter.replace
+caddy.logging.encoders.json
+caddy.logging.writers.discard
+caddy.logging.writers.file
+caddy.logging.writers.net
+caddy.logging.writers.stderr
+caddy.logging.writers.stdout
+caddy.network_proxy.none
+caddy.network_proxy.url
+caddy.storage.file_system
+events
+http
+http.authentication.hashes.argon2id
+http.authentication.hashes.bcrypt
+http.authentication.providers.http_basic
+http.encoders.gzip
+http.encoders.zstd
+http.handlers.acme_server
+http.handlers.authentication
+http.handlers.copy_response
+http.handlers.copy_response_headers
+http.handlers.encode
+http.handlers.error
+http.handlers.file_server
+http.handlers.headers
+http.handlers.intercept
+http.handlers.invoke
+http.handlers.log_append
+http.handlers.map
+http.handlers.metrics
+http.handlers.push
+http.handlers.request_body
+http.handlers.reverse_proxy
+http.handlers.rewrite
+http.handlers.static_response
+http.handlers.subroute
+http.handlers.templates
+http.handlers.tracing
+http.handlers.vars
+http.ip_sources.static
+http.matchers.client_ip
+http.matchers.expression
+http.matchers.file
+http.matchers.header
+http.matchers.header_regexp
+http.matchers.host
+http.matchers.method
+http.matchers.not
+http.matchers.path
+http.matchers.path_regexp
+http.matchers.protocol
+http.matchers.query
+http.matchers.remote_ip
+http.matchers.tls
+http.matchers.vars
+http.matchers.vars_regexp
+http.precompressed.br
+http.precompressed.gzip
+http.precompressed.zstd
+http.reverse_proxy.selection_policies.client_ip_hash
+http.reverse_proxy.selection_policies.cookie
+http.reverse_proxy.selection_policies.first
+http.reverse_proxy.selection_policies.header
+http.reverse_proxy.selection_policies.ip_hash
+http.reverse_proxy.selection_policies.least_conn
+http.reverse_proxy.selection_policies.query
+http.reverse_proxy.selection_policies.random
+http.reverse_proxy.selection_policies.random_choose
+http.reverse_proxy.selection_policies.round_robin
+http.reverse_proxy.selection_policies.uri_hash
+http.reverse_proxy.selection_policies.weighted_round_robin
+http.reverse_proxy.transport.fastcgi
+http.reverse_proxy.transport.http
+http.reverse_proxy.upstreams.a
+http.reverse_proxy.upstreams.multi
+http.reverse_proxy.upstreams.srv
+pki
+tls
+tls.ca_pool.source.file
+tls.ca_pool.source.http
+tls.ca_pool.source.inline
+tls.ca_pool.source.pki_intermediate
+tls.ca_pool.source.pki_root
+tls.ca_pool.source.storage
+tls.certificates.automate
+tls.certificates.load_files
+tls.certificates.load_folders
+tls.certificates.load_pem
+tls.certificates.load_storage
+tls.client_auth.verifier.leaf
+tls.ech.publishers.dns
+tls.get_certificate.http
+tls.get_certificate.tailscale
+tls.handshake_match.local_ip
+tls.handshake_match.remote_ip
+tls.handshake_match.sni
+tls.handshake_match.sni_regexp
+tls.issuance.acme
+tls.issuance.internal
+tls.issuance.zerossl
+tls.leaf_cert_loader.file
+tls.leaf_cert_loader.folder
+tls.leaf_cert_loader.pem
+tls.leaf_cert_loader.storage
+tls.permission.http
+tls.stek.distributed
+tls.stek.standard
+
+  Standard modules: 129
+heap profile: 21: 6587168 [132: 18215184] @ heap/1048576
+0: 0 [2: 32768] @ 0x48b46c 0x490569 0x4e2a05 0x1323fed 0x1323fa6 0x13242e5 0x1323fce 0x1323fce 0x1385750 0x4e2a51 0x4e27cc 0x4e27ab 0x7842f8 0x7834a7 0x15338ee 0x1325cfa 0x1306329 0x1384c52 0x1325cfa 0x1306329 0x1326f19 0x1306329 0x151e736 0x1325cfa 0x1306329 0x1326f19 0x1306329 0x153c873 0x1325cfa 0x1306329 0x1326f19 0x1306329 0x1326de2 0x1306329 0x1326de2 0x1306329 0x1330ec2 0x1325cfa 0x1306329 0x1326f19 0x1306329 0x1330ac2 0x1325cfa 0x1306329 0x1326f19 0x1306329 0x1326de2 0x1306329 0x1330ac2 0x1325cfa 0x1306329 0x1326f19 0x1306329 0x1329ded 0x12fb9d5 0x1306329 0x132992e 0x132875f 0x7ee64e 0x7d4665 0xc1503d 0x495c01
+#	0x4e2a04	io.copyBuffer+0x104											io/io.go:426
+#	0x1323fec	io.Copy+0x8c												io/io.go:388
+#	0x1323fa5	github.com/caddyserver/caddy/v2/modules/caddyhttp.(*ResponseWriterWrapper).ReadFrom+0x45		github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/responsewriter.go:52
+#	0x13242e4	github.com/caddyserver/caddy/v2/modules/caddyhttp.(*responseRecorder).ReadFrom+0x44			github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/responsewriter.go:194
+#	0x1323fcd	github.com/caddyserver/caddy/v2/modules/caddyhttp.(*ResponseWriterWrapper).ReadFrom+0x6d		github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/responsewriter.go:50
+#	0x1323fcd	github.com/caddyserver/caddy/v2/modules/caddyhttp.(*ResponseWriterWrapper).ReadFrom+0x6d		github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/responsewriter.go:50
+#	0x138574f	github.com/caddyserver/caddy/v2/modules/caddyhttp/encode.(*responseWriter).ReadFrom+0x18f		github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/encode/encode.go:401
+#	0x4e2a50	io.copyBuffer+0x150											io/io.go:415
+#	0x4e27cb	io.Copy+0x8b												io/io.go:388
+#	0x4e27aa	io.CopyN+0x6a												io/io.go:364
+#	0x7842f7	net/http.serveContent+0xd37										net/http/fs.go:429
+#	0x7834a6	net/http.ServeContent+0x66										net/http/fs.go:257
+#	0x15338ed	github.com/caddyserver/caddy/v2/modules/caddyhttp/fileserver.(*FileServer).ServeHTTP+0x2fed		github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/fileserver/staticfiles.go:582
+#	0x1325cf9	github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1+0xb9	github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/routes.go:337
+#	0x1306328	github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP+0x28				github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/caddyhttp.go:74
+#	0x1384c51	github.com/caddyserver/caddy/v2/modules/caddyhttp/encode.(*Encode).ServeHTTP+0x511			github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/encode/encode.go:181
+#	0x1325cf9	github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1+0xb9	github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/routes.go:337
+#	0x1306328	github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP+0x28				github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/caddyhttp.go:74
+#	0x1326f18	github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1+0x358		github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/routes.go:322
+#	0x1306328	github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP+0x28				github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/caddyhttp.go:74
+#	0x151e735	github.com/caddyserver/caddy/v2/modules/caddyhttp/rewrite.Rewrite.ServeHTTP+0x495			github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/rewrite/rewrite.go:139
+#	0x1325cf9	github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1+0xb9	github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/routes.go:337
+#	0x1306328	github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP+0x28				github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/caddyhttp.go:74
+#	0x1326f18	github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1+0x358		github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/routes.go:322
+#	0x1306328	github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP+0x28				github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/caddyhttp.go:74
+#	0x153c872	github.com/caddyserver/caddy/v2/modules/caddyhttp/headers.Handler.ServeHTTP+0x272			github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/headers/headers.go:110
+#	0x1325cf9	github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1+0xb9	github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/routes.go:337
+#	0x1306328	github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP+0x28				github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/caddyhttp.go:74
+#	0x1326f18	github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1+0x358		github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/routes.go:322
+#	0x1306328	github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP+0x28				github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/caddyhttp.go:74
+#	0x1326de1	github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1+0x221		github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/routes.go:280
+#	0x1306328	github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP+0x28				github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/caddyhttp.go:74
+#	0x1326de1	github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1+0x221		github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/routes.go:280
+#	0x1306328	github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP+0x28				github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/caddyhttp.go:74
+#	0x1330ec1	github.com/caddyserver/caddy/v2/modules/caddyhttp.VarsMiddleware.ServeHTTP+0x2c1			github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/vars.go:73
+#	0x1325cf9	github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1+0xb9	github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/routes.go:337
+#	0x1306328	github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP+0x28				github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/caddyhttp.go:74
+#	0x1326f18	github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1+0x358		github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/routes.go:322
+#	0x1306328	github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP+0x28				github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/caddyhttp.go:74
+#	0x1330ac1	github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Subroute).ServeHTTP+0x61				github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/subroute.go:74
+#	0x1325cf9	github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1+0xb9	github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/routes.go:337
+#	0x1306328	github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP+0x28				github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/caddyhttp.go:74
+#	0x1326f18	github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1+0x358		github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/routes.go:322
+#	0x1306328	github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP+0x28				github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/caddyhttp.go:74
+#	0x1326de1	github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1+0x221		github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/routes.go:280
+#	0x1306328	github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP+0x28				github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/caddyhttp.go:74
+#	0x1330ac1	github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Subroute).ServeHTTP+0x61				github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/subroute.go:74
+#	0x1325cf9	github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Route).ProvisionHandlers.wrapMiddleware.func1.1+0xb9	github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/routes.go:337
+#	0x1306328	github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP+0x28				github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/caddyhttp.go:74
+#	0x1326f18	github.com/caddyserver/caddy/v2/modules/caddyhttp.RouteList.Compile.wrapRoute.func1.1+0x358		github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/routes.go:322
+#	0x1306328	github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP+0x28				github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/caddyhttp.go:74
+#	0x1329dec	github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).enforcementHandler+0x26c			github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/server.go:528
+#	0x12fb9d4	github.com/caddyserver/caddy/v2/modules/caddyhttp.(*App).Provision.(*Server).wrapPrimaryRoute.func2+0x34	github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/server.go:504
+#	0x1306328	github.com/caddyserver/caddy/v2/modules/caddyhttp.HandlerFunc.ServeHTTP+0x28				github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/caddyhttp.go:74
+#	0x132992d	github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).serveHTTP+0xed				github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/server.go:497
+#	0x132875e	github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).ServeHTTP+0x95e				github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/server.go:389
+#	0x7ee64d	net/http.serverHandler.ServeHTTP+0x8d									net/http/server.go:3311
+#	0x7d4664	net/http.initALPNRequest.ServeHTTP+0x264								net/http/server.go:3984
+#	0xc1503c	golang.org/x/net/http2.(*serverConn).runHandler+0x9c							golang.org/x/net@v0.51.0/http2/server.go:2494
+
+0: 0 [3: 3072] @ 0x48b46c 0x490569 0x851065 0x85101f 0x49fe91 0x850d7b 0x850d76 0x85a8f6 0x85a99a 0x852d9e 0x855115 0x132c148 0x1328dab 0x7ee64e 0x7d4665 0xc1503d 0x495c01
+#	0x851064	go.uber.org/zap/internal/bufferpool.init.NewPool.func1+0x24			go.uber.org/zap@v1.27.1/buffer/pool.go:37
+#	0x85101e	go.uber.org/zap/internal/bufferpool.init.NewPool.New[...].func2+0x1e		go.uber.org/zap@v1.27.1/internal/pool/pool.go:44
+#	0x49fe90	sync.(*Pool).Get+0xb0								sync/pool.go:155
+#	0x850d7a	go.uber.org/zap/internal/pool.(*Pool[...]).Get+0x1a				go.uber.org/zap@v1.27.1/internal/pool/pool.go:52
+#	0x850d75	go.uber.org/zap/buffer.Pool.Get+0x15						go.uber.org/zap@v1.27.1/buffer/pool.go:45
+#	0x85a8f5	go.uber.org/zap/zapcore.(*jsonEncoder).clone+0x75				go.uber.org/zap@v1.27.1/zapcore/json_encoder.go:357
+#	0x85a999	go.uber.org/zap/zapcore.(*jsonEncoder).EncodeEntry+0x39				go.uber.org/zap@v1.27.1/zapcore/json_encoder.go:362
+#	0x852d9d	go.uber.org/zap/zapcore.(*ioCore).Write+0x9d					go.uber.org/zap@v1.27.1/zapcore/core.go:95
+#	0x855114	go.uber.org/zap/zapcore.(*CheckedEntry).Write+0x134				go.uber.org/zap@v1.27.1/zapcore/entry.go:258
+#	0x132c147	github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).logRequest+0xaa7	github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/server.go:896
+#	0x1328daa	github.com/caddyserver/caddy/v2/modules/caddyhttp.(*Server).ServeHTTP+0xfaa	github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/server.go:393
+#	0x7ee64d	net/http.serverHandler.ServeHTTP+0x8d						net/http/server.go:3311
+#	0x7d4664	net/http.initALPNRequest.ServeHTTP+0x264					net/http/server.go:3984
+#	0xc1503c	golang.org/x/net/http2.(*serverConn).runHandler+0x9c				golang.org/x/net@v0.51.0/http2/server.go:2494
+
+0: 0 [0: 0] @ 0x48b445 0x425c85 0x7d7e28 0x7bd066 0x7e9c94 0x495c01
+#	0x7d7e27	net/http.newTransferWriter+0x27		net/http/transfer.go:79
+goroutine profile: total 23
+2 @ 0x48ddae 0x44f417 0x48cf85 0x507027 0x50824e 0x50823c 0x573c05 0x586045 0x6d79fb 0x537a98 0x6d7bde 0x6d4cbb 0x6db3c5 0x6db3c6 0x4e262e 0xbfff65 0xbfff33 0xc0062b 0xc00df8 0xc0c447 0x495c01
+#	0x48cf84	internal/poll.runtime_pollWait+0x84			runtime/netpoll.go:351
+#	0x507026	internal/poll.(*pollDesc).wait+0x26			internal/poll/fd_poll_runtime.go:84
+#	0x50824d	internal/poll.(*pollDesc).waitRead+0x2ad		internal/poll/fd_poll_runtime.go:89
+#	0x50823b	internal/poll.(*FD).Read+0x29b				internal/poll/fd_unix.go:165
+#	0x573c04	net.(*netFD).Read+0x24					net/fd_posix.go:68
+#	0x586044	net.(*conn).Read+0x44					net/net.go:196
+#	0x6d79fa	crypto/tls.(*atLeastReader).Read+0x3a			crypto/tls/conn.go:815
+#	0x537a97	bytes.(*Buffer).ReadFrom+0x97				bytes/buffer.go:229
+#	0x6d7bdd	crypto/tls.(*Conn).readFromUntil+0xdd			crypto/tls/conn.go:837
+#	0x6d4cba	crypto/tls.(*Conn).readRecordOrCCS+0x3da		crypto/tls/conn.go:626
+#	0x6db3c4	crypto/tls.(*Conn).readRecord+0x144			crypto/tls/conn.go:588
+#	0x6db3c5	crypto/tls.(*Conn).Read+0x145				crypto/tls/conn.go:1393
+#	0x4e262d	io.ReadAtLeast+0x8d					io/io.go:335
+#	0xbfff64	io.ReadFull+0x64					io/io.go:354
+#	0xbfff32	golang.org/x/net/http2.readFrameHeader+0x32		golang.org/x/net@v0.51.0/http2/frame.go:250
+#	0xc0062a	golang.org/x/net/http2.(*Framer).ReadFrameHeader+0x6a	golang.org/x/net@v0.51.0/http2/frame.go:513
+#	0xc00df7	golang.org/x/net/http2.(*Framer).ReadFrame+0x17		golang.org/x/net@v0.51.0/http2/frame.go:572
+#	0xc0c446	golang.org/x/net/http2.(*serverConn).readFrames+0x86	golang.org/x/net@v0.51.0/http2/server.go:872
+
+2 @ 0x48ddae 0x46a025 0x156d169 0x495c01
+#	0x156d168	github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy.(*metricsUpstreamsHealthyUpdater).init.func1+0xc8	github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/reverseproxy/metrics.go:77
+
+2 @ 0x48ddae 0x46a025 0xc0d305 0xc0b5e6 0xc0a872 0xc0a815 0xc0a6d5 0x7cce28 0x495c01
+#	0xc0d304	golang.org/x/net/http2.(*serverConn).serve+0x904	golang.org/x/net@v0.51.0/http2/server.go:1006
+#	0xc0b5e5	golang.org/x/net/http2.(*Server).serveConn+0xc25	golang.org/x/net@v0.51.0/http2/server.go:568
+#	0xc0a871	golang.org/x/net/http2.(*Server).ServeConn+0x151	golang.org/x/net@v0.51.0/http2/server.go:424
+#	0xc0a814	golang.org/x/net/http2.ConfigureServer.func2+0xf4	golang.org/x/net@v0.51.0/http2/server.go:321
+#	0xc0a6d4	golang.org/x/net/http2.ConfigureServer.func3+0x34	golang.org/x/net@v0.51.0/http2/server.go:329
+#	0x7cce27	net/http.(*conn).serve+0x1447				net/http/server.go:1960
+
+1 @ 0x422f09 0x4902f8 0xb3a553 0x495c01
+#	0x4902f7	os/signal.signal_recv+0x97	runtime/sigqueue.go:152
+#	0xb3a552	os/signal.loop+0x12		os/signal/signal_unix.go:23
+
+1 @ 0x44ba11 0x48cb7d 0x815331 0x815165 0x811fe9 0x82c2ca 0x82cd5a 0x7cdf49 0xb3c44f 0x7cdf49 0x7cfd47 0xb41553 0xb40d45 0x7ee64e 0x7cc030 0x495c01
+#	0x815330	runtime/pprof.writeRuntimeProfile+0xb0									runtime/pprof/pprof.go:851
+#	0x815164	runtime/pprof.writeGoroutine+0x44									runtime/pprof/pprof.go:784
+#	0x811fe8	runtime/pprof.(*Profile).WriteTo+0x148									runtime/pprof/pprof.go:408
+#	0x82c2c9	net/http/pprof.handler.ServeHTTP+0x529									net/http/pprof/pprof.go:273
+#	0x82cd59	net/http/pprof.Index+0xd9										net/http/pprof/pprof.go:397
+#	0x7cdf48	net/http.HandlerFunc.ServeHTTP+0x28									net/http/server.go:2286
+#	0xb3c44e	github.com/caddyserver/caddy/v2.(*AdminConfig).newAdminHandler.func1.instrumentHandlerCounter.1+0x6e	github.com/caddyserver/caddy/v2@v2.11.2/metrics.go:56
+#	0x7cdf48	net/http.HandlerFunc.ServeHTTP+0x28									net/http/server.go:2286
+#	0x7cfd46	net/http.(*ServeMux).ServeHTTP+0x1c6									net/http/server.go:2828
+#	0xb41552	github.com/caddyserver/caddy/v2.adminHandler.serveHTTP+0x792						github.com/caddyserver/caddy/v2@v2.11.2/admin.go:891
+#	0xb40d44	github.com/caddyserver/caddy/v2.adminHandler.ServeHTTP+0x7a4						github.com/caddyserver/caddy/v2@v2.11.2/admin.go:816
+#	0x7ee64d	net/http.serverHandler.ServeHTTP+0x8d									net/http/server.go:3311
+#	0x7cc02f	net/http.(*conn).serve+0x64f										net/http/server.go:2073
+
+1 @ 0x48ddae 0x41c66e 0x41c192 0xb633a5 0x495c01
+#	0xb633a4	github.com/caddyserver/caddy/v2.trapSignalsCrossPlatform.func1+0xe4	github.com/caddyserver/caddy/v2@v2.11.2/sigtrap.go:43
+
+1 @ 0x48ddae 0x41c66e 0x41c1b2 0x170cda8 0x495c01
+#	0x170cda7	github.com/DeRuina/timberjack.(*Logger).millRun+0x87	github.com/DeRuina/timberjack@v1.3.9/timberjack.go:980
+
+1 @ 0x48ddae 0x41c66e 0x41c1b2 0xb628a5 0x495c01
+#	0xb628a4	github.com/caddyserver/caddy/v2.trapSignalsPosix.func1+0xe4	github.com/caddyserver/caddy/v2@v2.11.2/sigtrap_posix.go:40
+
+1 @ 0x48ddae 0x44f417 0x48cf85 0x507027 0x50824e 0x50823c 0x573c05 0x586045 0x7c5c13 0x495c01
+#	0x48cf84	internal/poll.runtime_pollWait+0x84		runtime/netpoll.go:351
+#	0x507026	internal/poll.(*pollDesc).wait+0x26		internal/poll/fd_poll_runtime.go:84
+#	0x50824d	internal/poll.(*pollDesc).waitRead+0x2ad	internal/poll/fd_poll_runtime.go:89
+#	0x50823b	internal/poll.(*FD).Read+0x29b			internal/poll/fd_unix.go:165
+#	0x573c04	net.(*netFD).Read+0x24				net/fd_posix.go:68
+#	0x586044	net.(*conn).Read+0x44				net/net.go:196
+#	0x7c5c12	net/http.(*connReader).backgroundRead+0x32	net/http/server.go:702
+
+1 @ 0x48ddae 0x44f417 0x48cf85 0x507027 0x50c0ac 0x50c09a 0x575949 0x58f5bb 0x58e850 0x130db25 0x7d182c 0x495c01
+#	0x48cf84	internal/poll.runtime_pollWait+0x84						runtime/netpoll.go:351
+#	0x507026	internal/poll.(*pollDesc).wait+0x26						internal/poll/fd_poll_runtime.go:84
+#	0x50c0ab	internal/poll.(*pollDesc).waitRead+0x28b					internal/poll/fd_poll_runtime.go:89
+#	0x50c099	internal/poll.(*FD).Accept+0x279						internal/poll/fd_unix.go:613
+#	0x575948	net.(*netFD).accept+0x28							net/fd_unix.go:150
+#	0x58f5ba	net.(*TCPListener).accept+0x1a							net/tcpsock_posix.go:159
+#	0x58e84f	net.(*TCPListener).Accept+0x2f							net/tcpsock.go:387
+#	0x130db24	github.com/caddyserver/caddy/v2/modules/caddyhttp.(*http2Listener).Accept+0x24	github.com/caddyserver/caddy/v2@v2.11.2/modules/caddyhttp/http2listener.go:34
+#	0x7d182b	net/http.(*Server).Serve+0x30b	
