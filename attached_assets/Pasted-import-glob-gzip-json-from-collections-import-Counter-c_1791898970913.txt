@@ -1,0 +1,52 @@
+import glob, gzip, json
+from collections import Counter
+clients, targets, protocols, seconds, methods, statuses = [Counter() for _ in range(6)]
+for f in sorted(glob.glob("/var/log/caddy/moats-*.log*")):
+    print("Reading:", f, flush=True)
+    opener = gzip.open if f.endswith(".gz") else open
+    with opener(f, "rt", errors="replace") as log:
+        for line in log:
+            try:
+                d = json.loads(line)
+            except ValueError:
+                continue
+            t = float(d.get("ts", 0))
+            r = d.get("request") or {}
+            if not 1791884400 <= t < 1791884580:
+                continue
+            if r.get("host", "").split(":")[0] != "pro.moats.app":
+                continue
+            clients[r.get("client_ip") or r.get("remote_ip") or "unknown"] += 1
+            path = r.get("uri", "").split("?")[0]
+            target = path if path in ("/", "/index.html", "/robots.txt", "/favicon.ico") else "API" if path.startswith("/api/") else "Assets" if path.startswith("/assets/") else "Other paths"
+            targets[target] += 1
+            protocols[r.get("proto", "unknown")] += 1
+            methods[r.get("method", "unknown")] += 1
+            statuses[str(d.get("status", "unknown"))] += 1
+            seconds[int(t)] += 1
+print("Requests:", sum(clients.values()))
+print("Distinct client addresses:", len(clients))
+print("Top anonymous client counts:", [n for _, n in clients.most_common(10)])
+print("Peak requests logged per second:", max(seconds.values(), default=0))
+print("Targets:", dict(targets))
+print("Protocols:", dict(protocols))
+print("Methods:", dict(methods))
+print("Statuses:", dict(statuses))
+'
+Reading: /var/log/caddy/moats-gov.log
+Reading: /var/log/caddy/moats-pro-2026-10-01T08-06-49.909-size.log.gz
+Reading: /var/log/caddy/moats-pro-2026-10-04T05-56-21.858-size.log.gz
+Reading: /var/log/caddy/moats-pro-2026-10-06T21-29-40.810-size.log.gz
+Reading: /var/log/caddy/moats-pro-2026-10-08T11-11-00.068-size.log.gz
+Reading: /var/log/caddy/moats-pro-2026-10-09T22-04-53.588-size.log.gz
+Reading: /var/log/caddy/moats-pro-2026-10-12T14-14-04.488-size.log.gz
+Reading: /var/log/caddy/moats-pro-2026-10-13T09-41-43.045-size.log.gz
+Reading: /var/log/caddy/moats-pro.log
+Requests: 22100
+Distinct client addresses: 279
+Top anonymous client counts: [318, 256, 255, 249, 249, 244, 218, 208, 201, 192]
+Peak requests logged per second: 6090
+Targets: {'/': 22034, 'Assets': 4, 'Other paths': 9, 'API': 52, '/favicon.ico': 1}
+Protocols: {'HTTP/2.0': 21655, 'HTTP/1.1': 445}
+Methods: {'GET': 22048, 'POST': 52}
+Statuses: {'200': 22098, '502': 1, '308': 1}
