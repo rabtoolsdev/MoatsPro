@@ -346,9 +346,10 @@ export default function MoatDetail() {
   const { data: userMoatPoints } = useUserMoatPointsV2(userAddress, contractAddress, urlNetwork);
   const { data: eventsData } = useEvents(contractAddress);
   const { data: rewardsDepositedData } = useRewardsDepositedEvents(contractAddress);
-  // On-chain fallback: fetch RewardsDeposited logs directly via getLogs so
+  // On supported networks, fetch RewardsDeposited logs directly via getLogs so
   // deposits made by automated reward contracts (which the moat-api indexer
   // may miss) still appear in the activity feed and lastDepositedMap.
+  // Robinhood uses the API events above; its public RPCs reject archive scans.
   const { data: onChainRewards } = useOnChainRewardsDeposited(
     contractAddress,
     networkToChainId(urlNetwork),
@@ -356,7 +357,8 @@ export default function MoatDetail() {
   );
   // The detail-page fallback must include user events too (Staked, Locked,
   // Burned, Withdrawn, etc.), not just RewardsDeposited. This keeps Live
-  // Activity independent of the API indexer's processing delay.
+  // Activity independent of the API indexer's processing delay on supported
+  // networks. Robinhood history remains sourced from the Moats API.
   const { data: onChainRecentEvents } = useAllOnChainRecentEvents(
     moatConfig ? [moatConfig] : undefined,
   );

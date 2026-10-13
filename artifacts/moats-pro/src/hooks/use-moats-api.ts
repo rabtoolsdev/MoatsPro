@@ -7,6 +7,7 @@ import { REWARDS_DEPOSITED_EVENT_ABI, MOAT_ALL_EVENTS_ABI } from "@/lib/moat-abi
 import { parseEventLogs } from "viem";
 import { networkToChainId } from "@/lib/wagmi-config";
 import { fetchBlazeRecentActivity } from "@/lib/blaze-activity";
+import { usesIndexedMoatHistory } from "@/lib/moat-history-policy";
 
 export function useEvents(contractAddress?: string) {
   return useQuery({
@@ -170,7 +171,7 @@ export function useUserEvents(address: string | undefined) {
 }
 
 /**
- * Fetch RewardsDeposited logs for ALL moats across ALL chains in one getLogs
+ * Fetch RewardsDeposited logs for moats on RPC-history-enabled chains in one getLogs
  * call per chain. Used by the home/explore page to supplement totalRewardsDeposited
  * on every moat card without making one RPC call per card.
  *
@@ -209,7 +210,7 @@ export function useAllOnChainRewardsDeposited(configs: MoatConfig[] | undefined)
       const byChain = new Map<number, MoatConfig[]>();
       for (const cfg of configs) {
         const cid = networkToChainId(cfg.network);
-        if (!cid) continue;
+        if (!cid || usesIndexedMoatHistory(cid, cfg.network)) continue;
         if (!byChain.has(cid)) byChain.set(cid, []);
         byChain.get(cid)!.push(cfg);
       }
@@ -348,6 +349,10 @@ async function fetchOnChainRecentEvents(
   const addresses = chainConfigs.map((c) => c.contractAddress as `0x${string}`);
   const network = chainConfigs[0].network ?? "avalanche";
 
+  // All callers, including full-history Analytics, must avoid Robinhood
+  // archive scans. Existing primary API queries supply activity and timestamps.
+  if (usesIndexedMoatHistory(client.chain?.id, network)) return [];
+
   // Blaze's public RPC can fail CORS/rate limits, leaving activity dependent
   // on the Fortifi indexer. Its recent feed has an independent confirmed-call
   // source; retain actual RPC logs for explicitly requested full analytics.
@@ -375,16 +380,6 @@ async function fetchOnChainRecentEvents(
       toBlock: currentBlock,
     });
   } catch {
-    // Robinhood rejects wide log ranges and rate-limits the many small
-    // requests that a chunked fallback would create. Keep this path to one
-    // bounded attempt; the Fortifi indexer remains the source for Robinhood
-    // activity when the RPC cannot serve the fallback.
-    if (
-      network.toLowerCase() === "robinhood" ||
-      network.toLowerCase() === "robinhoodchain"
-    ) {
-      return [];
-    }
     // For other networks, expand a failed archive request into conservative
     // chunks so the activity fallback still works where the RPC supports it.
     rawLogs = await fetchLogsInChunks(
@@ -467,7 +462,8 @@ export function useOnChainMoatAnalyticsEvents(
       chainId,
       config?.contractAddress,
     ],
-    enabled: enabled && !!config && !!publicClient && chainId !== undefined,
+    enabled: enabled && !!config && !!publicClient && chainId !== undefined &&
+      !usesIndexedMoatHistory(chainId, config?.network),
     staleTime: 5 * 60_000,
     refetchOnMount: "always",
     queryFn: () =>
@@ -509,7 +505,7 @@ export function useOnChainAllMoatAnalyticsEvents(
   const configsByChain = new Map<number, MoatConfig[]>();
   for (const config of configs ?? []) {
     const chainId = networkToChainId(config.network);
-    if (chainId === undefined) continue;
+    if (chainId === undefined || usesIndexedMoatHistory(chainId, config.network)) continue;
     const chainConfigs = configsByChain.get(chainId) ?? [];
     chainConfigs.push(config);
     configsByChain.set(chainId, chainConfigs);
@@ -580,7 +576,7 @@ export function useAllOnChainRecentEvents(configs: MoatConfig[] | undefined) {
         "moats", "events", "onchain-all", "recent", chainId,
         chainConfigs.map((c) => `${c.contractAddress}:${c.network}`).sort().join(","),
       ],
-      enabled: chainConfigs.length > 0 && !!client,
+      enabled: chainConfigs.length > 0 && !!client && !usesIndexedMoatHistory(chainId),
       staleTime: chainId === 4663 ? 5 * 60_000 : 10_000,
       refetchInterval: chainId === 4663 ? 5 * 60_000 : chainId === 46975 ? 15_000 : 30_000,
       refetchOnMount: "always" as const,
@@ -621,18 +617,16 @@ export function useOnChainRewardsDeposited(
   network: string | undefined,
 ) {
   const publicClient = usePublicClient({ chainId });
-  const isRobinhood =
-    network?.toLowerCase() === "robinhood" ||
-    network?.toLowerCase() === "robinhoodchain";
+  const isRobinhood = usesIndexedMoatHistory(chainId, network);
 
   return useQuery({
     queryKey: ["moats", "events", "onchain-rewards", chainId, contractAddress],
-    enabled: !!contractAddress && !!publicClient && !!chainId,
+    enabled: !!contractAddress && !!publicClient && !!chainId && !isRobinhood,
     staleTime: 60_000,
     refetchInterval: isRobinhood ? 5 * 60_000 : 120_000,
     retry: false,
     queryFn: async (): Promise<MoatEvent[]> => {
-      if (!publicClient || !contractAddress) return [];
+      if (isRobinhood || !publicClient || !contractAddress) return [];
 
       const currentBlock = await publicClient.getBlockNumber();
 
@@ -659,9 +653,6 @@ export function useOnChainRewardsDeposited(
             toBlock: currentBlock,
           });
         } catch {
-          // Robinhood's RPC can reject both ranges. Do not let React Query
-          // retry this scan repeatedly; indexed events remain available.
-          if (isRobinhood) return [];
           throw new Error("RewardsDeposited log scan failed");
         }
       }
