@@ -15,6 +15,14 @@ Moats Pro lists Moats from MANY chains at once (Avalanche, Ethereum, Base, The G
 
 **Related:** The Moats API network slug for The Grotto is `thegrotto` (not `grotto`); `CHAIN_DISPLAY` must use the API's exact slug or network filtering hides those moats.
 
+## Cross-chain NFT boosts
+
+The Wrapped BLAZE Moat is on Blaze, but its NFT boost collection is on Avalanche. NFT ownership reads must target the NFT collection's chain independently of the moat's chain and the wallet's selected chain.
+
+**Why:** The user confirmed that WBLAZE holders should see their Avalanche NFT boost while viewing the moat on Blaze, without switching wallet networks.
+
+**How to apply:** Pin boost `balanceOf` reads to the boost contract's chain. Keep staking, moat state, and moat writes pinned to the moat's own chain. For future cross-chain boost collections, prefer explicit boost-chain metadata over assuming the boost lives on its moat's chain.
+
 **Live activity rule:** When an aggregate activity query reads multiple chains, fetch each chain concurrently and tolerate individual block-timestamp failures. A slow or rate-limited secondary RPC should not delay or discard fresh events from another chain.
 
 **Why:** The Explore feed was slower than a single-moat Live Activity feed because its all-network RPC scan ran serially; one failed timestamp lookup could also remove the whole on-chain result.

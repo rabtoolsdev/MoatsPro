@@ -31,6 +31,7 @@ import { useTokenPrices, getLlamaId } from "@/hooks/use-token-prices";
 import { useDexscreenerInfo } from "@/hooks/use-dexscreener";
 import { useResolveMoatMetas } from "@/hooks/use-resolve-moat-metas";
 import { networkToChainId } from "@/lib/wagmi-config";
+import { AVALANCHE_CHAIN_ID, BLAZE_CHAIN_ID } from "@/lib/moat-tokens";
 import { useDailyRewardEstimates } from "@/hooks/use-daily-reward-estimates";
 import { useRewardPoolBalances } from "@/hooks/use-reward-pool-balances";
 import { useContractRewardBalances } from "@/hooks/use-contract-reward-balances";
@@ -507,7 +508,15 @@ export default function MoatDetail() {
     () => activeBoosts.map((b: BoostConfig) => b.contractAddress as `0x${string}`),
     [activeBoosts],
   );
-  const { balances: nftBoostBalances } = useNftBoostBalances(activeBoostAddresses);
+  // The WBLAZE moat is deployed on Blaze, but its boost NFTs are Avalanche
+  // assets. Read these balances from Avalanche without changing the wallet's
+  // network or the chain used for moat transactions.
+  const nftBoostChainId =
+    moatChainId === BLAZE_CHAIN_ID ? AVALANCHE_CHAIN_ID : moatChainId;
+  const { balances: nftBoostBalances } = useNftBoostBalances(
+    activeBoostAddresses,
+    nftBoostChainId,
+  );
 
   const activeLockCount = Number(userInfo.userInfo?.[4] ?? 0n);
   const { locks, isLoading: locksLoading, refetch: refetchLocks } = useUserLocks(

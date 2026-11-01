@@ -472,6 +472,7 @@ export function useNftBoostBalance(
  */
 export function useNftBoostBalances(
   nftContractAddresses: readonly `0x${string}`[],
+  chainId?: number,
 ) {
   const { address } = useAccount();
   const contracts = useMemo(() => {
@@ -481,8 +482,9 @@ export function useNftBoostBalances(
       abi: ERC20_ABI,
       functionName: "balanceOf" as const,
       args: [address] as const,
+      chainId,
     }));
-  }, [address, nftContractAddresses]);
+  }, [address, nftContractAddresses, chainId]);
 
   const { data, isLoading, refetch } = useReadContracts({
     contracts,
