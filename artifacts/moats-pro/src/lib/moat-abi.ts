@@ -295,6 +295,13 @@ export const MOAT_V3_ABI = [
     type: "function",
   },
   {
+    inputs: [{ internalType: "address", name: "_user", type: "address" }],
+    name: "getCurrentPoints",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
     inputs: [],
     name: "stakingToken",
     outputs: [{ internalType: "address", name: "", type: "address" }],

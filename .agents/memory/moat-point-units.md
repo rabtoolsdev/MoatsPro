@@ -1,10 +1,10 @@
 ---
-name: Moat pool-weight math
-description: Use the Moats API epoch leaderboard as the authority for current reward-pool shares.
+name: Moat current-points weight
+description: Pool-share percentages come from the moat contract's current points over total points.
 ---
 
-The Moats API v2 leaderboard `weight` is the authoritative current reward-pool percentage and sums to 100% across a moat. Do not calculate that displayed percentage from the contract's raw `userInfo / totalPoints` counters; they are a different metric and can diverge from the epoch weight shown on moats.app. For pre-action estimates, calibrate against leaderboard points and use the API weight as the current-share baseline when available.
+The current reward-pool percentage is `getCurrentPoints(user) / totalPoints() * 100` from the moat contract. The `userInfo` staking/burn counters and the API leaderboard's `weight` are different metrics and can produce different percentages. For pre-action estimates, retain the calibrated points model unless a contract-backed estimate is available.
 
-**Why:** For HEFE, the API reported a 21.7111% share for the wallet with 27,907 points, while the contract-counter ratio displayed 20.58%; API weights across the full leaderboard summed to 100%.
+**Why:** For ARENA, the contract's `getCurrentPoints` ratio yields about 10.20%, while the API leaderboard's epoch weight is about 7.74% and the user-info counters yield 2.56%. The user specifically chose the contract current-points ratio as the pool-weight definition.
 
-**How to apply:** Prefer each wallet's API leaderboard `weight` for its current pool share. Estimate post-action changes from the leaderboard-calibrated points model, using that weight to derive the current total contribution when possible.
+**How to apply:** Read the total and each wallet's current points on the moat's own chain, calculate the ratio using exact integer arithmetic, and sort stakers by current points descending. Keep the API leaderboard points for its separate display score.

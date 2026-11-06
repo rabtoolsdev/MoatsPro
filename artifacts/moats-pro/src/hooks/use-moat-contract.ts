@@ -144,6 +144,70 @@ export function useMoatStats(contractAddress: MoatContractAddress | undefined, c
   };
 }
 
+/**
+ * Read the contract's current pool denominator and each listed staker's
+ * getCurrentPoints value. Pool shares are calculated from these values rather
+ * than the API's epoch leaderboard weights.
+ */
+export function useMoatCurrentPoints(
+  contractAddress: MoatContractAddress | undefined,
+  userAddresses: readonly string[],
+  chainId?: number,
+) {
+  const contracts = useMemo(
+    () =>
+      contractAddress
+        ? [
+            {
+              address: contractAddress,
+              abi: MOAT_V3_ABI,
+              functionName: "totalPoints" as const,
+              chainId,
+            },
+            ...userAddresses.map((user) => ({
+              address: contractAddress,
+              abi: MOAT_V3_ABI,
+              functionName: "getCurrentPoints" as const,
+              args: [user as `0x${string}`] as const,
+              chainId,
+            })),
+          ]
+        : [],
+    [contractAddress, userAddresses, chainId],
+  );
+  const result = useReadContracts({
+    contracts,
+    allowFailure: true,
+    query: {
+      enabled: !!contractAddress && userAddresses.length > 0,
+      staleTime: 30_000,
+      refetchInterval: 60_000,
+    },
+  });
+
+  const totalPoints =
+    result.data?.[0]?.status === "success" && typeof result.data[0].result === "bigint"
+      ? result.data[0].result
+      : undefined;
+  const pointsByAddress = useMemo(() => {
+    const points: Record<string, bigint> = {};
+    for (const [index, address] of userAddresses.entries()) {
+      const current = result.data?.[index + 1];
+      if (current?.status === "success" && typeof current.result === "bigint") {
+        points[address.toLowerCase()] = current.result;
+      }
+    }
+    return points;
+  }, [result.data, userAddresses]);
+
+  return {
+    totalPoints,
+    pointsByAddress,
+    isLoading: result.isLoading,
+    isError: result.isError,
+  };
+}
+
 export function useUserMoatInfo(
   contractAddress: MoatContractAddress | undefined,
   chainId?: number,

@@ -16,7 +16,7 @@ import { mergeMoatActivity } from "@/lib/moat-activity";
 import { useAllMoatConfigs, useMoatPointsV2, useUserMoatPointsV2, useEvents, useRewardsDepositedEvents, useOnChainRewardsDeposited, useAllOnChainRecentEvents } from "@/hooks/use-moats-api";
 import { getActiveBoosts, getBoostTier, getEffectiveBoostValue, getMaxBoostValue, type BoostConfig, type BoostTier } from "@/lib/moats-api";
 import {
-  useMoatStats, useUserMoatInfo, useTokenBalance,
+  useMoatStats, useMoatCurrentPoints, useUserMoatInfo, useTokenBalance,
   useTokenAllowance, useStakeMoat, useLockMoat, useClaimRewards, useApproveToken, useUnstakeMoat, useNftBoostBalances, useBurnMoat, useExitLock, useUserLocks,
 } from "@/hooks/use-moat-contract";
 import type { MoatContractAddress } from "@/hooks/use-moat-contract";
@@ -99,7 +99,8 @@ function formatPoolShare(pct: number): string {
 }
 
 function calculatePoolSharePercent(userPoints: bigint, totalPoints: bigint): number | null {
-  if (userPoints <= 0n || totalPoints <= 0n) return null;
+  if (totalPoints <= 0n) return null;
+  if (userPoints <= 0n) return 0;
   // Keep the ratio exact until the final display conversion. Point counters
   // can grow beyond Number's safe integer range over the life of a Moat.
   const scaledPercent = (userPoints * 1_000_000n) / totalPoints;
@@ -835,6 +836,20 @@ export default function MoatDetail() {
   const totalPoints = leaderboard.reduce((sum, p) => sum + p.points, 0);
   const totalTimeWeightedPoints = 0; // not available in v2 leaderboard response
   const participantCount = leaderboard.length;
+  const currentPointsAddresses = useMemo(
+    () => [
+      ...new Set([
+        ...leaderboard.map((entry) => entry.address),
+        ...(userAddress ? [userAddress] : []),
+      ]),
+    ],
+    [leaderboard, userAddress],
+  );
+  const currentPointsRead = useMoatCurrentPoints(
+    contractAddress as MoatContractAddress | undefined,
+    currentPointsAddresses,
+    moatChainId,
+  );
 
   const compactToken = (raw: bigint): string => {
     const n = parseFloat(formatUnits(raw, decimals));
@@ -862,9 +877,8 @@ export default function MoatDetail() {
   const userLockedFormatted = fmtUserAmt(parseFloat(formatUnits(userLockedAmount, decimals)));
   const userMoatPointsValue = userMoatPoints?.points ?? 0;
 
-  // The Moats API leaderboard weight is the canonical current reward-pool
-  // percentage. The contract's raw userInfo / totalPoints ratio is a different
-  // metric and can disagree with the epoch weights displayed on moats.app.
+  // The contract's getCurrentPoints(user) / totalPoints() is the pool-weight
+  // formula. Both values are read together above to keep the ratio consistent.
   const userLeaderboardEntry = useMemo(() => {
     if (!userAddress) return undefined;
     return leaderboard.find(
@@ -873,18 +887,24 @@ export default function MoatDetail() {
   }, [leaderboard, userAddress]);
 
   const userPoolShare = useMemo((): number | null => {
-    const apiWeight = userLeaderboardEntry?.weight;
-    if (typeof apiWeight === "number" && Number.isFinite(apiWeight) && apiWeight >= 0) {
-      return apiWeight;
+    if (!userAddress) return null;
+    const points = currentPointsRead.pointsByAddress[userAddress.toLowerCase()];
+    const total = currentPointsRead.totalPoints;
+    if (points !== undefined && total !== undefined) {
+      return calculatePoolSharePercent(points, total);
     }
-
-    // Use contract data only while the API leaderboard entry is unavailable.
-    const totalPts = stats.totalPoints;
-    const ui = userInfo.userInfo;
-    if (!totalPts || totalPts === 0n || !ui) return null;
-    const userPts = (ui[2] ?? 0n) + (ui[3] ?? 0n);
-    return calculatePoolSharePercent(userPts, totalPts);
-  }, [userLeaderboardEntry?.weight, stats.totalPoints, userInfo.userInfo]);
+    if (currentPointsRead.isLoading) return null;
+    // Some older deployments may not implement getCurrentPoints. Keep a
+    // visible fallback rather than hiding the percentage on those contracts.
+    const apiWeight = userLeaderboardEntry?.weight;
+    return typeof apiWeight === "number" && Number.isFinite(apiWeight) ? apiWeight : null;
+  }, [
+    userAddress,
+    currentPointsRead.pointsByAddress,
+    currentPointsRead.totalPoints,
+    currentPointsRead.isLoading,
+    userLeaderboardEntry?.weight,
+  ]);
 
   // Moat Points simulation: calibrate the points model from the leaderboard so
   // we can estimate the points a stake/lock/burn would yield before the tx.
@@ -1713,7 +1733,16 @@ export default function MoatDetail() {
 
             {/* Top Stakers (from points v2 leaderboard) */}
             {leaderboard.length > 0 && (() => {
-              const sorted = [...leaderboard].sort((a, b) => b.points - a.points);
+              const sorted = [...leaderboard].sort((a, b) => {
+                const pointsA = currentPointsRead.pointsByAddress[a.address.toLowerCase()];
+                const pointsB = currentPointsRead.pointsByAddress[b.address.toLowerCase()];
+                if (pointsA !== undefined && pointsB !== undefined) {
+                  return pointsA === pointsB ? 0 : pointsA > pointsB ? -1 : 1;
+                }
+                if (pointsA !== undefined) return -1;
+                if (pointsB !== undefined) return 1;
+                return b.points - a.points;
+              });
               const PAGE_SIZE = 10;
               const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
               const pageStart = stakerPage * PAGE_SIZE;
@@ -1733,6 +1762,10 @@ export default function MoatDetail() {
                   <div className="divide-y divide-white/5">
                     {pageEntries.map((entry, i) => {
                       const rank = pageStart + i;
+                    const currentPoints = currentPointsRead.pointsByAddress[entry.address.toLowerCase()];
+                    const poolShare = currentPoints !== undefined && currentPointsRead.totalPoints !== undefined
+                      ? calculatePoolSharePercent(currentPoints, currentPointsRead.totalPoints)
+                      : null;
                       return (
                         <div
                           key={entry.address}
@@ -1757,6 +1790,11 @@ export default function MoatDetail() {
                             {entry.boosted && (
                               <span className="text-[10px] font-mono text-cyan-400/80 uppercase tracking-widest mt-0.5">
                                 {entry.boostMultiplier}x boost
+                              </span>
+                            )}
+                            {poolShare != null && (
+                              <span className="text-[10px] font-mono text-cyan-400/80 uppercase tracking-widest mt-0.5">
+                                {formatPoolShare(poolShare)}% of pool
                               </span>
                             )}
                           </div>
