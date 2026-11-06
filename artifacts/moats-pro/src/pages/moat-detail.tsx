@@ -919,9 +919,9 @@ export default function MoatDetail() {
     if (!amt || amt <= 0) return 0;
     return estimateMoatPoints(pointsSim.k, userMoatPointsValue, amt, actionWeight).gained;
   };
-  // Pool weight ∝ basePoints^2 * boostMultiplier (verified against the v2
-  // leaderboard `weight` field). Sum that contribution across the moat so the
-  // pre-tx "% of pool" estimate accounts for NFT boosts.
+  // The leaderboard supplies the calibrated position model for action
+  // estimates; the displayed current share remains contract getCurrentPoints
+  // divided by totalPoints.
   const sumBoostedBaseSq = useMemo(
     () =>
       leaderboard.reduce((s, e) => {
@@ -931,9 +931,8 @@ export default function MoatDetail() {
       }, 0),
     [leaderboard],
   );
-  // Estimate post-action pool share with the same leaderboard weight model used
-  // for the current percentage. Do not substitute raw contract totalPoints:
-  // it is not the denominator for the API's epoch reward weights.
+  // Estimate the change from the current contract share using the
+  // leaderboard-calibrated marginal-points model.
   const getEstimatedPoolShare = (rawAmount: string, actionWeight: number): number | null => {
     const normalizedAmount = rawAmount.replace(/,/g, "").trim();
     if (!normalizedAmount || Number(normalizedAmount) <= 0) return null;
@@ -952,7 +951,7 @@ export default function MoatDetail() {
       sumBoostedBaseSq,
       amount,
       actionWeight,
-      userLeaderboardEntry?.weight,
+      userPoolShare ?? undefined,
     );
   };
 
