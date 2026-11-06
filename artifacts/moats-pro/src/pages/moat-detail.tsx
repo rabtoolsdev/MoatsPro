@@ -87,10 +87,6 @@ const lockMultiplierInfo = [
   { days: 730, multiplier: "5x", label: "2 Years" },
 ];
 
-// MoatV3 stores position points in token base units normalized by 1e12.
-// For an 18-decimal token, 1 human token contributes 1e6 base point units.
-const POINTS_BASE_UNIT_DIVISOR = 1_000_000_000_000n;
-
 function getLockMultiplierLabel(days: number): string {
   const match = lockMultiplierInfo.find((o) => o.days === days);
   return match?.multiplier ?? "1x";
@@ -866,19 +862,9 @@ export default function MoatDetail() {
   const userLockedFormatted = fmtUserAmt(parseFloat(formatUnits(userLockedAmount, decimals)));
   const userMoatPointsValue = userMoatPoints?.points ?? 0;
 
-  // "Your Moat Weight" = the wallet's actual share of pool rewards.
-  //
-  // The API leaderboard `weight` field uses a sqrt-points model which
-  // significantly under-reports large stakers/burners (e.g. 11.77% when the
-  // true reward share is ~22%). We compute from on-chain data instead:
-  //
-  //   share = (stakingPoints + burnPoints) / totalPoints × 100
-  //
-  // stakingPoints (userInfo[2]) covers direct staking AND lock contributions
-  // (locked amount × lockMultiplier is embedded here by the contract).
-  // burnPoints (userInfo[3]) covers burned tokens at the 10× multiplier.
-  // totalPoints is the pool-wide sum of all users' positions.
-  // This matches the contract's own reward-distribution logic exactly.
+  // The Moats API leaderboard weight is the canonical current reward-pool
+  // percentage. The contract's raw userInfo / totalPoints ratio is a different
+  // metric and can disagree with the epoch weights displayed on moats.app.
   const userLeaderboardEntry = useMemo(() => {
     if (!userAddress) return undefined;
     return leaderboard.find(
@@ -886,13 +872,19 @@ export default function MoatDetail() {
     );
   }, [leaderboard, userAddress]);
 
-  const userOnChainPoolShare = useMemo((): number | null => {
+  const userPoolShare = useMemo((): number | null => {
+    const apiWeight = userLeaderboardEntry?.weight;
+    if (typeof apiWeight === "number" && Number.isFinite(apiWeight) && apiWeight >= 0) {
+      return apiWeight;
+    }
+
+    // Use contract data only while the API leaderboard entry is unavailable.
     const totalPts = stats.totalPoints;
     const ui = userInfo.userInfo;
     if (!totalPts || totalPts === 0n || !ui) return null;
     const userPts = (ui[2] ?? 0n) + (ui[3] ?? 0n);
     return calculatePoolSharePercent(userPts, totalPts);
-  }, [stats.totalPoints, userInfo.userInfo]);
+  }, [userLeaderboardEntry?.weight, stats.totalPoints, userInfo.userInfo]);
 
   // Moat Points simulation: calibrate the points model from the leaderboard so
   // we can estimate the points a stake/lock/burn would yield before the tx.
@@ -919,43 +911,29 @@ export default function MoatDetail() {
       }, 0),
     [leaderboard],
   );
-  // Estimate pool share after a stake/lock/burn using the same linear on-chain
-  // formula as userOnChainPoolShare. The contract tracks two linear counters per
-  // wallet — stakingPoints (index 2) and burnPoints (index 3) — and totalPoints()
-  // is their pool-wide sum. Convert the entered token amount into the contract's
-  // normalized point units before applying the action multiplier.
-  // Falls back to the leaderboard sqrt model only if on-chain data hasn't loaded.
+  // Estimate post-action pool share with the same leaderboard weight model used
+  // for the current percentage. Do not substitute raw contract totalPoints:
+  // it is not the denominator for the API's epoch reward weights.
   const getEstimatedPoolShare = (rawAmount: string, actionWeight: number): number | null => {
     const normalizedAmount = rawAmount.replace(/,/g, "").trim();
     if (!normalizedAmount || Number(normalizedAmount) <= 0) return null;
 
-    // Prefer on-chain: (userPts + delta) / (totalPts + delta)
-    const totalPts = stats.totalPoints;
-    const ui = userInfo.userInfo;
-    if (totalPts && totalPts > 0n && ui !== undefined) {
-      const tokenDecimals = Number(stakingTokenDecimals ?? decimals);
-      const rawTokenAmount = toBaseUnits(normalizedAmount, tokenDecimals);
-      const pointAmount = rawTokenAmount / POINTS_BASE_UNIT_DIVISOR;
-      if (pointAmount <= 0n) return null;
-
-      // Current action multipliers are whole or half values (1x, 2x, 2.5x,
-      // 3x, 4x, 5x, 10x). Keep the calculation in bigint space.
-      const multiplierTenths = BigInt(Math.round(actionWeight * 10));
-      const delta = (pointAmount * multiplierTenths) / 10n;
-      const newUserPts = (ui[2] ?? 0n) + (ui[3] ?? 0n) + delta;
-      const newTotalPts = totalPts + delta;
-      return calculatePoolSharePercent(newUserPts, newTotalPts);
-    }
-
-    // Fallback: leaderboard-calibrated sqrt model (used before on-chain data loads)
-    const amt = parseFloat(normalizedAmount);
-    if (!pointsSim.ready || pointsSim.k == null) return null;
+    const amount = parseFloat(normalizedAmount);
+    if (!amount || amount <= 0 || !pointsSim.ready || pointsSim.k == null) return null;
     const userBase = userLeaderboardEntry?.basePoints ?? userLeaderboardEntry?.points ?? 0;
     const userMult =
       userLeaderboardEntry?.boostMultiplier && userLeaderboardEntry.boostMultiplier > 0
         ? userLeaderboardEntry.boostMultiplier
         : 1;
-    return estimatePoolShare(pointsSim.k, userBase, userMult, sumBoostedBaseSq, amt, actionWeight);
+    return estimatePoolShare(
+      pointsSim.k,
+      userBase,
+      userMult,
+      sumBoostedBaseSq,
+      amount,
+      actionWeight,
+      userLeaderboardEntry?.weight,
+    );
   };
 
   const handleStake = () => {
@@ -1509,7 +1487,7 @@ export default function MoatDetail() {
                       usd: 0,
                       // Only show the contract-derived share. The API
                       // leaderboard weight is an estimate and can be stale.
-                      weightedPct: userOnChainPoolShare ?? 0,
+                      weightedPct: userPoolShare ?? 0,
                     },
                   ].map((item) => {
                     const weightedPct = (item as { weightedPct?: number }).weightedPct ?? 0;

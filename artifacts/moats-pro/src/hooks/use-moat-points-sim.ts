@@ -127,13 +127,26 @@ export function estimatePoolShare(
   sumBoostedBaseSq: number,
   amount: number,
   actionWeight: number,
+  currentWeightPercent?: number,
 ): number | null {
   if (k <= 0 || sumBoostedBaseSq <= 0) return null;
   const mult = userBoostMultiplier > 0 ? userBoostMultiplier : 1;
   const userBaseSq = userBasePoints > 0 ? userBasePoints * userBasePoints : 0;
   const deltaSq = amount > 0 ? k * amount * actionWeight : 0;
   const newUserContrib = (userBaseSq + deltaSq) * mult;
-  const newTotalContrib = sumBoostedBaseSq + deltaSq * mult;
+  // The API weight is the canonical current share. Use it to infer the total
+  // contribution when available, avoiding small drift from rounded leaderboard
+  // basePoints; otherwise fall back to summing the leaderboard entries.
+  const hasValidCurrentWeight =
+    typeof currentWeightPercent === "number" &&
+    Number.isFinite(currentWeightPercent) &&
+    currentWeightPercent > 0 &&
+    currentWeightPercent <= 100 &&
+    userBaseSq > 0;
+  const totalContrib = hasValidCurrentWeight
+    ? (userBaseSq * mult) / (currentWeightPercent / 100)
+    : sumBoostedBaseSq;
+  const newTotalContrib = totalContrib + deltaSq * mult;
   if (newTotalContrib <= 0) return null;
   return (newUserContrib / newTotalContrib) * 100;
 }

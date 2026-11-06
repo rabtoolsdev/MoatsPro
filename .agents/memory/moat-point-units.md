@@ -1,10 +1,10 @@
 ---
-name: Moat point units
-description: The non-obvious unit conversion required for pre-action pool-share estimates.
+name: Moat pool-weight math
+description: Use the Moats API epoch leaderboard as the authority for current reward-pool shares.
 ---
 
-MoatV3 position points use token base units normalized by 1e12 before the action multiplier is applied. For an 18-decimal token, one human token contributes 1e6 point units.
+The Moats API v2 leaderboard `weight` is the authoritative current reward-pool percentage and sums to 100% across a moat. Do not calculate that displayed percentage from the contract's raw `userInfo / totalPoints` counters; they are a different metric and can diverge from the epoch weight shown on moats.app. For pre-action estimates, calibrate against leaderboard points and use the API weight as the current-share baseline when available.
 
-**Why:** Mixing human-readable token amounts with the contract's normalized point counters made a 1,000,000-token burn appear as roughly 0.00000043% of the pool instead of roughly 0.43%.
+**Why:** For HEFE, the API reported a 21.7111% share for the wallet with 27,907 points, while the contract-counter ratio displayed 20.58%; API weights across the full leaderboard summed to 100%.
 
-**How to apply:** Convert the entered token amount to base units, divide by 1e12, apply the stake/lock/burn multiplier, and calculate the post-action share against the updated total points.
+**How to apply:** Prefer each wallet's API leaderboard `weight` for its current pool share. Estimate post-action changes from the leaderboard-calibrated points model, using that weight to derive the current total contribution when possible.
